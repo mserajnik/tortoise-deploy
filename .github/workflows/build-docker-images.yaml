@@ -1,0 +1,230 @@
+# SPDX-FileCopyrightText: 2026 Michael Serajnik <https://github.com/mserajnik>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: Build and push Docker images
+
+on:
+  # Build images daily.
+  schedule:
+    - cron: 0 0 * * *
+  push:
+    branches:
+      - master
+    paths:
+      - .dockerignore
+      - .github/scripts/**
+      - .github/workflows/build-and-push-image.yaml
+      - .github/workflows/build-docker-images.yaml
+      - docker/**
+  pull_request:
+    branches:
+      - master
+    paths:
+      - .dockerignore
+      - .github/scripts/**
+      - .github/workflows/build-and-push-image.yaml
+      - .github/workflows/build-docker-images.yaml
+      - docker/**
+  workflow_dispatch:
+    inputs:
+      force_rebuild:
+        type: boolean
+        description: Force rebuild (even if images for the latest commit already exist)
+        default: false
+
+# Serialize concurrent runs so they cannot race on the registry's moving tags
+# and package cleanup.
+concurrency:
+  group: build-docker-images
+  cancel-in-progress: false
+
+jobs:
+  setup:
+    name: Setup
+    runs-on: ubuntu-24.04
+    permissions:
+      # `contents: write` is needed to commit the updated migration edit state
+      # back to the repository via the GraphQL API.
+      contents: write
+      packages: read
+    outputs:
+      matrix: ${{ steps.prepare-build-matrix.outputs.matrix }}
+      any_images_to_build: ${{ steps.prepare-build-matrix.outputs.any_images_to_build }}
+      main_commit_hash: ${{ steps.resolve-sources.outputs.tortoise_main_commit_hash }}
+      unstable_commit_hash: ${{ steps.resolve-sources.outputs.tortoise_unstable_commit_hash }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # Resolve the current upstream commit of every source the workflow
+      # depends on to a full commit hash once, up front. Tortoise-WoW is built
+      # from two branches (`main` for `stable`, `1181dev` for `unstable`).
+      # Downstream steps (drift check, build decision, image builds) all
+      # reference these same commit hashes so the run is consistent even if a
+      # branch tip moves mid-run.
+      - name: Resolve sources
+        id: resolve-sources
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TORTOISE_REPOSITORY_OWNER: Penqle
+          TORTOISE_REPOSITORY_NAME: tortoise-wow
+          TORTOISE_MAIN_REVISION: main
+          TORTOISE_UNSTABLE_REVISION: 1181dev
+          MARIADB_DOCKER_REPOSITORY_OWNER: MariaDB
+          MARIADB_DOCKER_REPOSITORY_NAME: mariadb-docker
+          MARIADB_DOCKER_REVISION: master
+        run: ./.github/scripts/resolve-sources.sh
+
+      # Compares every upstream reference tortoise-deploy depends on (bundled
+      # config templates, root `CMakeLists.txt` where new build dependencies
+      # would surface, the patched MariaDB entrypoint) against the resolved
+      # upstream `HEAD`. The pinned commit hashes anchor what each was last
+      # reviewed against; bump the matching commit hash below after refreshing
+      # the local files.
+      - name: Check for upstream drift
+        id: upstream-drift-check
+        env:
+          TORTOISE_MAIN_REPOSITORY: ${{ steps.resolve-sources.outputs.tortoise_repository }}
+          TORTOISE_MAIN_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_main_commit_hash }}
+          TORTOISE_UNSTABLE_REPOSITORY: ${{ steps.resolve-sources.outputs.tortoise_repository }}
+          TORTOISE_UNSTABLE_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_unstable_commit_hash }}
+          MARIADB_DOCKER_REPOSITORY: ${{ steps.resolve-sources.outputs.mariadb_docker_repository }}
+          MARIADB_DOCKER_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.mariadb_docker_commit_hash }}
+          TORTOISE_MAIN_KNOWN_COMMIT_HASH: f1dbbf7549829a4fffe9a1f635581822d940ee81
+          TORTOISE_UNSTABLE_KNOWN_COMMIT_HASH: fee5caf96dbca685a1661a055e541a25fd8a4a60
+          # When bumping `MARIADB_DOCKER_KNOWN_COMMIT_HASH`, also update the
+          # matching commit hash in `docker/database/Dockerfile` and the header
+          # comment in `docker/database/docker-entrypoint.sh` so all three stay
+          # in sync.
+          MARIADB_DOCKER_KNOWN_COMMIT_HASH: 1b6429ba3544e134715c15f8c56cc6f665f827c9
+        run: ./.github/scripts/check-upstream-drift.sh
+
+      # Decides which streams to build (skipping any whose moving tag already
+      # points at the current commit, unless this is a scheduled Monday rebuild
+      # or a manual force rebuild) and emits the build matrix. Also records any
+      # migration edit per stream in the state file and bakes it into each
+      # build's `migration_edits` so the database image can correct an existing
+      # world database on update.
+      - name: Prepare build matrix
+        id: prepare-build-matrix
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          PACKAGE_OWNER: ${{ github.repository_owner }}
+          PACKAGE_NAME: tortoise-database
+          TORTOISE_REPOSITORY_OWNER: Penqle
+          TORTOISE_REPOSITORY_NAME: tortoise-wow
+          TORTOISE_MAIN_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_main_commit_hash }}
+          TORTOISE_UNSTABLE_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_unstable_commit_hash }}
+          PATCHES_REPOSITORY_OWNER: mserajnik
+          PATCHES_REPOSITORY_NAME: tortoise-deploy-patches
+          PATCHES_REVISION: master
+          FORCE_REBUILD: ${{ inputs.force_rebuild }}
+          STATE_FILE: .github/migration-edit-state.json
+        run: ./.github/scripts/prepare-build-matrix.sh
+
+      # Auto-commit the state file when the scan flagged a new migration edit.
+      # The push uses `GITHUB_TOKEN` which, by GitHub policy, does not
+      # retrigger workflows. Commits via GitHub's GraphQL
+      # `createCommitOnBranch` mutation so the resulting commit is signed by
+      # GitHub server-side and shows up as Verified; a plain `git commit && git
+      # push` over `GITHUB_TOKEN` would produce an unsigned commit.
+      - name: Commit migration edit state if changed
+        if: ${{ steps.prepare-build-matrix.outputs.any_images_to_build == 'true' && github.event_name != 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.ref_name }}
+          REPO_NWO: ${{ github.repository }}
+        run: |
+          ./.github/scripts/commit-via-api.sh "Update migration edit state" \
+            .github/migration-edit-state.json
+
+  build-and-push-server-images:
+    name: Build and push server images
+    needs: setup
+    if: ${{ needs.setup.outputs.any_images_to_build == 'true' }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include: ${{ fromJSON(needs.setup.outputs.matrix) }}
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-and-push-image.yaml
+    with:
+      image_kind: server
+      architectures: both
+      push_images: ${{ github.event_name != 'pull_request' }}
+      tag_set: ${{ matrix.tag_set }}
+      commit_hash: ${{ matrix.commit_hash }}
+      patch_set: ${{ matrix.patch_set }}
+      apply_customized: ${{ matrix.apply_customized }}
+      tag_suffix: ${{ matrix.tag_suffix }}
+      migration_edits: ${{ matrix.migration_edits }}
+
+  # We build database images only after the server build succeeds; otherwise, a
+  # failure there could leave the latest database images out of sync.
+  build-and-push-database-images:
+    name: Build and push database images
+    needs: [setup, build-and-push-server-images]
+    if: ${{ needs.setup.outputs.any_images_to_build == 'true' }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include: ${{ fromJSON(needs.setup.outputs.matrix) }}
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-and-push-image.yaml
+    with:
+      image_kind: database
+      architectures: both
+      push_images: ${{ github.event_name != 'pull_request' }}
+      tag_set: ${{ matrix.tag_set }}
+      commit_hash: ${{ matrix.commit_hash }}
+      patch_set: ${{ matrix.patch_set }}
+      apply_customized: ${{ matrix.apply_customized }}
+      tag_suffix: ${{ matrix.tag_suffix }}
+      migration_edits: ${{ matrix.migration_edits }}
+
+  # Keep only a short retention window. Long-term availability of older images
+  # is explicitly not promised: breaking changes accumulate over time, and
+  # users running stale images risk hitting issues that have already been fixed
+  # upstream. Anyone who needs an image for a specific commit should build it
+  # locally.
+  delete-old-package-versions:
+    name: Delete old package versions
+    needs: [setup, build-and-push-server-images, build-and-push-database-images]
+    if: ${{ needs.setup.outputs.any_images_to_build == 'true' && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+
+    steps:
+      - name: Delete old package versions
+        uses: snok/container-retention-policy@v3.1.0
+        with:
+          account: user
+          token: ${{ github.token }}
+          image-names: tortoise-server tortoise-database
+          cut-off: 2w
+
+  update-badges:
+    name: Update badges
+    needs: [setup, build-and-push-server-images, build-and-push-database-images, delete-old-package-versions]
+    if: ${{ needs.setup.outputs.any_images_to_build == 'true' && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Upload badge JSON files to web server
+        env:
+          STABLE_COMMIT_HASH: ${{ needs.setup.outputs.main_commit_hash }}
+          UNSTABLE_COMMIT_HASH: ${{ needs.setup.outputs.unstable_commit_hash }}
+          BADGES_FTP_HOST: ${{ secrets.BADGES_FTP_HOST }}
+          BADGES_FTP_USERNAME: ${{ secrets.BADGES_FTP_USERNAME }}
+          BADGES_FTP_PASSWORD: ${{ secrets.BADGES_FTP_PASSWORD }}
+        run: ./.github/scripts/upload-badges.sh
