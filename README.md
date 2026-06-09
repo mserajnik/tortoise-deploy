@@ -529,11 +529,11 @@ non-commercial use only and comes with no warranty.
 [badge-lint-status-url]: https://github.com/mserajnik/tortoise-deploy/actions/workflows/lint.yaml
 [claude-code]: https://www.anthropic.com/product/claude-code
 [codex]: https://openai.com/codex
-[compose-automatic-world-db-corrections]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L35-L50
-[compose-custom-sql]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L51-L64
-[compose-custom-sql-bind-mount]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L17
-[compose-database-backups]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L176-L212
-[compose-phpmyadmin]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L214-L234
+[compose-automatic-world-db-corrections]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L34-L49
+[compose-custom-sql]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L50-L63
+[compose-custom-sql-bind-mount]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L16
+[compose-database-backups]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L173-L209
+[compose-phpmyadmin]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L211-L231
 [docker]: https://docs.docker.com/get-docker/
 [docker-compose]: https://docs.docker.com/compose/install/
 [image-tortoise-database-versions]: https://github.com/mserajnik/tortoise-deploy/pkgs/container/tortoise-database/versions?filters%5Bversion_type%5D=tagged
