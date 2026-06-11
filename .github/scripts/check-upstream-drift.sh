@@ -35,14 +35,24 @@ add_github_check() {
   checks+=("$desc|$known_url|$latest_url")
 }
 
-# Configs we mirror as `*.conf.example` and the top-level `CMakeLists.txt`,
-# which is where new `find_package(...)` would typically introduce a new
-# dependency that we would need to install. Files we only patch (such as
-# `AutoUpdater.cpp`) are not watched here: a drift that breaks a patch already
-# fails the build via `TORTOISE_FAIL_ON_PATCH_ERROR`. Tortoise-WoW is built
-# from two branches (`main` and `1181dev`) that can diverge, so each is checked
-# against its own pinned commit.
+# We watch `sql/create_databases.sql` because `import_world_schema` (in
+# `db-functions.sh`) isolates its `tw_world` section with format-sensitive awk
+# anchors (the dump preamble and the `CREATE DATABASE` / `USE` lines); a
+# regenerated dump in a different format (e.g. an upstream database rebase)
+# would silently mis-extract.
+#
+# In addition, we watch configs we mirror as `*.conf.example` and the top-level
+# `CMakeLists.txt`, which is where new `find_package(...)` would typically
+# introduce a new dependency that we would need to install.
+#
+# Files we only patch (such as `AutoUpdater.cpp`) are not watched here: a drift
+# that breaks a patch already fails the build via
+# `TORTOISE_FAIL_ON_PATCH_ERROR`.
+#
+# Tortoise-WoW is built from two branches (`main` and `1181dev`) that can
+# diverge, so each is checked against its own pinned commit.
 tortoise_paths=(
+  sql/create_databases.sql
   src/mangosd/mangosd.conf.dist.in
   src/realmd/realmd.conf.dist.in
   CMakeLists.txt
