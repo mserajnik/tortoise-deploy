@@ -1,5 +1,8 @@
 {
-  "stable": null,
+  "stable": {
+    "commit": "0a775498d3a62a988102f95a7a01225973abb2d7",
+    "subject": "Fixing typo in old update that broke auras on creatures"
+  },
   "unstable": {
     "commit": "0a775498d3a62a988102f95a7a01225973abb2d7",
     "subject": "Fixing typo in old update that broke auras on creatures"
