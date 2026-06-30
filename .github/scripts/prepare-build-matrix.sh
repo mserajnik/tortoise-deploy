@@ -26,7 +26,7 @@ require_env PACKAGE_OWNER
 require_env PACKAGE_NAME
 require_env TORTOISE_REPOSITORY_OWNER
 require_env TORTOISE_REPOSITORY_NAME
-require_env TORTOISE_MAIN_COMMIT_HASH
+require_env TORTOISE_STABLE_COMMIT_HASH
 require_env TORTOISE_UNSTABLE_COMMIT_HASH
 require_env PATCHES_REPOSITORY_OWNER
 require_env PATCHES_REPOSITORY_NAME
@@ -34,7 +34,7 @@ require_env PATCHES_REVISION
 require_env STATE_FILE
 
 # shellcheck disable=SC2153
-main_commit="$(trim "$TORTOISE_MAIN_COMMIT_HASH")"
+stable_commit="$(trim "$TORTOISE_STABLE_COMMIT_HASH")"
 # shellcheck disable=SC2153
 unstable_commit="$(trim "$TORTOISE_UNSTABLE_COMMIT_HASH")"
 force_rebuild="${FORCE_REBUILD:-false}"
@@ -97,18 +97,18 @@ migration_edit_arg_for_stream() {
 }
 
 # shellcheck disable=SC2153
-main_last_built="$(last_built_commit_for_stream "$PACKAGE_OWNER" "$PACKAGE_NAME" "stable")"
+stable_last_built="$(last_built_commit_for_stream "$PACKAGE_OWNER" "$PACKAGE_NAME" "stable")"
 unstable_last_built="$(last_built_commit_for_stream "$PACKAGE_OWNER" "$PACKAGE_NAME" "unstable")"
 customized_last_built="$(last_built_commit_for_stream "$PACKAGE_OWNER" "$PACKAGE_NAME" "customized")"
 
 shared="false"
-if [[ "$main_commit" == "$unstable_commit" ]]; then
+if [[ "$stable_commit" == "$unstable_commit" ]]; then
   shared="true"
 fi
 
-main_needs="false"
-if [[ "$always_build" == "true" || "$main_last_built" != "$main_commit" ]]; then
-  main_needs="true"
+stable_needs="false"
+if [[ "$always_build" == "true" || "$stable_last_built" != "$stable_commit" ]]; then
+  stable_needs="true"
 fi
 
 unstable_needs="false"
@@ -129,13 +129,13 @@ fi
 # `unstable` edit and is not scanned separately. In the shared-commit case both
 # stream keys are advanced so neither goes stale once they diverge again.
 if [[ "$shared" == "true" ]]; then
-  if [[ "$main_needs" == "true" || "$unstable_needs" == "true" ]]; then
-    run_compute "$main_last_built" "$main_commit" "stable"
+  if [[ "$stable_needs" == "true" || "$unstable_needs" == "true" ]]; then
+    run_compute "$stable_last_built" "$stable_commit" "stable"
     run_compute "$unstable_last_built" "$unstable_commit" "unstable"
   fi
 else
-  if [[ "$main_needs" == "true" ]]; then
-    run_compute "$main_last_built" "$main_commit" "stable"
+  if [[ "$stable_needs" == "true" ]]; then
+    run_compute "$stable_last_built" "$stable_commit" "stable"
   fi
   if [[ "$unstable_needs" == "true" || "$customized_needs" == "true" ]]; then
     run_compute "$unstable_last_built" "$unstable_commit" "unstable"
@@ -159,12 +159,12 @@ add_entry() {
 }
 
 if [[ "$shared" == "true" ]]; then
-  if [[ "$main_needs" == "true" || "$unstable_needs" == "true" ]]; then
-    add_entry "latest,stable,unstable" "$main_commit" "stable" "0" "" "$stable_migration_edits"
+  if [[ "$stable_needs" == "true" || "$unstable_needs" == "true" ]]; then
+    add_entry "latest,stable,unstable" "$stable_commit" "stable" "0" "" "$stable_migration_edits"
   fi
 else
-  if [[ "$main_needs" == "true" ]]; then
-    add_entry "latest,stable" "$main_commit" "stable" "0" "" "$stable_migration_edits"
+  if [[ "$stable_needs" == "true" ]]; then
+    add_entry "latest,stable" "$stable_commit" "stable" "0" "" "$stable_migration_edits"
   fi
   if [[ "$unstable_needs" == "true" ]]; then
     add_entry "unstable" "$unstable_commit" "unstable" "0" "" "$unstable_migration_edits"

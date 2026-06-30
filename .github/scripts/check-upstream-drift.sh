@@ -52,23 +52,23 @@ add_github_check() {
 # Tortoise-WoW is built from two branches (`main` and `1181dev`) that can
 # diverge, so each is checked against its own pinned commit.
 tortoise_paths=(
+  CMakeLists.txt
   sql/create_databases.sql
   src/mangosd/mangosd.conf.dist.in
   src/realmd/realmd.conf.dist.in
-  CMakeLists.txt
 )
 
-if [[ -n "${TORTOISE_MAIN_REPOSITORY:-}${TORTOISE_MAIN_LATEST_COMMIT_HASH:-}${TORTOISE_MAIN_KNOWN_COMMIT_HASH:-}" ]]; then
-  require_env TORTOISE_MAIN_REPOSITORY
-  require_env TORTOISE_MAIN_LATEST_COMMIT_HASH
-  require_env TORTOISE_MAIN_KNOWN_COMMIT_HASH
+if [[ -n "${TORTOISE_STABLE_REPOSITORY:-}${TORTOISE_STABLE_LATEST_COMMIT_HASH:-}${TORTOISE_STABLE_KNOWN_COMMIT_HASH:-}" ]]; then
+  require_env TORTOISE_STABLE_REPOSITORY
+  require_env TORTOISE_STABLE_LATEST_COMMIT_HASH
+  require_env TORTOISE_STABLE_KNOWN_COMMIT_HASH
 
   # shellcheck disable=SC2153
-  tortoise_main_latest_commit_hash="$(trim "$TORTOISE_MAIN_LATEST_COMMIT_HASH")"
+  tortoise_stable_latest_commit_hash="$(trim "$TORTOISE_STABLE_LATEST_COMMIT_HASH")"
 
   for path in "${tortoise_paths[@]}"; do
-    add_github_check "$TORTOISE_MAIN_REPOSITORY" \
-      "$TORTOISE_MAIN_KNOWN_COMMIT_HASH" "$tortoise_main_latest_commit_hash" "$path" main
+    add_github_check "$TORTOISE_STABLE_REPOSITORY" \
+      "$TORTOISE_STABLE_KNOWN_COMMIT_HASH" "$tortoise_stable_latest_commit_hash" "$path" main
   done
 fi
 

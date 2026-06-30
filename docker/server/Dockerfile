@@ -99,8 +99,8 @@ RUN \
   # command wrapper); Tortoise-WoW's build installs only the binary, so we
   # stage them alongside it.
   cp \
-    /build/core/tools/mmap/offmesh.txt \
     /build/core/tools/mmap/mmapSettings.txt \
+    /build/core/tools/mmap/offmesh.txt \
     /opt/tortoise/bin/
 
 FROM ubuntu:26.04

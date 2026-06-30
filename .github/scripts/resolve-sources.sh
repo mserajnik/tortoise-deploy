@@ -21,22 +21,22 @@ require_env GH_TOKEN
 
 resolved_any=false
 
-if [[ -n "${TORTOISE_REPOSITORY_OWNER:-}${TORTOISE_REPOSITORY_NAME:-}${TORTOISE_MAIN_REVISION:-}${TORTOISE_UNSTABLE_REVISION:-}" ]]; then
+if [[ -n "${TORTOISE_REPOSITORY_OWNER:-}${TORTOISE_REPOSITORY_NAME:-}${TORTOISE_STABLE_REVISION:-}${TORTOISE_UNSTABLE_REVISION:-}" ]]; then
   require_env TORTOISE_REPOSITORY_OWNER
   require_env TORTOISE_REPOSITORY_NAME
-  require_env TORTOISE_MAIN_REVISION
+  require_env TORTOISE_STABLE_REVISION
   require_env TORTOISE_UNSTABLE_REVISION
 
   tortoise_repository="$TORTOISE_REPOSITORY_OWNER/$TORTOISE_REPOSITORY_NAME"
-  tortoise_main_commit_hash="$(resolve_commit_hash \
-    "$TORTOISE_REPOSITORY_OWNER" "$TORTOISE_REPOSITORY_NAME" "$TORTOISE_MAIN_REVISION")"
+  tortoise_stable_commit_hash="$(resolve_commit_hash \
+    "$TORTOISE_REPOSITORY_OWNER" "$TORTOISE_REPOSITORY_NAME" "$TORTOISE_STABLE_REVISION")"
   tortoise_unstable_commit_hash="$(resolve_commit_hash \
     "$TORTOISE_REPOSITORY_OWNER" "$TORTOISE_REPOSITORY_NAME" "$TORTOISE_UNSTABLE_REVISION")"
   if [[ "$resolved_any" != "true" ]]; then printf 'Resolved sources:\n'; fi
-  printf '  %s@%s (main)\n' "$tortoise_repository" "$tortoise_main_commit_hash"
+  printf '  %s@%s (main)\n' "$tortoise_repository" "$tortoise_stable_commit_hash"
   printf '  %s@%s (1181dev)\n' "$tortoise_repository" "$tortoise_unstable_commit_hash"
   write_output tortoise_repository "$tortoise_repository"
-  write_output tortoise_main_commit_hash "$tortoise_main_commit_hash"
+  write_output tortoise_stable_commit_hash "$tortoise_stable_commit_hash"
   write_output tortoise_unstable_commit_hash "$tortoise_unstable_commit_hash"
   resolved_any=true
 fi

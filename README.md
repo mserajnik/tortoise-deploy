@@ -32,8 +32,8 @@ a Tortoise-WoW setup:
   minimum. You can use the Docker CLI or any other tool that is able to manage
   Docker containers.
 - __A clean and organized structure:__ the Tortoise-WoW configuration can be
-  found in [`./config`](config), everything else that is shared between the
-  Docker containers and your host system lives inside [`./storage`](storage).
+  found in [`config/`](config), everything else that is shared between the
+  Docker containers and your host system lives inside [`storage/`](storage).
 
 > [!NOTE]
 > The Docker images are built on a daily schedule, unless there have been no
@@ -224,12 +224,12 @@ connections.
 Tortoise-WoW uses data that is generated from extracted client data to handle
 things like mob movement and line of sight. If you have already acquired this
 data previously, you can place it directly into
-[`./storage/mangosd/extracted-data`](storage/mangosd/extracted-data) and skip
+[`storage/mangosd/extracted-data/`](storage/mangosd/extracted-data) and skip
 the next steps.
 
 To extract the data, first copy the contents of your client directory into
-[`./storage/mangosd/client-data`](storage/mangosd/client-data). Next, simply
-run the following command:
+[`storage/mangosd/client-data/`](storage/mangosd/client-data). Next, simply run
+the following command:
 
 ```sh
 docker run \
@@ -262,7 +262,7 @@ There are two things to look out for here:
 > about (as long as the execution continues afterwards).
 
 Once the extraction is finished you can find the data in
-[`./storage/mangosd/extracted-data`](storage/mangosd/extracted-data). Note that
+[`storage/mangosd/extracted-data/`](storage/mangosd/extracted-data). Note that
 you may want to re-run the process in the future if Tortoise-WoW makes changes
 (to benefit from potentially improved mob movement etc.). In case it becomes
 necessary to do so (e.g., if the extraction process changes), the
@@ -299,13 +299,12 @@ happens.
 
 If you want to make custom changes to the world database, it is recommended to
 do so using SQL files and placing them in
-[`./storage/database/custom-sql`](storage/database/custom-sql) (a bind mount
-for this directory is
-[configured out-of-the-box][compose-custom-sql-bind-mount]). The files in this
-directory are processed on every startup, including after tortoise-deploy
-re-creates the world database to apply an upstream migration edit (see the
-_[What happens during an update](#what-happens-during-an-update)_ section), so
-your changes survive that flow without manual intervention.
+[`storage/database/custom-sql/`](storage/database/custom-sql) (a bind mount for
+this directory is [configured out-of-the-box][compose-custom-sql-bind-mount]).
+The files in this directory are processed on every startup, including after
+tortoise-deploy re-creates the world database to apply an upstream migration
+edit (see the _[What happens during an update](#what-happens-during-an-update)_
+section), so your changes survive that flow without manual intervention.
 
 By default, all SQL files (files with a `.sql` extension) in that directory
 will be processed during each startup in alphabetical order. Thus, the SQL
@@ -426,7 +425,7 @@ docker compose up -d
 #### What happens during an update
 
 When you re-create the containers with newer images, `mangosd` automatically
-applies any pending world database migrations (from `sql/database_updates`) at
+applies any pending world database migrations (from `sql/database_updates/`) at
 startup, so your database is kept up to date without manual steps.
 
 tortoise-deploy also detects upstream Tortoise-WoW commits that edit already
