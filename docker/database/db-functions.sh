@@ -263,6 +263,10 @@ process_custom_sql() {
     return 0
   fi
 
+  if [ ! -r "$file_directory" ] || [ ! -x "$file_directory" ]; then
+    tortoise_fail "Custom SQL file directory '$file_directory' is not readable by the database user (UID $(id -u)). This is a permission problem on the host: the bind-mounted directory must be readable by that user. Adjust the permissions, then restart."
+  fi
+
   file_count=$(find "$file_directory" -name "*.sql" -type f | wc -l)
   tortoise_log "Found $file_count custom SQL file(s) to process."
 
