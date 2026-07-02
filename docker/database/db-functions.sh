@@ -34,7 +34,7 @@ create_database() {
   local db_name="$1"
   local silent="${2:-false}"
 
-  if [ "$silent" = false ]; then
+  if [[ "$silent" = false ]]; then
     tortoise_log "Creating database '$db_name'..."
   fi
 
@@ -46,7 +46,7 @@ drop_database() {
   local db_name="$1"
   local silent="${2:-false}"
 
-  if [ "$silent" = false ]; then
+  if [[ "$silent" = false ]]; then
     tortoise_log "Dropping database '$db_name'..."
   fi
 
@@ -58,7 +58,7 @@ grant_permissions() {
   local db_name="$1"
   local silent="${2:-false}"
 
-  if [ "$silent" = false ]; then
+  if [[ "$silent" = false ]]; then
     tortoise_log "Granting permissions to database user '$MARIADB_USER' for database '$db_name'..."
   fi
 
@@ -91,7 +91,7 @@ import_base_data() {
   local db_name="$1"
   local file_directory="$2"
 
-  if [ ! -d "$file_directory" ]; then
+  if [[ ! -d "$file_directory" ]]; then
     tortoise_fail "Base data directory '$file_directory' does not exist."
   fi
 
@@ -156,7 +156,7 @@ parse_migration_edits() {
   MIGRATION_EDIT_WORLD=""
 
   local file="/sql/migration-edits"
-  if [ ! -f "$file" ]; then
+  if [[ ! -f "$file" ]]; then
     return 0
   fi
 
@@ -165,7 +165,7 @@ parse_migration_edits() {
   raw="${raw#"${raw%%[![:space:]]*}"}"
   raw="${raw%"${raw##*[![:space:]]}"}"
 
-  if [ -z "$raw" ]; then
+  if [[ -z "$raw" ]]; then
     return 0
   fi
 
@@ -194,7 +194,7 @@ correction_acknowledged() {
     WHERE \`db_name\` = '$(sql_escape "$db_name")' \
     AND \`commit_hash\` = '$(sql_escape "$commit_hash")';")"
 
-  [ "$count" -gt 0 ]
+  [[ "$count" -gt 0 ]]
 }
 
 acknowledge_correction() {
@@ -230,7 +230,7 @@ import_world_schema() {
 process_world_correction() {
   local commit_hash="$1"
 
-  if [ -z "$commit_hash" ]; then
+  if [[ -z "$commit_hash" ]]; then
     return 0
   fi
 
@@ -238,7 +238,7 @@ process_world_correction() {
     return 0
   fi
 
-  if [ "${TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS:-0}" = "1" ]; then
+  if [[ "${TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS:-0}" = "1" ]]; then
     tortoise_log "Re-creating world database to apply migration edit (Penqle/tortoise-wow@${commit_hash:0:7})..."
     drop_database "tw_world"
     create_database "tw_world"
@@ -258,19 +258,19 @@ process_custom_sql() {
   local file_directory="$1"
   local file_count
 
-  if [ ! -d "$file_directory" ]; then
+  if [[ ! -d "$file_directory" ]]; then
     tortoise_log "WARNING: Custom SQL file directory '$file_directory' does not exist." >&2
     return 0
   fi
 
-  if [ ! -r "$file_directory" ] || [ ! -x "$file_directory" ]; then
+  if [[ ! -r "$file_directory" ]] || [[ ! -x "$file_directory" ]]; then
     tortoise_fail "Custom SQL file directory '$file_directory' is not readable by the database user (UID $(id -u)). This is a permission problem on the host: the bind-mounted directory must be readable by that user. Adjust the permissions, then restart."
   fi
 
   file_count=$(find "$file_directory" -name "*.sql" -type f | wc -l)
   tortoise_log "Found $file_count custom SQL file(s) to process."
 
-  if [ "$file_count" -gt 0 ]; then
+  if [[ "$file_count" -gt 0 ]]; then
     find "$file_directory" -name "*.sql" -type f | sort | while read -r sql_file; do
       tortoise_log "Processing custom SQL file '$(basename "$sql_file")'..."
 

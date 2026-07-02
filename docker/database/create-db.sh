@@ -17,7 +17,7 @@ source "/opt/scripts/db-functions.sh"
 
 clear_database_ready
 
-if [ "${TORTOISE_PROCESS_CUSTOM_SQL:-0}" = "1" ]; then
+if [[ "${TORTOISE_PROCESS_CUSTOM_SQL:-0}" = "1" ]]; then
   tortoise_log "[x] Custom SQL processing is enabled."
 else
   tortoise_log "[ ] Custom SQL processing is disabled."
@@ -37,7 +37,7 @@ import_base_data "tw_world" "/sql/base"
 
 configure_realm
 
-if [ "${TORTOISE_PROCESS_CUSTOM_SQL:-0}" = "1" ]; then
+if [[ "${TORTOISE_PROCESS_CUSTOM_SQL:-0}" = "1" ]]; then
   process_custom_sql "/sql/custom"
 fi
 
@@ -47,7 +47,7 @@ fi
 ensure_maintenance_db_exists
 parse_migration_edits
 
-if [ -n "$MIGRATION_EDIT_WORLD" ]; then
+if [[ -n "$MIGRATION_EDIT_WORLD" ]]; then
   acknowledge_correction "world" "$MIGRATION_EDIT_WORLD"
 fi
 

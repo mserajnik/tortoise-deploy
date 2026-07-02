@@ -16,13 +16,13 @@ source "/opt/scripts/db-functions.sh"
 
 clear_database_ready
 
-if [ "${TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS:-0}" = "1" ]; then
+if [[ "${TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS:-0}" = "1" ]]; then
   tortoise_log "[x] Automatic world database corrections are enabled."
 else
   tortoise_log "[ ] Automatic world database corrections are disabled."
 fi
 
-if [ "${TORTOISE_PROCESS_CUSTOM_SQL:-0}" = "1" ]; then
+if [[ "${TORTOISE_PROCESS_CUSTOM_SQL:-0}" = "1" ]]; then
   tortoise_log "[x] Custom SQL processing is enabled."
 else
   tortoise_log "[ ] Custom SQL processing is disabled."
@@ -32,7 +32,7 @@ ensure_maintenance_db_exists
 parse_migration_edits
 process_world_correction "$MIGRATION_EDIT_WORLD"
 
-if [ "${TORTOISE_PROCESS_CUSTOM_SQL:-0}" = "1" ]; then
+if [[ "${TORTOISE_PROCESS_CUSTOM_SQL:-0}" = "1" ]]; then
   process_custom_sql "/sql/custom"
 fi
 
