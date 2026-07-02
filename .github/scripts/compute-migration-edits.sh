@@ -44,7 +44,7 @@ if [[ "$last_built_commit_hash" == "$current_commit_hash" ]]; then
   exit 0
 fi
 
-echo "Scanning $repo for world migration edits between $last_built_commit_hash and $current_commit_hash (stream '$stream_key')..."
+echo "Scanning '$repo' for world migration edits between $last_built_commit_hash and $current_commit_hash (stream '$stream_key')..."
 
 # The compare endpoint returns commits oldest-first across pages; we reverse it
 # so we can short-circuit on the newest edit.
