@@ -12,6 +12,15 @@
 
 > A Docker setup for Tortoise-WoW
 
+> [!TIP]
+> Also check out my similar Docker setups:
+>
+> - [vmangos-deploy][vmangos-deploy] for [VMaNGOS][vmangos], a progressive
+>   Vanilla server emulator that aims to eventually support all versions from
+>   `1.2.4.4222` to `1.12.1.5875`.
+> - [cmangos-deploy][cmangos-deploy] for [CMaNGOS][cmangos], a server emulator
+>   that supports Vanilla (which CMaNGOS calls Classic), TBC and WotLK.
+
 tortoise-deploy is a Docker-based solution for running
 [Tortoise-WoW][tortoise-wow] that focuses on providing a streamlined and
 user-friendly experience. It offers a range of features that simplify managing
@@ -527,6 +536,8 @@ non-commercial use only and comes with no warranty.
 [badge-lint-status]: https://github.com/mserajnik/tortoise-deploy/actions/workflows/lint.yaml/badge.svg
 [badge-lint-status-url]: https://github.com/mserajnik/tortoise-deploy/actions/workflows/lint.yaml
 [claude-code]: https://www.anthropic.com/product/claude-code
+[cmangos]: https://github.com/cmangos
+[cmangos-deploy]: https://github.com/mserajnik/cmangos-deploy
 [codex]: https://openai.com/codex
 [compose-automatic-world-db-corrections]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L34-L49
 [compose-custom-sql]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L50-L63
@@ -548,3 +559,5 @@ non-commercial use only and comes with no warranty.
 [reuse-spec]: https://reuse.software/spec/
 [tortoise-example-commit]: https://github.com/Penqle/tortoise-wow/commit/fee5caf96dbca685a1661a055e541a25fd8a4a60
 [tortoise-wow]: https://github.com/Penqle/tortoise-wow
+[vmangos]: https://github.com/vmangos/core
+[vmangos-deploy]: https://github.com/mserajnik/vmangos-deploy
