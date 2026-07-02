@@ -18,20 +18,20 @@ user-friendly experience. It offers a range of features that simplify managing
 a Tortoise-WoW setup:
 
 - __Prebuilt Docker images for both `amd64` and `arm64`, leveraging GitHub__
-  __Actions:__ simply pull the provided images that have been optimized for
+  __Actions__: simply pull the provided images that have been optimized for
   size, performance and stability instead of having to re-compile Tortoise-WoW
   yourself every time you want to update.
-- __Stable and unstable image builds:__ choose between `stable` images built
+- __Stable and unstable image builds__: choose between `stable` images built
   from the `main` branch and `unstable` images that track the active `1181dev`
   development branch.
-- __Seamless, automated database migrations:__ when pulling the latest Docker
+- __Seamless, automated database migrations__: when pulling the latest Docker
   images and re-creating the containers, migrations are applied automatically
   to keep your database up to date at all times.
-- __A transparent and easy-to-follow user experience:__ the number of different
+- __A transparent and easy-to-follow user experience__: the number of different
   commands that need to be run to install and manage Tortoise-WoW is kept to a
   minimum. You can use the Docker CLI or any other tool that is able to manage
   Docker containers.
-- __A clean and organized structure:__ the Tortoise-WoW configuration can be
+- __A clean and organized structure__: the Tortoise-WoW configuration can be
   found in [`config/`](config), everything else that is shared between the
   Docker containers and your host system lives inside [`storage/`](storage).
 
