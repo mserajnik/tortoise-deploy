@@ -25,7 +25,7 @@ services:
       # manual database edits to these columns will be overwritten. Other
       # parameters not exposed here can be changed manually in the database at
       # any point (see the `phpmyadmin` service further below).
-      - TORTOISE_REALMLIST_NAME=Tortoise # Sets the name of the realm as it appears in the selection list and the character screen.
+      - TORTOISE_REALMLIST_NAME=Tortoise-WoW # Sets the name of the realm as it appears in the selection list and the character screen.
       - TORTOISE_REALMLIST_ADDRESS=127.0.0.1 # Sets the LAN or WAN address of the realm; this can also be a domain name.
       - TORTOISE_REALMLIST_PORT=8085 # Sets the port of the realm; changing this means it also needs to be changed in other places.
       - TORTOISE_REALMLIST_ICON=1 # Sets the icon of the realm; 0 = Normal, 1 = PvP, 6 = RP, 8 = RP PVP.
