@@ -54,7 +54,7 @@ env:
   OCI_ANNOTATION_SERVER_BASE_NAME: ubuntu:26.04
   OCI_ANNOTATION_DATABASE_TITLE: tortoise-deploy - Tortoise-WoW database image
   OCI_ANNOTATION_DATABASE_DESCRIPTION: Database for the Tortoise-WoW server.
-  OCI_ANNOTATION_DATABASE_BASE_NAME: mariadb:11.8
+  OCI_ANNOTATION_DATABASE_BASE_NAME: mariadb:12.3
 
 jobs:
   prepare:

@@ -6,7 +6,7 @@ ARG TORTOISE_REPOSITORY_URL=https://github.com/Penqle/tortoise-wow.git
 ARG TORTOISE_REVISION=main
 ARG TORTOISE_MIGRATION_EDITS=
 
-FROM mariadb:11.8 AS build
+FROM mariadb:12.3 AS build
 
 ARG DEBIAN_FRONTEND
 ARG TORTOISE_REPOSITORY_URL
@@ -23,11 +23,11 @@ RUN \
   cp /build/core/sql/create_databases.sql /sql/create_databases.sql && \
   cp /build/core/sql/base/*.sql /sql/base/
 
-FROM mariadb:11.8
+FROM mariadb:12.3
 
 ARG TORTOISE_MIGRATION_EDITS
 
-# See https://github.com/MariaDB/mariadb-docker/blob/1b6429ba3544e134715c15f8c56cc6f665f827c9/11.8/docker-entrypoint.sh#L595-L599
+# See https://github.com/MariaDB/mariadb-docker/blob/f8552c80b5104868ff1bb88851ca976bd99029ee/12.3/docker-entrypoint.sh#L595-L599
 ENV MARIADB_AUTO_UPGRADE=1
 ENV MARIADB_USER=mangos
 ENV MARIADB_PASSWORD=mangos
