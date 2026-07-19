@@ -64,10 +64,9 @@ rm -rf ./Buildings ./dbc ./maps ./mmaps ./vmaps
 # `-f 0` keeps terrain heights as full floats; Tortoise-WoW's `mapextractor`
 # otherwise quantizes them to integers.
 "$extractors_dir/mapextractor" -f 0
-# `-l` (high-detail VMap data) is deliberately not passed: Tortoise-WoW's
-# precise extraction path writes malformed model group files that its own
-# `vmap_assembler` cannot read back, crashing the assembly step. The default
-# low-detail set is the one Tortoise-WoW actually ships and tests.
+# `-l` (high-detail VMap data) is not passed yet: the precise extraction path
+# is now fixed upstream, but only on `1181dev` (our `unstable` image), not on
+# `main` (`stable`). Enable it once the fix reaches `main`.
 "$extractors_dir/vmapextractor"
 "$extractors_dir/vmap_assembler"
 # `--silent` keeps `MoveMapGen` from blocking on stdin for user input on
