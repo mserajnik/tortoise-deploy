@@ -84,7 +84,6 @@ RUN \
     -DCMAKE_INSTALL_PREFIX=/opt/tortoise ../ \
     -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
     -DUSE_ANTICHEAT=OFF \
-    -DALLOW_TURTLE_ADDONS=ON \
     -DUSE_EXTRACTORS=ON \
     -DDEBUG_SYMBOLS=0 && \
   make -j"$(nproc)" && \
