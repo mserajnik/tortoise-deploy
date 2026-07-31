@@ -4,7 +4,7 @@
     "subject": "Cleaning up old updates adding backtick encapsulation where needed"
   },
   "unstable": {
-    "commit": "4388467b62e9ae2f003e28cdd7671e28bf6739b8",
-    "subject": "Cleaning up old updates adding backtick encapsulation where needed"
+    "commit": "29d1a09bf51b2686558e9598a0e4db42b89dd23d",
+    "subject": "fix broken comment syntax"
   }
 }
