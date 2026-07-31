@@ -91,8 +91,8 @@ jobs:
           TORTOISE_UNSTABLE_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_unstable_commit_hash }}
           MARIADB_DOCKER_REPOSITORY: ${{ steps.resolve-sources.outputs.mariadb_docker_repository }}
           MARIADB_DOCKER_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.mariadb_docker_commit_hash }}
-          TORTOISE_STABLE_KNOWN_COMMIT_HASH: 8422872dc065d46616e7b79a5e1ce2fe2998f1e0
-          TORTOISE_UNSTABLE_KNOWN_COMMIT_HASH: acbac137b50c3fd56417b7f0474713071eae16bf
+          TORTOISE_STABLE_KNOWN_COMMIT_HASH: 29a3cea7513496d7fd8b6d6b81142dc562d0b47d
+          TORTOISE_UNSTABLE_KNOWN_COMMIT_HASH: ba943dc275f65ec5db398bc5b29d846f246a5b09
           # When bumping `MARIADB_DOCKER_KNOWN_COMMIT_HASH`, also update the
           # matching commit hash in `docker/database/Dockerfile` and the header
           # comment in `docker/database/docker-entrypoint.sh` so all three stay
