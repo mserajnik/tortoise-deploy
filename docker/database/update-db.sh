@@ -4,10 +4,10 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Runs on every subsequent container start (via `/always-initdb.d`) to apply
-# any world database migration-edit correction, re-seed the realm from the
-# current environment and re-apply custom SQL. World migrations themselves are
-# applied by the server (`mangosd`) at startup; only the correction (a world
-# database re-creation when a migration was edited upstream) happens here.
+# any world database correction, re-seed the realm from the current environment
+# and re-apply custom SQL. World migrations themselves are applied by the
+# server (`mangosd`) at startup; only the correction (a world database
+# re-creation) happens here.
 
 set -euo pipefail
 

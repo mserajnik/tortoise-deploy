@@ -187,13 +187,15 @@ unless you specifically want the newest changes.
 Alternatively, you can select specific images via the Tortoise-WoW commit hash
 they have been built from. To allow for this, the `tortoise-server` image (used
 by the `realmd` and `mangosd` services) and the `tortoise-database` image (used
-by the `database` service) have tags that include the respective commit hash.
-E.g., for commit
+by the `database` service) have tags that combine the build they belong to with
+the respective commit hash. Both branches can point at the same commit, and the
+two builds are not interchangeable, so the build name is part of the tag. E.g.,
+for the `stable` build of commit
 [`fee5caf96dbca685a1661a055e541a25fd8a4a60`][tortoise-example-commit]:
 
-| `realmd` / `mangosd` service image                                           | `database` service image                                                       |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `ghcr.io/mserajnik/tortoise-server:fee5caf96dbca685a1661a055e541a25fd8a4a60` | `ghcr.io/mserajnik/tortoise-database:fee5caf96dbca685a1661a055e541a25fd8a4a60` |
+| `realmd` / `mangosd` service image                                                  | `database` service image                                                              |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `ghcr.io/mserajnik/tortoise-server:stable-fee5caf96dbca685a1661a055e541a25fd8a4a60` | `ghcr.io/mserajnik/tortoise-database:stable-fee5caf96dbca685a1661a055e541a25fd8a4a60` |
 
 > [!IMPORTANT]
 > When you decide to select images via Tortoise-WoW commit hash you should
@@ -463,6 +465,15 @@ Sometimes, there may be new features or changes that require manual
 intervention. Such breaking changes will be listed here (and removed again once
 they become irrelevant), sorted by newest first:
 
+- __[2026-08-11] - Commit hash image tags now include the build name__: tags
+  that select an image by Tortoise-WoW commit hash have changed from
+  `<commit-hash>` to `<build>-<commit-hash>` (e.g.,
+  `ghcr.io/mserajnik/tortoise-server:stable-fee5caf96dbca685a1661a055e541a25fd8a4a60`).
+  Both branches can point at the same commit while their images differ, so the
+  bare hash could not identify one of them. This only affects you if you select
+  images by commit hash instead of by the `stable` or `unstable` tag. No new
+  bare hash tags are published; the existing ones keep working until they are
+  eventually deleted.
 - __[2026-07-28] - The suggested database backup solution has changed__: the
   example Compose configuration now uses
   [`databack/mysql-backup`](https://github.com/databacker/mysql-backup) instead

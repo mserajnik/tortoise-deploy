@@ -19,6 +19,9 @@ on:
       push_images:
         type: boolean
         required: true
+      stream:
+        type: string
+        required: true
       tag_set:
         type: string
         required: true
@@ -26,12 +29,6 @@ on:
         type: string
         required: true
       patch_set:
-        type: string
-        required: false
-      apply_customized:
-        type: string
-        required: false
-      tag_suffix:
         type: string
         required: false
       migration_edits:
@@ -84,11 +81,10 @@ jobs:
         env:
           IMAGE_KIND: ${{ inputs.image_kind }}
           ARCHITECTURES: ${{ inputs.architectures }}
+          STREAM: ${{ inputs.stream }}
           TAG_SET: ${{ inputs.tag_set }}
           COMMIT_HASH: ${{ inputs.commit_hash }}
           PATCH_SET: ${{ inputs.patch_set }}
-          APPLY_CUSTOMIZED: ${{ inputs.apply_customized }}
-          TAG_SUFFIX: ${{ inputs.tag_suffix }}
           MIGRATION_EDITS: ${{ inputs.migration_edits }}
         run: ./.github/scripts/prepare-image-build.sh
 

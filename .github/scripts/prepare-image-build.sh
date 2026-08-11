@@ -6,10 +6,8 @@
 # Produces the per build metadata consumed by the reusable build workflow:
 # Dockerfile path, target architectures, image tags, build arguments, OCI
 # annotations, and labels for the requested image kind and stream. A stream is
-# described by its moving tag(s) (`TAG_SET`), the commit to build, the patch
-# set to apply, whether to apply the customized patches, and the suffix
-# appended to the commit hash tag (`-customized` for the customized stream,
-# empty otherwise).
+# described by its name (`STREAM`), its moving tag(s) (`TAG_SET`), the commit
+# to build, and the patch set to apply.
 
 set -euo pipefail
 
@@ -20,6 +18,7 @@ source "$script_dir/helpers.sh"
 require_env REGISTRY
 require_env IMAGE_KIND
 require_env ARCHITECTURES
+require_env STREAM
 require_env TAG_SET
 require_env COMMIT_HASH
 require_env OCI_ANNOTATION_AUTHORS
@@ -39,10 +38,9 @@ oci_annotation_vendor="$(trim "$OCI_ANNOTATION_VENDOR")"
 tortoise_patches_repository_url="$(trim "${TORTOISE_PATCHES_REPOSITORY_URL:-}")"
 # shellcheck disable=SC2153
 commit_hash="$(trim "$COMMIT_HASH")"
-tag_suffix="$(trim "${TAG_SUFFIX:-}")"
 # shellcheck disable=SC2153
+stream="$(trim "$STREAM")"
 patch_set="$(trim "${PATCH_SET:-}")"
-apply_customized="$(trim "${APPLY_CUSTOMIZED:-0}")"
 
 declare -a tags=()
 declare -a metadata_entries=()
@@ -106,11 +104,11 @@ case "$IMAGE_KIND" in
 esac
 
 image="$REGISTRY/$image_name"
-ref_name="$image:$commit_hash$tag_suffix"
 
-# Moving tags (`latest`, `stable`, `unstable`, `customized`) plus the immutable
-# commit hash tag (suffixed for the customized stream so it never collides with
-# a regular build at the same commit).
+# Moving tags (`latest`, `stable`, `unstable`) plus the immutable commit hash
+# tag. The latter carries the stream name because both streams can build the
+# same upstream commit, and they apply different patch sets and can bake
+# different migration edits, so one tag cannot name both images.
 IFS=',' read -r -a moving_tags <<<"$TAG_SET"
 for moving_tag in "${moving_tags[@]}"; do
   moving_tag="$(trim "$moving_tag")"
@@ -118,7 +116,8 @@ for moving_tag in "${moving_tags[@]}"; do
     tags+=("$image:$moving_tag")
   fi
 done
-tags+=("$image:$commit_hash$tag_suffix")
+ref_name="$image:$stream-$commit_hash"
+tags+=("$ref_name")
 
 if [[ "$IMAGE_KIND" == "server" ]]; then
   require_env PATCH_SET
@@ -127,7 +126,6 @@ if [[ "$IMAGE_KIND" == "server" ]]; then
     "TORTOISE_PATCHES_REPOSITORY_URL=$tortoise_patches_repository_url"
     "TORTOISE_FAIL_ON_PATCH_ERROR=1"
     "TORTOISE_PATCH_SET=$patch_set"
-    "TORTOISE_APPLY_CUSTOMIZED=$apply_customized"
   )
 else
   migration_edits="$(trim "${MIGRATION_EDITS:-}")"

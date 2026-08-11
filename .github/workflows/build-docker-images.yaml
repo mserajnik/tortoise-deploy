@@ -78,10 +78,10 @@ jobs:
 
       # Compares every upstream reference tortoise-deploy depends on (bundled
       # config templates, root `CMakeLists.txt` where new build dependencies
-      # would surface, the patched MariaDB entrypoint) against the resolved
-      # upstream `HEAD`. The pinned commit hashes anchor what each was last
-      # reviewed against; bump the matching commit hash below after refreshing
-      # the local files.
+      # would surface, the patched MariaDB entrypoint, ...) against the
+      # resolved upstream `HEAD`. The pinned commit hashes anchor what each was
+      # last reviewed against; bump the matching commit hash below after
+      # refreshing the local files.
       - name: Check for upstream drift
         id: upstream-drift-check
         env:
@@ -117,9 +117,6 @@ jobs:
           TORTOISE_REPOSITORY_NAME: tortoise-wow
           TORTOISE_STABLE_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_stable_commit_hash }}
           TORTOISE_UNSTABLE_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_unstable_commit_hash }}
-          PATCHES_REPOSITORY_OWNER: mserajnik
-          PATCHES_REPOSITORY_NAME: tortoise-deploy-patches
-          PATCHES_REVISION: master
           FORCE_REBUILD: ${{ inputs.force_rebuild }}
           STATE_FILE: .github/migration-edit-state.json
         run: ./.github/scripts/prepare-build-matrix.sh
@@ -156,11 +153,10 @@ jobs:
       image_kind: server
       architectures: both
       push_images: ${{ github.event_name != 'pull_request' }}
+      stream: ${{ matrix.stream }}
       tag_set: ${{ matrix.tag_set }}
       commit_hash: ${{ matrix.commit_hash }}
       patch_set: ${{ matrix.patch_set }}
-      apply_customized: ${{ matrix.apply_customized }}
-      tag_suffix: ${{ matrix.tag_suffix }}
       migration_edits: ${{ matrix.migration_edits }}
 
   # We build database images only after the server build succeeds; otherwise, a
@@ -181,11 +177,10 @@ jobs:
       image_kind: database
       architectures: both
       push_images: ${{ github.event_name != 'pull_request' }}
+      stream: ${{ matrix.stream }}
       tag_set: ${{ matrix.tag_set }}
       commit_hash: ${{ matrix.commit_hash }}
       patch_set: ${{ matrix.patch_set }}
-      apply_customized: ${{ matrix.apply_customized }}
-      tag_suffix: ${{ matrix.tag_suffix }}
       migration_edits: ${{ matrix.migration_edits }}
 
   # Keep only a short retention window. Long-term availability of older images

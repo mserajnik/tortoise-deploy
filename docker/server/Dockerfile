@@ -7,7 +7,6 @@ ARG TORTOISE_REVISION=main
 ARG TORTOISE_PATCHES_REPOSITORY_URL
 ARG TORTOISE_FAIL_ON_PATCH_ERROR=0
 ARG TORTOISE_PATCH_SET=stable
-ARG TORTOISE_APPLY_CUSTOMIZED=0
 ARG TORTOISE_USER_ID=1000
 ARG TORTOISE_GROUP_ID=1000
 ARG TORTOISE_USER_NAME=tortoise
@@ -21,7 +20,6 @@ ARG TORTOISE_REVISION
 ARG TORTOISE_PATCHES_REPOSITORY_URL
 ARG TORTOISE_FAIL_ON_PATCH_ERROR
 ARG TORTOISE_PATCH_SET
-ARG TORTOISE_APPLY_CUSTOMIZED
 
 RUN \
   apt update && \
@@ -43,17 +41,11 @@ RUN \
     patch_count=0 && \
     # Patches in `all` are applied to every build; patches in `<build>` (the
     # `TORTOISE_PATCH_SET` value, `stable` or `unstable`) only to the matching
-    # build; patches in `customized` only to the `:customized` build. All of
-    # them apply to `/build/core`. The `<build>` and `customized` directories
-    # are optional and may not exist.
-    customized_patches="" && \
-    if [ "$TORTOISE_APPLY_CUSTOMIZED" = "1" ]; then \
-      customized_patches="/build/patches/customized/*.patch"; \
-    fi && \
+    # build. All of them apply to `/build/core`. The `<build>` directory is
+    # optional and may not exist.
     for patch in \
       /build/patches/all/*.patch \
-      /build/patches/"$TORTOISE_PATCH_SET"/*.patch \
-      $customized_patches; \
+      /build/patches/"$TORTOISE_PATCH_SET"/*.patch; \
     do \
       if [ -f "$patch" ]; then \
         echo "Applying patch $patch"; \

@@ -35,14 +35,20 @@ add_github_check() {
   checks+=("$desc|$known_url|$latest_url")
 }
 
-# We watch `sql/create_databases.sql` because `import_world_schema` (in
+# `sql/create_databases.sql` is watched because `extract_world_schema` (in
 # `db-functions.sh`) isolates its `tw_world` section with format-sensitive awk
 # anchors (the dump preamble and the `CREATE DATABASE` / `USE` lines); a
 # regenerated dump in a different format (e.g. an upstream database rebase)
-# would silently mis-extract.
+# would silently mis-extract, and this check is what catches that before an
+# image is built.
 #
-# In addition, we watch configs we mirror as `*.conf.example` and the top-level
-# `CMakeLists.txt`, which is where new `find_package(...)` would typically
+# `sql/base/tw_world_migrations.sql` is the one base dump
+# `compute-migration-edits.sh` deliberately ignores. It only dumps the
+# auto-updater's bookkeeping table rather than world data, so a change to it is
+# surfaced here for review.
+#
+# The configs we mirror as `*.conf.example` and the top-level `CMakeLists.txt`
+# are watched too; the latter is where new `find_package(...)` would typically
 # introduce a new dependency that we would need to install.
 #
 # Files we only patch (such as `AutoUpdater.cpp`) are not watched here: a drift
@@ -53,6 +59,7 @@ add_github_check() {
 # diverge, so each is checked against its own pinned commit.
 tortoise_paths=(
   CMakeLists.txt
+  sql/base/tw_world_migrations.sql
   sql/create_databases.sql
   src/mangosd/mangosd.conf.dist.in
   src/realmd/realmd.conf.dist.in
@@ -63,7 +70,6 @@ if [[ -n "${TORTOISE_STABLE_REPOSITORY:-}${TORTOISE_STABLE_LATEST_COMMIT_HASH:-}
   require_env TORTOISE_STABLE_LATEST_COMMIT_HASH
   require_env TORTOISE_STABLE_KNOWN_COMMIT_HASH
 
-  # shellcheck disable=SC2153
   tortoise_stable_latest_commit_hash="$(trim "$TORTOISE_STABLE_LATEST_COMMIT_HASH")"
 
   for path in "${tortoise_paths[@]}"; do
@@ -77,7 +83,6 @@ if [[ -n "${TORTOISE_UNSTABLE_REPOSITORY:-}${TORTOISE_UNSTABLE_LATEST_COMMIT_HAS
   require_env TORTOISE_UNSTABLE_LATEST_COMMIT_HASH
   require_env TORTOISE_UNSTABLE_KNOWN_COMMIT_HASH
 
-  # shellcheck disable=SC2153
   tortoise_unstable_latest_commit_hash="$(trim "$TORTOISE_UNSTABLE_LATEST_COMMIT_HASH")"
 
   for path in "${tortoise_paths[@]}"; do
@@ -91,7 +96,6 @@ if [[ -n "${MARIADB_DOCKER_REPOSITORY:-}${MARIADB_DOCKER_LATEST_COMMIT_HASH:-}${
   require_env MARIADB_DOCKER_LATEST_COMMIT_HASH
   require_env MARIADB_DOCKER_KNOWN_COMMIT_HASH
 
-  # shellcheck disable=SC2153
   mariadb_docker_latest_commit_hash="$(trim "$MARIADB_DOCKER_LATEST_COMMIT_HASH")"
 
   # Patched MariaDB entrypoint. Our `docker/database/docker-entrypoint.sh`

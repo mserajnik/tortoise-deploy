@@ -56,9 +56,17 @@ write_multiline_output() {
 package_versions_endpoint() {
   local owner="$1"
   local package_name="$2"
+  local owner_endpoint
+
+  # Resolve the owner endpoint before use, and return rather than printing on
+  # failure: `fail` inside a substitution exits only its own subshell, so
+  # printing anyway would build an endpoint missing its namespace, which 404s
+  # exactly like a package that was never published. Callers must not use this
+  # in argument position, where the non-zero status would be discarded.
+  owner_endpoint="$(package_owner_endpoint "$owner")" || return 1
 
   printf '%s/packages/container/%s/versions' \
-    "$(package_owner_endpoint "$owner")" \
+    "$owner_endpoint" \
     "$package_name"
 }
 
@@ -66,9 +74,12 @@ package_version_endpoint() {
   local owner="$1"
   local package_name="$2"
   local package_version_id="$3"
+  local owner_endpoint
+
+  owner_endpoint="$(package_owner_endpoint "$owner")" || return 1
 
   printf '%s/packages/container/%s/versions/%s' \
-    "$(package_owner_endpoint "$owner")" \
+    "$owner_endpoint" \
     "$package_name" \
     "$package_version_id"
 }
@@ -78,7 +89,11 @@ package_owner_endpoint() {
   local owner_type
   local namespace
 
-  owner_type="$(gh api "/users/$owner" --jq '.type')"
+  # Without the check a failed lookup leaves `owner_type` empty and reports an
+  # unsupported type, which points at the wrong thing entirely.
+  if ! owner_type="$(gh api "/users/$owner" --jq '.type')"; then
+    fail "Failed to look up the package owner '$owner'."
+  fi
 
   case "$owner_type" in
     Organization)
@@ -111,30 +126,36 @@ resolve_commit_hash() {
   printf '%s' "$result"
 }
 
-# Resolves the Tortoise-WoW commit a stream's moving tag (`stable`, `unstable`
-# or `customized`) was last built from, by reading the commit hash tag that
-# shares the package version of that moving tag. The streams share one package,
-# so the commit cannot be taken from "the newest hash tag"; it must come from
-# the same version the moving tag points at. Prints an empty string when the
-# stream has no prior build.
+# Resolves the Tortoise-WoW commit a stream's moving tag (`stable` or
+# `unstable`) was last built from, by reading the commit hash tag that shares
+# the package version of that moving tag. The streams share one package, so the
+# commit cannot be taken from "the newest hash tag"; it must come from the same
+# version the moving tag points at. Prints an empty string when the stream has
+# no prior build.
 last_built_commit_for_stream() {
   local package_owner="$1"
   local package_name="$2"
   local moving_tag="$3"
-  local commit_tag_regex
+  # The bare form matches images published before commit hash tags carried the
+  # stream name.
+  # TODO: Drop the bare form once no such version is left.
+  local commit_tag_regex="^($moving_tag-)?[0-9a-f]{40}$"
   local endpoint
   local commit_tag
+  local errors
   local status
 
-  # The customized stream's commit hash tag carries a `-customized` suffix;
-  # every other stream uses a bare 40-character commit hash.
-  if [[ "$moving_tag" == "customized" ]]; then
-    commit_tag_regex="^[0-9a-f]{40}-customized$"
-  else
-    commit_tag_regex="^[0-9a-f]{40}$"
+  endpoint="$(package_versions_endpoint "$package_owner" "$package_name")"
+
+  # An empty endpoint means the owner lookup failed; report that rather than
+  # querying the API root.
+  if [[ -z "$endpoint" ]]; then
+    fail "Failed to resolve the package versions endpoint for '$package_owner/$package_name'."
   fi
 
-  endpoint="$(package_versions_endpoint "$package_owner" "$package_name")"
+  # `gh`'s stderr is kept out of the value: an advisory on an otherwise
+  # successful call would land inside the prefix strip below.
+  errors="$(mktemp)" || fail "Failed to create a temporary file."
 
   set +e
   commit_tag="$(gh api --paginate "$endpoint?per_page=100" \
@@ -142,19 +163,24 @@ last_built_commit_for_stream() {
            | select((.metadata.container.tags // []) | index(\"$moving_tag\"))
            | .metadata.container.tags[]
            | select(test(\"$commit_tag_regex\"))]
-          | first // empty" 2>&1)"
+          | first // empty" 2>"$errors")"
   status=$?
   set -e
 
   if [[ $status -ne 0 ]]; then
-    if grep -Fq "HTTP 404" <<<"$commit_tag"; then
+    # `gh` writes the error body to stdout, so only stderr can be tested here.
+    if grep -Fq "HTTP 404" "$errors"; then
+      rm -f "$errors"
       printf '%s' ""
       return 0
     fi
 
-    printf '%s\n' "$commit_tag" >&2
+    cat "$errors" >&2
+    rm -f "$errors"
     fail "Failed to query package versions for '$package_owner/$package_name'."
   fi
 
-  printf '%s' "${commit_tag%-customized}"
+  rm -f "$errors"
+
+  printf '%s' "${commit_tag#"$moving_tag-"}"
 }
