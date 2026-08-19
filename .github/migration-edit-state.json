@@ -8,8 +8,8 @@
   },
   "unstable": {
     "world": {
-      "commit": "29d1a09bf51b2686558e9598a0e4db42b89dd23d",
-      "subject": "fix broken comment syntax"
+      "commit": "7c67018f80caaf74befd9b289f3274e72d16ca38",
+      "subject": "Implemented the new honor and rank system Honor gains reduces to 10% of their previous values Rank gains are now immediate and not pool based Honor gains as a currency instead of just a ranking measurement new PvP vendors have been implemented with the new honor cost items Rank requirements have been updated The rating point requirements for rank 4-14 are made up based on time requirements pulled from a boosting service and will be updated when better data is available"
     },
     "character": null
   }
