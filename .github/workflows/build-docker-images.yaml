@@ -92,7 +92,7 @@ jobs:
           MARIADB_DOCKER_REPOSITORY: ${{ steps.resolve-sources.outputs.mariadb_docker_repository }}
           MARIADB_DOCKER_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.mariadb_docker_commit_hash }}
           TORTOISE_STABLE_KNOWN_COMMIT_HASH: 29a3cea7513496d7fd8b6d6b81142dc562d0b47d
-          TORTOISE_UNSTABLE_KNOWN_COMMIT_HASH: ba943dc275f65ec5db398bc5b29d846f246a5b09
+          TORTOISE_UNSTABLE_KNOWN_COMMIT_HASH: 7c67018f80caaf74befd9b289f3274e72d16ca38
           # When bumping `MARIADB_DOCKER_KNOWN_COMMIT_HASH`, also update the
           # matching commit hash in `docker/database/Dockerfile` and the header
           # comment in `docker/database/docker-entrypoint.sh` so all three stay
@@ -104,8 +104,7 @@ jobs:
       # points at the current commit, unless this is a scheduled Monday rebuild
       # or a manual force rebuild) and emits the build matrix. Also records any
       # migration edit per stream in the state file and bakes it into each
-      # build's `migration_edits` so the database image can correct an existing
-      # world database on update.
+      # build's `migration_edits` so the database image can act on it.
       - name: Prepare build matrix
         id: prepare-build-matrix
         env:

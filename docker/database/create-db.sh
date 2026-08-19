@@ -6,9 +6,9 @@
 # Runs once on first container start (via `/docker-entrypoint-initdb.d`) to
 # import the schema for the four Tortoise-WoW databases, import the world base
 # data, create the application user and seed the realm, then pre-acknowledge
-# any baked migration edit so the next start does not re-create the (already
-# current) world database. World migrations are applied by the server
-# (`mangosd`) at startup, not here.
+# any baked migration edits so the next start does not re-run a re-creation or
+# halt for them. Migrations are applied by the server (`mangosd`) at startup,
+# not here.
 
 set -euo pipefail
 
@@ -16,6 +16,7 @@ set -euo pipefail
 source "/opt/scripts/db-functions.sh"
 
 clear_database_ready
+clear_change_sentinels
 
 if [[ "${TORTOISE_PROCESS_CUSTOM_SQL:-0}" = "1" ]]; then
   tortoise_log "[x] Custom SQL processing is enabled."
@@ -41,14 +42,17 @@ if [[ "${TORTOISE_PROCESS_CUSTOM_SQL:-0}" = "1" ]]; then
   process_custom_sql "/sql/custom"
 fi
 
-# A fresh install is already at the latest state, so any migration edit baked
-# into the image is pre-acknowledged to avoid triggering an unnecessary world
-# database re-creation on the next start.
+# A fresh install is already at the latest state, so any migration edits baked
+# into the image are pre-acknowledged to avoid triggering an unnecessary world
+# database re-creation or halt on the next start.
 ensure_maintenance_db_exists
 parse_migration_edits
 
 if [[ -n "$MIGRATION_EDIT_WORLD" ]]; then
   acknowledge_correction "world" "$MIGRATION_EDIT_WORLD"
+fi
+if [[ -n "$MIGRATION_EDIT_CHARACTER" ]]; then
+  acknowledge_correction "character" "$MIGRATION_EDIT_CHARACTER"
 fi
 
 mark_database_ready

@@ -80,12 +80,21 @@ RUN \
     -DDEBUG_SYMBOLS=0 && \
   make -j"$(nproc)" && \
   make install && \
-  # Stage the world migrations so `mangosd` can apply them at startup. The
-  # vendored `mangosd.conf` sets `Database.AutoUpdate.Path` to
-  # `/opt/tortoise/sql/`, and the applier reads world migrations from
-  # `<Path>/database_updates`.
-  mkdir -p /opt/tortoise/sql && \
-  cp -r /build/core/sql/database_updates /opt/tortoise/sql/database_updates && \
+  # Stage the migrations so `mangosd` can apply them at startup. The applier
+  # reads `/opt/tortoise/sql/database_updates/` with one directory per
+  # database, so both upstream layouts have to end up in that shape: migrations
+  # may be organized into per-database subdirectories, or kept flat, where
+  # every file is a world migration. A migration is keyed by the SHA-1 of its
+  # content, so re-homing a file does not re-apply it.
+  # Pre-creating the three directories also keeps the applier from creating a
+  # missing one at runtime, which it does without guarding against a failure.
+  mkdir -p \
+    /opt/tortoise/sql/database_updates/auth \
+    /opt/tortoise/sql/database_updates/character \
+    /opt/tortoise/sql/database_updates/world && \
+  cp -r /build/core/sql/database_updates/. /opt/tortoise/sql/database_updates/ && \
+  find /opt/tortoise/sql/database_updates -maxdepth 1 -type f -name '*.sql' \
+    -exec mv -n -t /opt/tortoise/sql/database_updates/world/ {} + && \
   # `MoveMapGen` needs these data files passed explicitly (see the extraction
   # command wrapper); Tortoise-WoW's build installs only the binary, so we
   # stage them alongside it.

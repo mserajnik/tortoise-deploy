@@ -11,8 +11,8 @@
 # and `1181dev` resolve to the same commit: the two streams apply different
 # patch sets and can carry different migration edits, so one image cannot
 # represent both. Records any migration edit per stream in the state file and
-# bakes it into each build's `migration_edits` so the database image can
-# correct an existing world database on update.
+# bakes it into each build's `migration_edits` so the database image can act on
+# it.
 #
 # The cutoff anchors below are used only when the GitHub Container Registry
 # yields no previous build's commit for a stream; subsequent runs resolve it

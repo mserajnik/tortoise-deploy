@@ -39,11 +39,16 @@ ENV TORTOISE_REALMLIST_ICON=1
 ENV TORTOISE_REALMLIST_TIMEZONE=0
 ENV TORTOISE_REALMLIST_ALLOWED_SECURITY_LEVEL=0
 ENV TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS=1
+ENV TORTOISE_HALT_ON_MIGRATION_EDITS=1
 ENV TORTOISE_PROCESS_CUSTOM_SQL=1
 
 COPY --from=build /sql /sql
 
 RUN \
+  apt update && \
+  apt install -y --no-install-recommends \
+    procps && \
+  rm -rf /var/lib/apt/lists/* && \
   mkdir -p /opt/scripts && \
   mkdir /always-initdb.d && \
   printf '%s\n' "$TORTOISE_MIGRATION_EDITS" >/sql/migration-edits
@@ -52,6 +57,7 @@ COPY ./docker/database/db-functions.sh /opt/scripts
 COPY --chmod=755 ./docker/database/create-db.sh /docker-entrypoint-initdb.d
 COPY --chmod=755 ./docker/database/update-db.sh /always-initdb.d
 COPY --chmod=755 ./docker/database/healthcheck.sh /usr/local/bin/tortoise-healthcheck
+COPY --chmod=755 ./docker/database/tortoise-confirm-changes.sh /usr/local/bin/tortoise-confirm-changes
 
 COPY --chmod=755 ./docker/database/docker-entrypoint.sh /entrypoint.sh
 

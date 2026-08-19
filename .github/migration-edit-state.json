@@ -1,10 +1,16 @@
 {
   "stable": {
-    "commit": "29d1a09bf51b2686558e9598a0e4db42b89dd23d",
-    "subject": "fix broken comment syntax"
+    "world": {
+      "commit": "29d1a09bf51b2686558e9598a0e4db42b89dd23d",
+      "subject": "fix broken comment syntax"
+    },
+    "character": null
   },
   "unstable": {
-    "commit": "29d1a09bf51b2686558e9598a0e4db42b89dd23d",
-    "subject": "fix broken comment syntax"
+    "world": {
+      "commit": "29d1a09bf51b2686558e9598a0e4db42b89dd23d",
+      "subject": "fix broken comment syntax"
+    },
+    "character": null
   }
 }

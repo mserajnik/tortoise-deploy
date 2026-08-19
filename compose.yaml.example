@@ -10,7 +10,7 @@ services:
       interval: 1m
       timeout: 3s
       retries: 5
-      start_period: 1h # Keeps the container in `starting` (not `unhealthy`) while the first start imports the world base data, which can take a while; adjust if you want a tighter window.
+      start_period: 24h # Keeps the container in `starting` (not `unhealthy`) while the first start imports the world base data and while tortoise-deploy halts startup for manual changes; adjust if you want a tighter window.
     volumes:
       - tortoise-database:/var/lib/mysql
       - ./storage/database/custom-sql:/sql/custom:ro
@@ -43,10 +43,22 @@ services:
       # you need them back. It is strongly suggested to keep this feature
       # enabled.
       # If you do decide to disable it (by setting the following environment
+      # variable to `0`), tortoise-deploy will halt startup instead and ask you
+      # to apply the SQL by hand (see the next environment variable).
+      - TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS=1
+      # tortoise-deploy also detects migration edits in databases that contain
+      # user state (player characters). Because of this they cannot be safely
+      # re-created. Instead, tortoise-deploy halts startup and waits for you to
+      # apply the equivalent SQL manually, then continues after you run
+      # `docker compose exec database tortoise-confirm-changes`. This setting
+      # also controls the world database fallback when the previous environment
+      # variable is set to `0`. It is strongly suggested to keep this feature
+      # enabled.
+      # If you do decide to disable it (by setting the following environment
       # variable to `0`), tortoise-deploy will log a warning and continue
       # without acknowledging the edit (so the warning will repeat on every
-      # start until you take action).
-      - TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS=1
+      # start until you set this back to `1` and resolve the edit).
+      - TORTOISE_HALT_ON_MIGRATION_EDITS=1
       # If you want to make custom changes to the world database, it is
       # recommended to do so using SQL files and placing them in
       # `storage/database/custom-sql/` (a bind mount for this directory is

@@ -5,9 +5,9 @@
 
 # Shared helpers sourced by `create-db.sh` and `update-db.sh`: database and
 # grant management, schema and base data import, realm seeding, custom SQL
-# processing, and migration edit acknowledgement. World migrations are applied
-# by the server (`mangosd`) at startup; only the correction (a world database
-# re-creation) happens here.
+# processing, migration edit acknowledgement, and halt and confirm sentinels.
+# Migrations themselves are applied by the server (`mangosd`) at startup; only
+# the correction (a world database re-creation) and the halt happen here.
 
 tortoise_log() {
   echo "[tortoise-deploy]: $*"
@@ -28,6 +28,11 @@ mark_database_ready() {
 
 clear_database_ready() {
   rm -f /tmp/tortoise-database-ready
+}
+
+clear_change_sentinels() {
+  rm -f /tmp/tortoise-changes-pending /tmp/tortoise-changes-acknowledged \
+    /tmp/tortoise-changes-consumed
 }
 
 create_database() {
@@ -142,14 +147,15 @@ ensure_maintenance_db_exists() {
 
 # The `TORTOISE_MIGRATION_EDITS` build argument is baked into
 # `/sql/migration-edits` at image build time; manual builds leave the file
-# empty and `MIGRATION_EDIT_WORLD` stays empty, which makes the correction a
-# no-op.
+# empty and both globals stay empty, which makes every per-database correction
+# a no-op.
 #
-# Leaks the `MIGRATION_EDIT_WORLD` global to the parent script by design;
-# `update-db.sh` and `create-db.sh` consume it after sourcing.
+# Leaks the two `MIGRATION_EDIT_*` globals to the parent script by design;
+# `update-db.sh` and `create-db.sh` consume them after sourcing.
 # shellcheck disable=SC2034
 parse_migration_edits() {
   MIGRATION_EDIT_WORLD=""
+  MIGRATION_EDIT_CHARACTER=""
 
   local file="/sql/migration-edits"
   if [[ ! -f "$file" ]]; then
@@ -170,10 +176,17 @@ parse_migration_edits() {
   IFS='|'
   for pair in $raw; do
     IFS="$saved_ifs"
+    # Both parameter expansions below yield the whole token when it holds no
+    # colon, which would turn a malformed entry into its own commit hash.
+    if [[ "$pair" != *:* ]]; then
+      IFS='|'
+      continue
+    fi
     key="${pair%%:*}"
     value="${pair#*:}"
     case "$key" in
       world) MIGRATION_EDIT_WORLD="$value" ;;
+      character) MIGRATION_EDIT_CHARACTER="$value" ;;
     esac
     IFS='|'
   done
@@ -196,10 +209,9 @@ correction_acknowledged() {
 
   # This runs as an `if` condition, which suppresses `set -e` for the whole
   # body, so the query status has to be checked by hand. Without it a failed
-  # query leaves `count` empty, which reads as "not acknowledged" and
-  # re-creates the world database.
+  # query leaves `count` empty, which reads as a negative result.
   if [[ $status -ne 0 ]]; then
-    tortoise_fail "Failed to read the migration correction ledger for database '$db_name'."
+    tortoise_fail "Failed to read the migration correction ledger for '$db_name'."
   fi
 
   [[ "$count" -gt 0 ]]
@@ -241,6 +253,9 @@ import_world_schema() {
   mariadb -u root -p"$MARIADB_ROOT_PASSWORD" "tw_world" <<<"$schema"
 }
 
+PENDING_DB_NAMES=()
+PENDING_DB_COMMIT_HASHES=()
+
 process_world_correction() {
   local commit_hash="$1"
   local schema
@@ -253,7 +268,10 @@ process_world_correction() {
     return 0
   fi
 
-  if [[ "${TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS:-0}" = "1" ]]; then
+  local enable_auto="${TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS:-0}"
+  local halt_on_edits="${TORTOISE_HALT_ON_MIGRATION_EDITS:-0}"
+
+  if [[ "$enable_auto" = "1" ]]; then
     # The slice depends only on the dump, so extract it before dropping
     # anything. A failing `awk` then aborts with the existing world database
     # intact instead of leaving an empty one behind.
@@ -269,9 +287,122 @@ process_world_correction() {
     return 0
   fi
 
+  if [[ "$halt_on_edits" = "1" ]]; then
+    PENDING_DB_NAMES+=("world")
+    PENDING_DB_COMMIT_HASHES+=("$commit_hash")
+    return 0
+  fi
+
   # We deliberately do not record an acknowledgement here so the warning
   # repeats on every start until the user takes action.
-  tortoise_log "WARNING: Migration edit detected for the world database (Penqle/tortoise-wow@${commit_hash:0:7}) but 'TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS' is disabled; continuing without correcting it. Your world database no longer matches this image and the server may misbehave or fail to start. Re-enable automatic corrections to resolve." >&2
+  tortoise_log "WARNING: Migration edit detected for the world database (Penqle/tortoise-wow@${commit_hash:0:7}) but both 'TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS' and 'TORTOISE_HALT_ON_MIGRATION_EDITS' are disabled; continuing without applying or acknowledging. Your world database no longer matches this image and the server may misbehave or fail to start." >&2
+}
+
+# The ledger and the baked wire string key on logical target names, but the
+# operator acts on the MariaDB database.
+correction_database_name() {
+  local db_name="$1"
+
+  case "$db_name" in
+    world) printf 'tw_world' ;;
+    character) printf 'tw_char' ;;
+    *) printf '%s' "$db_name" ;;
+  esac
+}
+
+# A database holding user state cannot be dropped and re-imported the way the
+# world database can, so an edit to one of its migrations has no automatic
+# remedy at all: the operator applies the SQL by hand and confirms.
+process_userstate_correction() {
+  local db_name="$1"
+  local commit_hash="$2"
+
+  if [[ -z "$commit_hash" ]]; then
+    return 0
+  fi
+
+  if correction_acknowledged "$db_name" "$commit_hash"; then
+    return 0
+  fi
+
+  local halt_on_edits="${TORTOISE_HALT_ON_MIGRATION_EDITS:-0}"
+
+  if [[ "$halt_on_edits" = "1" ]]; then
+    PENDING_DB_NAMES+=("$db_name")
+    PENDING_DB_COMMIT_HASHES+=("$commit_hash")
+    return 0
+  fi
+
+  # We deliberately do not record an acknowledgement here so the warning
+  # repeats on every start until the user takes action.
+  tortoise_log "WARNING: Migration edit detected for '$(correction_database_name "$db_name")' database (Penqle/tortoise-wow@${commit_hash:0:7}) but 'TORTOISE_HALT_ON_MIGRATION_EDITS' is disabled; continuing without acknowledging." >&2
+}
+
+print_correction_abort_message() {
+  cat >&2 <<'EOF'
+[tortoise-deploy]: ERROR: Migration edits detected in Tortoise-WoW that affect
+the following databases. tortoise-deploy will not apply these changes for you.
+Startup is halted.
+
+Affected databases:
+EOF
+
+  local i=0
+  local name
+  local commit_hash
+  while [[ "$i" -lt "${#PENDING_DB_NAMES[@]}" ]]; do
+    name="${PENDING_DB_NAMES[$i]}"
+    commit_hash="${PENDING_DB_COMMIT_HASHES[$i]}"
+    printf '  - %s (%s)\n' "$name" "$(correction_database_name "$name")" >&2
+    printf '    https://github.com/Penqle/tortoise-wow/commit/%s\n' "$commit_hash" >&2
+    i=$((i + 1))
+  done
+
+  cat >&2 <<'EOF'
+
+For each affected database:
+
+  1. Open its GitHub link above to see what changed.
+  2. Apply the equivalent SQL to the running database yourself, using the name
+     in parentheses above:
+       docker compose exec database mariadb -u root -p <database>
+     (mariadb will prompt for the password; it matches your
+     `MARIADB_ROOT_PASSWORD` setting in `compose.yaml`.)
+
+When you have applied the changes to all of them, confirm by running on the
+host:
+  docker compose exec database tortoise-confirm-changes
+
+To abort instead, run on the host:
+  docker compose down
+
+While the container is paused, MariaDB is reachable inside the container via
+the internal socket. TCP access on port 3306 is not available during the pause.
+Tortoise-WoW stays offline. Nothing restarts on its own; take as long as you
+need.
+
+Note: When you confirm, tortoise-deploy treats the listed commits as applied
+and continues. It does not check your database to verify that the changes you
+made match what the commits describe. If your manual fix is incorrect or
+incomplete, the database will be in an inconsistent state and Tortoise-WoW may
+fail to start. The responsibility for matching what the commits do is yours;
+tortoise-deploy provides no further support for resolving these issues.
+EOF
+}
+
+wait_for_change_ack() {
+  touch /tmp/tortoise-changes-pending
+
+  while [[ ! -f /tmp/tortoise-changes-acknowledged ]]; do
+    sleep 5
+  done
+
+  rm -f /tmp/tortoise-changes-pending
+
+  # Renamed rather than removed, so `tortoise-confirm-changes` can tell an
+  # acknowledgement this pause consumed from one `clear_change_sentinels`
+  # deleted on a later start; both make the file disappear.
+  mv /tmp/tortoise-changes-acknowledged /tmp/tortoise-changes-consumed
 }
 
 process_custom_sql() {

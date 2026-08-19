@@ -35,7 +35,7 @@ a Tortoise-WoW setup:
   development branch.
 - __Seamless, automated database migrations__: when pulling the latest Docker
   images and re-creating the containers, migrations are applied automatically
-  to keep your database up to date at all times.
+  to keep your databases up to date at all times.
 - __A transparent and easy-to-follow user experience__: the number of different
   commands that need to be run to install and manage Tortoise-WoW is kept to a
   minimum. You can use the Docker CLI or any other tool that is able to manage
@@ -68,6 +68,7 @@ a Tortoise-WoW setup:
   - [Stopping Tortoise-WoW](#stopping-tortoise-wow)
   - [Updating](#updating)
     - [What happens during an update](#what-happens-during-an-update)
+    - [When tortoise-deploy asks you to apply changes manually](#when-tortoise-deploy-asks-you-to-apply-changes-manually)
     - [Breaking changes](#breaking-changes)
   - [Creating database backups](#creating-database-backups)
     - [Restoring a backup](#restoring-a-backup)
@@ -437,11 +438,11 @@ docker compose up -d
 #### What happens during an update
 
 When you re-create the containers with newer images, `mangosd` automatically
-applies any pending world database migrations (from `sql/database_updates/`) at
-startup, so your database is kept up to date without manual steps.
+applies any pending migrations at startup, so your databases are kept up to
+date without manual steps.
 
 tortoise-deploy also detects upstream Tortoise-WoW commits that edit already
-released migration files. Such changes would otherwise leave your world
+released migration files. Such changes would otherwise leave the affected
 database in an inconsistent state and require manual intervention to rectify.
 
 By default, tortoise-deploy will
@@ -454,6 +455,52 @@ so restore those from a backup if you need them back (or use
 [custom SQL](#modifying-the-world-database-with-custom-changes-optional) to
 cleanly preserve the additions/changes).
 
+Databases that hold user state cannot be re-created that way without destroying
+your players' data, so for those tortoise-deploy
+[halts startup][compose-halt-on-edits] instead and asks you to apply the change
+by hand; see the next section.
+
+#### When tortoise-deploy asks you to apply changes manually
+
+When a migration edit is detected that affects a database containing user state
+(or a world database edit with automatic corrections disabled), tortoise-deploy
+halts startup and prints a message naming the affected database(s) and the
+GitHub link(s) to the upstream commit(s).
+
+Because the server services wait for the database to become healthy,
+`docker compose up -d` keeps waiting while startup is halted. Open a second
+terminal and run `docker compose logs database` to read the message, then run
+the commands below from there.
+
+The container stays running while paused; nothing restarts on its own. To
+resolve:
+
+1. Open each linked commit on GitHub and read the SQL changes it makes.
+2. Apply the equivalent SQL to each affected database. From the host:
+   ```sh
+   docker compose exec database mariadb -u root -p <database>
+   ```
+   where `<database>` is the name in parentheses in the halt message. `mariadb`
+   will prompt for the password; it matches your `MARIADB_ROOT_PASSWORD`
+   setting in `compose.yaml`.
+3. When you have applied the changes to all of them, confirm by running on the
+   host:
+   ```sh
+   docker compose exec database tortoise-confirm-changes
+   ```
+
+tortoise-deploy will then record the acknowledgement and continue startup. If
+you instead want to abort, run `docker compose down`.
+
+> [!CAUTION]
+> When you run `tortoise-confirm-changes`, tortoise-deploy treats the listed
+> commits as applied and continues. It does not check your database to verify
+> that the changes you made match what the commits describe. If your manual fix
+> is incorrect or incomplete, the database will be in an inconsistent state and
+> Tortoise-WoW may fail to start. The responsibility for matching what the
+> commits do is yours; tortoise-deploy provides no further support for
+> resolving these issues.
+
 #### Breaking changes
 
 It is recommended to regularly check this repository (either manually or by
@@ -465,6 +512,22 @@ Sometimes, there may be new features or changes that require manual
 intervention. Such breaking changes will be listed here (and removed again once
 they become irrelevant), sorted by newest first:
 
+- __[2026-08-18] - Startup now halts for migration edits it cannot apply for__
+  __you__: tortoise-deploy now also detects migration edits affecting databases
+  that contain user state (in addition to the world database) and halts startup
+  until you apply the equivalent SQL by hand; see the
+  _[When tortoise-deploy asks you to apply changes manually](#when-tortoise-deploy-asks-you-to-apply-changes-manually)_
+  section. To opt out of halting (tortoise-deploy will instead log a warning on
+  every start until you set this back to `1` and resolve the edit), set
+  [`TORTOISE_HALT_ON_MIGRATION_EDITS=0`][compose-halt-on-edits] in your
+  `compose.yaml`. Halting also becomes the fallback for the world database when
+  you have set `TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS=0`, which
+  previously only logged a warning. A halt lasts for as long as you need, so
+  you may also want to raise the `database` service's healthcheck
+  `start_period` to `24h`, which keeps the container from being marked
+  `unhealthy` while you work. See the
+  [updated example Compose configuration](compose.yaml.example) for the exact
+  configuration.
 - __[2026-08-11] - Commit hash image tags now include the build name__: tags
   that select an image by Tortoise-WoW commit hash have changed from
   `<commit-hash>` to `<build>-<commit-hash>` (e.g.,
@@ -596,11 +659,12 @@ non-commercial use only and comes with no warranty.
 [cmangos]: https://github.com/cmangos
 [cmangos-deploy]: https://github.com/mserajnik/cmangos-deploy
 [codex]: https://openai.com/codex
-[compose-automatic-world-db-corrections]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L34-L49
-[compose-custom-sql]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L50-L63
+[compose-automatic-world-db-corrections]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L34-L48
+[compose-custom-sql]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L62-L75
 [compose-custom-sql-bind-mount]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L16
-[compose-database-backups]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L173-L210
-[compose-phpmyadmin]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L212-L232
+[compose-database-backups]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L185-L222
+[compose-halt-on-edits]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L49-L61
+[compose-phpmyadmin]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L224-L244
 [docker]: https://docs.docker.com/get-docker/
 [docker-compose]: https://docs.docker.com/compose/install/
 [image-tortoise-database-versions]: https://github.com/mserajnik/tortoise-deploy/pkgs/container/tortoise-database/versions?filters%5Bversion_type%5D=tagged

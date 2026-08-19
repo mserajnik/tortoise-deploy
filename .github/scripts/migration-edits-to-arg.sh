@@ -4,9 +4,10 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Flattens a stream's entry in `.github/migration-edit-state.json` to the
-# `TORTOISE_MIGRATION_EDITS` build argument: `world:<commit-hash>`, or an empty
-# value when the stream has no recorded edit. The streams are built separately,
-# so a stream key is required alongside the state file.
+# `TORTOISE_MIGRATION_EDITS` build argument: pipe-separated
+# `<database>:<commit-hash>` entries for each of `world` and `character` (empty
+# value where the stream has no recorded edit for that target). The streams are
+# built separately, so a stream key is required alongside the state file.
 
 set -euo pipefail
 
@@ -31,7 +32,15 @@ if ! jq -e '
   fail "State file '$state_file' is missing, is not a JSON object, or holds a malformed commit hash."
 fi
 
+# An unrecognized stream indexes to `null`, which renders the same empty token
+# for every target and is indistinguishable from "no recorded edit".
+if ! jq -e --arg stream "$stream_key" 'has($stream)' "$state_file" >/dev/null; then
+  fail "State file '$state_file' has no entry for stream '$stream_key'."
+fi
+
 jq -r --arg stream "$stream_key" '
-  .[$stream].commit // ""
-  | if . == "" then "" else "world:\(.)" end
+  ["world", "character"] as $order
+  | .[$stream] as $targets
+  | [$order[] as $db | "\($db):\($targets[$db].commit // "")"]
+  | join("|")
 ' "$state_file"
