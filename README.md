@@ -650,9 +650,9 @@ non-commercial use only and comes with no warranty.
 [badge-latest-build-date]: https://img.shields.io/endpoint?url=https%3A%2F%2Fscripts.mser.at%2Ftortoise-deploy-badges%2Fdate-badge.json
 [badge-latest-build-date-url]: https://github.com/mserajnik?tab=packages&repo_name=tortoise-deploy
 [badge-latest-stable-build]: https://img.shields.io/endpoint?url=https%3A%2F%2Fscripts.mser.at%2Ftortoise-deploy-badges%2Fstable-build-badge.json
-[badge-latest-stable-build-url]: https://github.com/mserajnik/tortoise-deploy/pkgs/container/tortoise-server
+[badge-latest-stable-build-url]: https://scripts.mser.at/tortoise-deploy-latest-build/?build=stable
 [badge-latest-unstable-build]: https://img.shields.io/endpoint?url=https%3A%2F%2Fscripts.mser.at%2Ftortoise-deploy-badges%2Funstable-build-badge.json
-[badge-latest-unstable-build-url]: https://github.com/mserajnik/tortoise-deploy/pkgs/container/tortoise-server
+[badge-latest-unstable-build-url]: https://scripts.mser.at/tortoise-deploy-latest-build/?build=unstable
 [badge-lint-status]: https://github.com/mserajnik/tortoise-deploy/actions/workflows/lint.yaml/badge.svg
 [badge-lint-status-url]: https://github.com/mserajnik/tortoise-deploy/actions/workflows/lint.yaml
 [claude-code]: https://www.anthropic.com/product/claude-code
