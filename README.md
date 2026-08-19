@@ -512,7 +512,7 @@ Sometimes, there may be new features or changes that require manual
 intervention. Such breaking changes will be listed here (and removed again once
 they become irrelevant), sorted by newest first:
 
-- __[2026-08-18] - Startup now halts for migration edits it cannot apply for__
+- __[2026-08-19] - Startup now halts for migration edits it cannot apply for__
   __you__: tortoise-deploy now also detects migration edits affecting databases
   that contain user state (in addition to the world database) and halts startup
   until you apply the equivalent SQL by hand; see the
