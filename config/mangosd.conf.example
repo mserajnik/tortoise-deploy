@@ -2119,25 +2119,3 @@ Perf.Enable = 1
 
 # Report to logs DB. Time in seconds
 Perf.ReportInterval = 600
-
-
-# Leech Module
-# Enables a baseline heal on damage
-Leech.Enable = 0
-
-# Sets the percentage of damage to leech
-Leech.Amount = 0.05
-
-# AutoScaler.Enable. Enable or disable instance auto-scaling. 0 = off, 1 = on.
-AutoScalerEnable = 0
-
-# AutoScaler scalar clamp values for instances of different sizes.
-# 
-ScalarMin5ManHP = 0.6
-ScalarMin5ManDMG = 0.4
-ScalarMin10ManHP = 0.3
-ScalarMin10ManDMG = 0.3
-ScalarMin20ManHP = 0.1
-ScalarMin20ManDMG = 0.1
-ScalarMin40ManHP = 0.01
-ScalarMin40ManDMG = 0.01
