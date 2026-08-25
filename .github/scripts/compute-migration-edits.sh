@@ -47,8 +47,8 @@ require_env CURRENT_COMMIT_HASH
 repo="$TORTOISE_REPOSITORY_OWNER/$TORTOISE_REPOSITORY_NAME"
 # shellcheck disable=SC2153
 stream_key="$(trim "$STREAM_KEY")"
-# `jq` would create a key that is not there, so an unrecognized stream writes
-# the edit into a top-level key nothing reads.
+# jq would create a key that is not there, so an unrecognized stream writes the
+# edit into a top-level key nothing reads.
 case "$stream_key" in
   stable | unstable) ;;
   *) fail "Unsupported stream '$stream_key'." ;;
@@ -79,12 +79,12 @@ db_base_exclude_patterns=(
   ''
 )
 
-# Migrations under `<folder>/cn/` are applied only when the `NiHao` config
-# option is enabled, which we never set, so they are exempt from the layout
-# check below rather than assigned to a target.
+# Migrations under `<folder>/cn/` are applied only when the `NiHao`
+# configuration option is enabled, which we never set, so they are exempt from
+# the layout check below rather than assigned to a target.
 regional_pattern='^sql/database_updates/[^/]+/cn/[^/]+\\.sql$'
 
-# A state file `jq` cannot read as an object would make the writeback's
+# A state file jq cannot read as an object would make the writeback's
 # comparison read as "already up to date" and silently drop an edit the walk
 # just found.
 if ! jq -e '

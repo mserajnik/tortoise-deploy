@@ -32,7 +32,8 @@ a Tortoise-WoW setup:
   yourself every time you want to update.
 - __Stable and unstable image builds__: choose between `stable` images built
   from the `main` branch and `unstable` images that track the active `1181dev`
-  development branch.
+  development branch, each also available as variants that bundle a curated set
+  of Tortoise-WoW modules.
 - __Seamless, automated database migrations__: when pulling the latest Docker
   images and re-creating the containers, migrations are applied automatically
   to keep your databases up to date at all times.
@@ -58,6 +59,7 @@ a Tortoise-WoW setup:
   - [Instructions](#instructions)
     - [Cloning the repository and adjusting the Tortoise-WoW configuration](#cloning-the-repository-and-adjusting-the-tortoise-wow-configuration)
     - [Adjusting the Docker Compose configuration](#adjusting-the-docker-compose-configuration)
+    - [Using the bundled module images (optional)](#using-the-bundled-module-images-optional)
     - [Extracting the client data](#extracting-the-client-data)
     - [A note on Warden](#a-note-on-warden)
     - [Modifying the world database with custom changes (optional)](#modifying-the-world-database-with-custom-changes-optional)
@@ -138,7 +140,16 @@ cp ./config/mangosd.conf.example ./config/mangosd.conf
 cp ./config/realmd.conf.example ./config/realmd.conf
 ```
 
-Next, adjust the two configuration files you have just created for your desired
+If you intend to use one of the `-modules` builds (see
+_[Using the bundled module images (optional)](#using-the-bundled-module-images-optional)_),
+also copy a configuration file for every bundled module:
+
+```sh
+cp ./config/modules/tw-mod-autoscale.conf.example ./config/modules/tw-mod-autoscale.conf
+cp ./config/modules/tw-mod-leech.conf.example ./config/modules/tw-mod-leech.conf
+```
+
+Next, adjust the configuration files you have just created for your desired
 setup. The default configuration should work well as a starting point, but you
 may still want to adjust certain things such as the `GameType` or the
 `RealmZone`. Descriptions are provided for most options in the configuration
@@ -155,48 +166,64 @@ files, so you should be able to find your way around easily.
 
 #### Adjusting the Docker Compose configuration
 
-Once you are done adjusting the Tortoise-WoW configuration, create a copy of
-the Docker Compose example configuration:
+Once you are done adjusting the Tortoise-WoW configuration, the first thing to
+decide on is which image build you want to use:
+
+| Source branch                        | `tortoise-server` tag                                | `tortoise-database` tag                                |
+| ------------------------------------ | ---------------------------------------------------- | ------------------------------------------------------ |
+| `main` (`stable` build)              | `ghcr.io/mserajnik/tortoise-server:stable`           | `ghcr.io/mserajnik/tortoise-database:stable`           |
+| `main` (`stable-modules` build)      | `ghcr.io/mserajnik/tortoise-server:stable-modules`   | `ghcr.io/mserajnik/tortoise-database:stable-modules`   |
+| `1181dev` (`unstable` build)         | `ghcr.io/mserajnik/tortoise-server:unstable`         | `ghcr.io/mserajnik/tortoise-database:unstable`         |
+| `1181dev` (`unstable-modules` build) | `ghcr.io/mserajnik/tortoise-server:unstable-modules` | `ghcr.io/mserajnik/tortoise-database:unstable-modules` |
+
+The `-modules` builds carry a curated set of bundled modules;
+_[Using the bundled module images (optional)](#using-the-bundled-module-images-optional)_
+describes what is in the set and what those builds additionally need from you.
+
+Then copy the Docker Compose example file for your chosen build to
+`compose.yaml`. For a `stable` or `unstable` build:
 
 ```sh
 cp ./compose.yaml.example ./compose.yaml
 ```
 
-Next, adjust your `compose.yaml`. The first thing to decide on is which image
-build you want to use:
+For a `stable-modules` or `unstable-modules` build, use
+[`compose-modules.yaml.example`](compose-modules.yaml.example) instead. The two
+files share the same structure.
 
-| Source branch                | `tortoise-server` tag                        | `tortoise-database` tag                        |
-| ---------------------------- | -------------------------------------------- | ---------------------------------------------- |
-| `main` (`stable` build)      | `ghcr.io/mserajnik/tortoise-server:stable`   | `ghcr.io/mserajnik/tortoise-database:stable`   |
-| `1181dev` (`unstable` build) | `ghcr.io/mserajnik/tortoise-server:unstable` | `ghcr.io/mserajnik/tortoise-database:unstable` |
-
-The example Docker Compose configuration uses the `stable` images, built from
-the `main` branch. To follow the active development branch instead, use the
-`unstable` tag for both the `tortoise-server` and the `tortoise-database`
-images.
+Next, adjust your `compose.yaml`. Both examples use images built from the
+`main` branch: `compose.yaml.example` the `stable` images,
+`compose-modules.yaml.example` the `stable-modules` images. To follow the
+active development branch instead, use the `unstable` (or `unstable-modules`)
+tag for both the `tortoise-server` and the `tortoise-database` images.
 
 The `1181dev` branch is usually ahead of `main`, but it may contain
-work-in-progress changes and can generally be less stable. Stick with `stable`
-unless you specifically want the newest changes.
+work-in-progress changes and can generally be less stable. Stick with a
+`stable` build unless you specifically want the newest changes.
 
 > [!WARNING]
-> Switching an existing setup between the `stable` and the `unstable` build is
-> not guaranteed to work cleanly: the two branches can be at different database
-> migration states, so moving between them (in either direction) can leave your
-> database in an inconsistent state. No support is provided for such switches.
+> Switching an existing setup from one build to another is not guaranteed to
+> work cleanly in either direction, and no support is provided for it. Between
+> `stable` and `unstable` the two branches can be at different database
+> migration states, so moving between them can leave your database in an
+> inconsistent state. Between a build and its `-modules` variant it should
+> currently work, since there are no database differences, but it is untested
+> and may stop working at any point in the future.
 
 Alternatively, you can select specific images via the Tortoise-WoW commit hash
 they have been built from. To allow for this, the `tortoise-server` image (used
 by the `realmd` and `mangosd` services) and the `tortoise-database` image (used
 by the `database` service) have tags that combine the build they belong to with
-the respective commit hash. Both branches can point at the same commit, and the
-two builds are not interchangeable, so the build name is part of the tag. E.g.,
-for the `stable` build of commit
-[`fee5caf96dbca685a1661a055e541a25fd8a4a60`][tortoise-example-commit]:
+the respective commit hash. Both branches can point at the same commit, and a
+build and its `-modules` variant always do, so the build name is part of the
+tag. E.g., for the `stable` build of commit
+[`fee5caf96dbca685a1661a055e541a25fd8a4a60`][tortoise-example-commit] and its
+`-modules` variant:
 
-| `realmd` / `mangosd` service image                                                  | `database` service image                                                              |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `ghcr.io/mserajnik/tortoise-server:stable-fee5caf96dbca685a1661a055e541a25fd8a4a60` | `ghcr.io/mserajnik/tortoise-database:stable-fee5caf96dbca685a1661a055e541a25fd8a4a60` |
+| `realmd` / `mangosd` service image                                                          | `database` service image                                                                      |
+| ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `ghcr.io/mserajnik/tortoise-server:stable-fee5caf96dbca685a1661a055e541a25fd8a4a60`         | `ghcr.io/mserajnik/tortoise-database:stable-fee5caf96dbca685a1661a055e541a25fd8a4a60`         |
+| `ghcr.io/mserajnik/tortoise-server:stable-modules-fee5caf96dbca685a1661a055e541a25fd8a4a60` | `ghcr.io/mserajnik/tortoise-database:stable-modules-fee5caf96dbca685a1661a055e541a25fd8a4a60` |
 
 > [!IMPORTANT]
 > When you decide to select images via Tortoise-WoW commit hash you should
@@ -232,6 +259,33 @@ connections.
 > have to (or, in some cases, _must not_) change. Doing so may lead to
 > unexpected behavior and is not supported.
 
+#### Using the bundled module images (optional)
+
+Tortoise-WoW moved its auto-scaling and leech features out of the core and into
+[its module system][tortoise-wow-modules]. The `stable` and `unstable` images
+carry no bundled modules, so they no longer contain either feature.
+
+Instead, tortoise-deploy offers `-modules` image variants. A variant is built
+from the same Tortoise-WoW commit as the image it is based on, with a curated
+set of modules compiled in. Currently, the set consists of those two features
+that were previously part of the core:
+
+| Module                                 | Enabled by default |
+| -------------------------------------- | ------------------ |
+| [`tw-mod-autoscale`][tw-mod-autoscale] | No                 |
+| [`tw-mod-leech`][tw-mod-leech]         | No                 |
+
+Each module is turned on in its own configuration file. Those files are read
+after `config/mangosd.conf`, so a setting there also overrides a leftover copy
+of the same setting in your `config/mangosd.conf`.
+
+> [!IMPORTANT]
+> A missing module configuration file stops `mangosd` during startup, naming
+> the file it wanted, and Docker restarts it into the same failure. Adding a
+> module to the set is therefore a breaking change, and one you have to act on
+> before `mangosd` will start again. Such changes are listed in the
+> _[Breaking changes](#breaking-changes)_ section.
+
 #### Extracting the client data
 
 Tortoise-WoW uses data that is generated from extracted client data to handle
@@ -263,9 +317,10 @@ There are two things to look out for here:
   permission issues on the bind mounts. If you are on Windows or macOS, you can
   ignore this (or even remove the `--user` argument altogether, if you want
   to).
-- The Docker image must reflect the build (`stable` or `unstable`) you intend
-  to run the server with, since the extraction process can differ between the
-  two; see the table further above in the
+- The Docker image must reflect the build you intend to run the server with,
+  since the extraction process can differ between `stable` and `unstable`; a
+  `-modules` build extracts exactly like the build it is based on. See the
+  table further above in the
   _[Adjusting the Docker Compose configuration](#adjusting-the-docker-compose-configuration)_
   section.
 
@@ -512,6 +567,21 @@ Sometimes, there may be new features or changes that require manual
 intervention. Such breaking changes will be listed here (and removed again once
 they become irrelevant), sorted by newest first:
 
+- __[2026-08-25] - Tortoise-WoW moved auto-scaling and leech out of the core__:
+  upstream removed both features from the core and reintroduced them as
+  modules. __If you had both features disabled, which was the default, nothing
+  changes for you__ and you can simply delete the respective options from your
+  `config/mangosd.conf`. If you had either one enabled, doing nothing means it
+  stops working on your next pull, silently: the `stable` and `unstable` images
+  no longer contain the code. To keep the feature, move to the matching
+  `-modules` image, which means pointing the `database` service at its
+  `-modules` tag as well, copying each module's configuration example into
+  place and adding a bind mount for it, and tuning the settings in that copy
+  rather than in `config/mangosd.conf`; see the
+  _[Using the bundled module images (optional)](#using-the-bundled-module-images-optional)_
+  section. Moving from a build to its `-modules` variant works as of this
+  entry, and a later breaking change will say so if that stops being true;
+  moving back the other way is unsupported and is not guaranteed to work.
 - __[2026-08-19] - Startup now halts for migration edits it cannot apply for__
   __you__: tortoise-deploy now also detects migration edits affecting databases
   that contain user state (in addition to the world database) and halts startup
@@ -534,9 +604,8 @@ they become irrelevant), sorted by newest first:
   `ghcr.io/mserajnik/tortoise-server:stable-fee5caf96dbca685a1661a055e541a25fd8a4a60`).
   Both branches can point at the same commit while their images differ, so the
   bare hash could not identify one of them. This only affects you if you select
-  images by commit hash instead of by the `stable` or `unstable` tag. No new
-  bare hash tags are published; the existing ones keep working until they are
-  eventually deleted.
+  images by commit hash instead of by a moving tag. No new bare hash tags are
+  published; the existing ones keep working until they are eventually deleted.
 - __[2026-07-28] - The suggested database backup solution has changed__: the
   example Compose configuration now uses
   [`databack/mysql-backup`](https://github.com/databacker/mysql-backup) instead
@@ -674,11 +743,14 @@ non-commercial use only and comes with no warranty.
 [license-cc-by-sa-4.0]: LICENSES/CC-BY-SA-4.0.txt
 [license-cc0-1.0]: LICENSES/CC0-1.0.txt
 [maintainer]: https://github.com/mserajnik
-[mangosd-gm-options]: https://github.com/mserajnik/tortoise-deploy/blob/master/config/mangosd.conf.example#L1560-L1626
+[mangosd-gm-options]: https://github.com/mserajnik/tortoise-deploy/blob/master/config/mangosd.conf.example#L1575-L1641
 [phpmyadmin]: https://www.phpmyadmin.net/
 [pull-requests]: https://github.com/mserajnik/tortoise-deploy/pulls
 [reuse-spec]: https://reuse.software/spec/
 [tortoise-example-commit]: https://github.com/Penqle/tortoise-wow/commit/fee5caf96dbca685a1661a055e541a25fd8a4a60
 [tortoise-wow]: https://github.com/Penqle/tortoise-wow
+[tortoise-wow-modules]: https://github.com/Penqle/tortoise-wow/blob/main/modules/README.md
+[tw-mod-autoscale]: https://github.com/Penqle/tw-mod-autoscale
+[tw-mod-leech]: https://github.com/Penqle/tw-mod-leech
 [vmangos]: https://github.com/vmangos/core
 [vmangos-deploy]: https://github.com/mserajnik/vmangos-deploy

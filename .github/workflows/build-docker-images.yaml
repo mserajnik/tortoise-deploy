@@ -48,7 +48,9 @@ jobs:
       contents: write
       packages: read
     outputs:
-      matrix: ${{ steps.prepare-build-matrix.outputs.matrix }}
+      server_units_to_build: ${{ steps.prepare-build-matrix.outputs.server_units_to_build }}
+      database_units_to_build: ${{ steps.prepare-build-matrix.outputs.database_units_to_build }}
+      build_metadata: ${{ steps.prepare-build-matrix.outputs.build_metadata }}
       any_images_to_build: ${{ steps.prepare-build-matrix.outputs.any_images_to_build }}
       stable_commit_hash: ${{ steps.resolve-sources.outputs.tortoise_stable_commit_hash }}
       unstable_commit_hash: ${{ steps.resolve-sources.outputs.tortoise_unstable_commit_hash }}
@@ -71,17 +73,23 @@ jobs:
           TORTOISE_REPOSITORY_NAME: tortoise-wow
           TORTOISE_STABLE_REVISION: main
           TORTOISE_UNSTABLE_REVISION: 1181dev
+          TW_MOD_AUTOSCALE_REPOSITORY_OWNER: Penqle
+          TW_MOD_AUTOSCALE_REPOSITORY_NAME: tw-mod-autoscale
+          TW_MOD_AUTOSCALE_REVISION: main
+          TW_MOD_LEECH_REPOSITORY_OWNER: Penqle
+          TW_MOD_LEECH_REPOSITORY_NAME: tw-mod-leech
+          TW_MOD_LEECH_REVISION: master
           MARIADB_DOCKER_REPOSITORY_OWNER: MariaDB
           MARIADB_DOCKER_REPOSITORY_NAME: mariadb-docker
           MARIADB_DOCKER_REVISION: master
         run: ./.github/scripts/resolve-sources.sh
 
       # Compares every upstream reference tortoise-deploy depends on (bundled
-      # config templates, root `CMakeLists.txt` where new build dependencies
-      # would surface, the patched MariaDB entrypoint, ...) against the
-      # resolved upstream `HEAD`. The pinned commit hashes anchor what each was
-      # last reviewed against; bump the matching commit hash below after
-      # refreshing the local files.
+      # configuration templates, root `CMakeLists.txt` where new build
+      # dependencies would surface, the patched MariaDB entrypoint, ...)
+      # against the resolved upstream `HEAD`. The pinned commit hashes anchor
+      # what each was last reviewed against; bump the matching commit hash
+      # below after refreshing the local files.
       - name: Check for upstream drift
         id: upstream-drift-check
         env:
@@ -89,10 +97,16 @@ jobs:
           TORTOISE_STABLE_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_stable_commit_hash }}
           TORTOISE_UNSTABLE_REPOSITORY: ${{ steps.resolve-sources.outputs.tortoise_repository }}
           TORTOISE_UNSTABLE_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_unstable_commit_hash }}
+          TW_MOD_AUTOSCALE_REPOSITORY: ${{ steps.resolve-sources.outputs.tw_mod_autoscale_repository }}
+          TW_MOD_AUTOSCALE_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tw_mod_autoscale_commit_hash }}
+          TW_MOD_LEECH_REPOSITORY: ${{ steps.resolve-sources.outputs.tw_mod_leech_repository }}
+          TW_MOD_LEECH_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tw_mod_leech_commit_hash }}
           MARIADB_DOCKER_REPOSITORY: ${{ steps.resolve-sources.outputs.mariadb_docker_repository }}
           MARIADB_DOCKER_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.mariadb_docker_commit_hash }}
           TORTOISE_STABLE_KNOWN_COMMIT_HASH: 3bca9d0f9830812a8683cc72ee01788ca7ffc693
           TORTOISE_UNSTABLE_KNOWN_COMMIT_HASH: 3bca9d0f9830812a8683cc72ee01788ca7ffc693
+          TW_MOD_AUTOSCALE_KNOWN_COMMIT_HASH: 41e5046a496082e1f7994b0ef42f5f3f6d28e408
+          TW_MOD_LEECH_KNOWN_COMMIT_HASH: 6886c8db0caf463cc5ed5b48209420acd8b872ed
           # When bumping `MARIADB_DOCKER_KNOWN_COMMIT_HASH`, also update the
           # matching commit hash in `docker/database/Dockerfile` and the header
           # comment in `docker/database/docker-entrypoint.sh` so all three stay
@@ -102,9 +116,10 @@ jobs:
 
       # Decides which streams to build (skipping any whose moving tag already
       # points at the current commit, unless this is a scheduled Monday rebuild
-      # or a manual force rebuild) and emits the build matrix. Also records any
-      # migration edit per stream in the state file and bakes it into each
-      # build's `migration_edits` so the database image can act on it.
+      # or a manual force rebuild) and emits the build units the server and
+      # database jobs consume. Also records any migration edit per stream in
+      # the state file and bakes it into each build's `migration_edits` so the
+      # database image can act on it.
       - name: Prepare build matrix
         id: prepare-build-matrix
         env:
@@ -116,6 +131,11 @@ jobs:
           TORTOISE_REPOSITORY_NAME: tortoise-wow
           TORTOISE_STABLE_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_stable_commit_hash }}
           TORTOISE_UNSTABLE_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_unstable_commit_hash }}
+          TW_MOD_AUTOSCALE_REPOSITORY: ${{ steps.resolve-sources.outputs.tw_mod_autoscale_repository }}
+          TW_MOD_AUTOSCALE_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tw_mod_autoscale_commit_hash }}
+          TW_MOD_LEECH_REPOSITORY: ${{ steps.resolve-sources.outputs.tw_mod_leech_repository }}
+          TW_MOD_LEECH_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tw_mod_leech_commit_hash }}
+          MODULE_LICENSES: MIT
           FORCE_REBUILD: ${{ inputs.force_rebuild }}
           STATE_FILE: .github/migration-edit-state.json
         run: ./.github/scripts/prepare-build-matrix.sh
@@ -143,7 +163,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        include: ${{ fromJSON(needs.setup.outputs.matrix) }}
+        unit: ${{ fromJSON(needs.setup.outputs.server_units_to_build) }}
     permissions:
       contents: read
       packages: write
@@ -152,11 +172,13 @@ jobs:
       image_kind: server
       architectures: both
       push_images: ${{ github.event_name != 'pull_request' }}
-      stream: ${{ matrix.stream }}
-      tag_set: ${{ matrix.tag_set }}
-      commit_hash: ${{ matrix.commit_hash }}
-      patch_set: ${{ matrix.patch_set }}
-      migration_edits: ${{ matrix.migration_edits }}
+      stream: ${{ matrix.unit }}
+      tag_set: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].tag_set }}
+      commit_hash: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].commit_hash }}
+      patch_set: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].patch_set }}
+      migration_edits: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].migration_edits }}
+      modules: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].modules }}
+      module_licenses: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].module_licenses }}
 
   # We build database images only after the server build succeeds; otherwise, a
   # failure there could leave the latest database images out of sync.
@@ -167,7 +189,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        include: ${{ fromJSON(needs.setup.outputs.matrix) }}
+        unit: ${{ fromJSON(needs.setup.outputs.database_units_to_build) }}
     permissions:
       contents: read
       packages: write
@@ -176,11 +198,12 @@ jobs:
       image_kind: database
       architectures: both
       push_images: ${{ github.event_name != 'pull_request' }}
-      stream: ${{ matrix.stream }}
-      tag_set: ${{ matrix.tag_set }}
-      commit_hash: ${{ matrix.commit_hash }}
-      patch_set: ${{ matrix.patch_set }}
-      migration_edits: ${{ matrix.migration_edits }}
+      stream: ${{ matrix.unit }}
+      tag_set: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].tag_set }}
+      commit_hash: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].commit_hash }}
+      patch_set: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].patch_set }}
+      migration_edits: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].migration_edits }}
+      alias_units: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].database_alias_units }}
 
   # Keep only a short retention window. Long-term availability of older images
   # is explicitly not promised: breaking changes accumulate over time, and

@@ -55,12 +55,14 @@ body:
     validations:
       required: true
   - type: dropdown
-    id: channel
+    id: build
     attributes:
-      label: Image channel
+      label: Image build
       options:
         - stable
+        - stable-modules
         - unstable
+        - unstable-modules
     validations:
       required: true
   - type: textarea
@@ -76,12 +78,12 @@ body:
     attributes:
       label: Image versions
       description: |
-        The output of the following commands (replace `<channel>` with the image channel you use):
+        The output of the following commands (replace `<build>` with the image build you use):
 
         ```sh
         docker compose images
-        docker image inspect --format '{{ json .Config.Labels }}' ghcr.io/mserajnik/tortoise-server:<channel>
-        docker image inspect --format '{{ json .Config.Labels }}' ghcr.io/mserajnik/tortoise-database:<channel>
+        docker image inspect --format '{{ json .Config.Labels }}' ghcr.io/mserajnik/tortoise-server:<build>
+        docker image inspect --format '{{ json .Config.Labels }}' ghcr.io/mserajnik/tortoise-database:<build>
         ```
       render: text
     validations:

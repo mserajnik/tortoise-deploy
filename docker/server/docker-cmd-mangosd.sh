@@ -4,7 +4,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Container command wrapper for the `mangosd` binary. Drops privileges via
-# `fixuid`, validates the bind-mounted config file, and launches `mangosd`.
+# `fixuid`, validates the bind-mounted configuration files, and launches
+# `mangosd`.
 
 set -eu
 
@@ -12,11 +13,33 @@ set -eu
 fixuid_output="$(fixuid -q)"
 eval "$fixuid_output"
 
-config_file="/opt/tortoise/config/mangosd.conf"
+config_dir="/opt/tortoise/config"
+required_files="mangosd.conf"
 
-if [ ! -f "$config_file" ]; then
-  echo "[tortoise-deploy]: ERROR: Configuration file '$config_file' is missing, exiting." >&2
-  exit 1
+# `mangosd` exits when a module configuration file is missing while reporting
+# only that some module configuration could not be loaded, never which. The
+# manifest is written at image build time and is absent from images built
+# without modules.
+modules_manifest="/opt/tortoise/module-configs"
+
+if [ -f "$modules_manifest" ]; then
+  required_files="$required_files
+$(sed '/^[[:space:]]*$/d; s|^|modules/|' "$modules_manifest")"
 fi
 
-exec /opt/tortoise/bin/mangosd -c "$config_file"
+# Read a line at a time rather than leaning on word splitting, so a
+# configuration file name containing whitespace still names itself.
+while IFS= read -r config_name; do
+  [ -n "$config_name" ] || continue
+
+  config_file="$config_dir/$config_name"
+
+  if [ ! -f "$config_file" ] || [ ! -r "$config_file" ]; then
+    echo "[tortoise-deploy]: ERROR: Configuration file '$config_file' is missing or not readable, exiting." >&2
+    exit 1
+  fi
+done <<EOF
+$required_files
+EOF
+
+exec /opt/tortoise/bin/mangosd -c "$config_dir/mangosd.conf"

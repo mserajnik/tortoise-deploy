@@ -34,6 +34,15 @@ on:
       migration_edits:
         type: string
         required: false
+      modules:
+        type: string
+        required: false
+      module_licenses:
+        type: string
+        required: false
+      alias_units:
+        type: string
+        required: false
 
 env:
   REGISTRY: ghcr.io
@@ -86,6 +95,9 @@ jobs:
           COMMIT_HASH: ${{ inputs.commit_hash }}
           PATCH_SET: ${{ inputs.patch_set }}
           MIGRATION_EDITS: ${{ inputs.migration_edits }}
+          MODULES: ${{ inputs.modules }}
+          MODULE_LICENSES: ${{ inputs.module_licenses }}
+          ALIAS_UNITS: ${{ inputs.alias_units }}
         run: ./.github/scripts/prepare-image-build.sh
 
   build-amd64:

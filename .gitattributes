@@ -1,4 +1,4 @@
 *.conf linguist-language=INI
 *.conf.example linguist-language=INI
 *.sql.example linguist-language=SQL
-compose.yaml.example linguist-language=YAML
+compose*.yaml.example linguist-language=YAML

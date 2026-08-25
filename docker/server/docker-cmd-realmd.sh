@@ -4,7 +4,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Container command wrapper for the `realmd` binary. Drops privileges via
-# `fixuid`, validates the bind-mounted config file, and launches `realmd`.
+# `fixuid`, validates the bind-mounted configuration file, and launches
+# `realmd`.
 
 set -eu
 
@@ -14,8 +15,8 @@ eval "$fixuid_output"
 
 config_file="/opt/tortoise/config/realmd.conf"
 
-if [ ! -f "$config_file" ]; then
-  echo "[tortoise-deploy]: ERROR: Configuration file '$config_file' is missing, exiting." >&2
+if [ ! -f "$config_file" ] || [ ! -r "$config_file" ]; then
+  echo "[tortoise-deploy]: ERROR: Configuration file '$config_file' is missing or not readable, exiting." >&2
   exit 1
 fi
 

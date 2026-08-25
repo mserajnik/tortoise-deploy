@@ -1,5 +1,6 @@
-/compose.yaml
-/config/*
+/compose*.yaml
+/config/**
+!/config/**/
 /storage/**
 !/storage/**/
 !**/*.example

@@ -16,8 +16,8 @@ path = [
   ".gitignore",
   ".hadolint.yaml",
   ".shellcheckrc",
-  "compose.yaml.example",
-  "config/*.conf.example",
+  "compose*.yaml.example",
+  "config/**/*.conf.example",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Michael Serajnik <https://github.com/mserajnik>"

@@ -6,10 +6,11 @@
 # Resolves the upstream commit of each requested source to a full commit hash.
 # Sources are opt-in: each one is resolved only when its matching environment
 # variables are provided. Tortoise-WoW is built from two branches (`main` for
-# `stable`, `1181dev` for `unstable`), so both are resolved here. Emits the
-# resolved commit hashes as job outputs so downstream steps (drift check, build
-# decision, image builds) all reference the same revision set even if a branch
-# tip moves during the run.
+# `stable`, `1181dev` for `unstable`), so both are resolved here, as is every
+# module bundled into the `-modules` image variants. Emits the resolved commit
+# hashes as job outputs so downstream steps (drift check, build decision, image
+# builds) all reference the same revision set even if a branch tip moves during
+# the run.
 
 set -euo pipefail
 
@@ -38,6 +39,38 @@ if [[ -n "${TORTOISE_REPOSITORY_OWNER:-}${TORTOISE_REPOSITORY_NAME:-}${TORTOISE_
   write_output tortoise_repository "$tortoise_repository"
   write_output tortoise_stable_commit_hash "$tortoise_stable_commit_hash"
   write_output tortoise_unstable_commit_hash "$tortoise_unstable_commit_hash"
+  resolved_any=true
+fi
+
+if [[ -n "${TW_MOD_AUTOSCALE_REPOSITORY_OWNER:-}${TW_MOD_AUTOSCALE_REPOSITORY_NAME:-}${TW_MOD_AUTOSCALE_REVISION:-}" ]]; then
+  require_env TW_MOD_AUTOSCALE_REPOSITORY_OWNER
+  require_env TW_MOD_AUTOSCALE_REPOSITORY_NAME
+  require_env TW_MOD_AUTOSCALE_REVISION
+
+  tw_mod_autoscale_repository="$TW_MOD_AUTOSCALE_REPOSITORY_OWNER/$TW_MOD_AUTOSCALE_REPOSITORY_NAME"
+  tw_mod_autoscale_commit_hash="$(resolve_commit_hash \
+    "$TW_MOD_AUTOSCALE_REPOSITORY_OWNER" "$TW_MOD_AUTOSCALE_REPOSITORY_NAME" \
+    "$TW_MOD_AUTOSCALE_REVISION")"
+  if [[ "$resolved_any" != "true" ]]; then printf 'Resolved sources:\n'; fi
+  printf '  %s@%s\n' "$tw_mod_autoscale_repository" "$tw_mod_autoscale_commit_hash"
+  write_output tw_mod_autoscale_repository "$tw_mod_autoscale_repository"
+  write_output tw_mod_autoscale_commit_hash "$tw_mod_autoscale_commit_hash"
+  resolved_any=true
+fi
+
+if [[ -n "${TW_MOD_LEECH_REPOSITORY_OWNER:-}${TW_MOD_LEECH_REPOSITORY_NAME:-}${TW_MOD_LEECH_REVISION:-}" ]]; then
+  require_env TW_MOD_LEECH_REPOSITORY_OWNER
+  require_env TW_MOD_LEECH_REPOSITORY_NAME
+  require_env TW_MOD_LEECH_REVISION
+
+  tw_mod_leech_repository="$TW_MOD_LEECH_REPOSITORY_OWNER/$TW_MOD_LEECH_REPOSITORY_NAME"
+  tw_mod_leech_commit_hash="$(resolve_commit_hash \
+    "$TW_MOD_LEECH_REPOSITORY_OWNER" "$TW_MOD_LEECH_REPOSITORY_NAME" \
+    "$TW_MOD_LEECH_REVISION")"
+  if [[ "$resolved_any" != "true" ]]; then printf 'Resolved sources:\n'; fi
+  printf '  %s@%s\n' "$tw_mod_leech_repository" "$tw_mod_leech_commit_hash"
+  write_output tw_mod_leech_repository "$tw_mod_leech_repository"
+  write_output tw_mod_leech_commit_hash "$tw_mod_leech_commit_hash"
   resolved_any=true
 fi
 

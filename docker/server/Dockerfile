@@ -4,6 +4,8 @@
 ARG DEBIAN_FRONTEND=noninteractive
 ARG TORTOISE_REPOSITORY_URL=https://github.com/Penqle/tortoise-wow.git
 ARG TORTOISE_REVISION=main
+ARG TORTOISE_MODULES=
+ARG TORTOISE_MODULE_CONFIGS=
 ARG TORTOISE_PATCHES_REPOSITORY_URL
 ARG TORTOISE_FAIL_ON_PATCH_ERROR=0
 ARG TORTOISE_PATCH_SET=stable
@@ -17,6 +19,8 @@ FROM ubuntu:26.04 AS build
 ARG DEBIAN_FRONTEND
 ARG TORTOISE_REPOSITORY_URL
 ARG TORTOISE_REVISION
+ARG TORTOISE_MODULES
+ARG TORTOISE_MODULE_CONFIGS
 ARG TORTOISE_PATCHES_REPOSITORY_URL
 ARG TORTOISE_FAIL_ON_PATCH_ERROR
 ARG TORTOISE_PATCH_SET
@@ -36,9 +40,9 @@ RUN \
   cd /build/core && \
   git checkout "$TORTOISE_REVISION" && \
   if [ -n "$TORTOISE_PATCHES_REPOSITORY_URL" ]; then \
-    echo "Cloning and applying patches from $TORTOISE_PATCHES_REPOSITORY_URL"; \
-    git clone "$TORTOISE_PATCHES_REPOSITORY_URL" /build/patches && \
-    patch_count=0 && \
+    echo "Cloning and applying patches from $TORTOISE_PATCHES_REPOSITORY_URL."; \
+    git clone "$TORTOISE_PATCHES_REPOSITORY_URL" /build/patches || exit 1; \
+    patch_count=0; \
     # Patches in `all` are applied to every build; patches in `<build>` (the
     # `TORTOISE_PATCH_SET` value, `stable` or `unstable`) only to the matching
     # build. All of them apply to `/build/core`. The `<build>` directory is
@@ -48,9 +52,9 @@ RUN \
       /build/patches/"$TORTOISE_PATCH_SET"/*.patch; \
     do \
       if [ -f "$patch" ]; then \
-        echo "Applying patch $patch"; \
+        echo "Applying patch '$patch'."; \
         if ! git apply "$patch"; then \
-          echo "Failed to apply patch $patch"; \
+          echo "Failed to apply patch '$patch'."; \
           if [ "$TORTOISE_FAIL_ON_PATCH_ERROR" = "1" ]; then \
             exit 1; \
           fi; \
@@ -59,10 +63,54 @@ RUN \
       fi; \
     done; \
     if [ "$patch_count" -eq 0 ]; then \
-      echo "No patches found"; \
+      echo "No patches found."; \
     fi; \
   else \
-    echo "No repository to apply patches from provided"; \
+    echo "No repository to apply patches from provided."; \
+  fi && \
+  if [ -n "$TORTOISE_MODULES" ]; then \
+    # Bundled modules for the `-modules` image variants, as
+    # `<directory>=<url>@<revision>` entries separated by `|`. They are cloned
+    # after the patch loop because every patch targets the core itself. The
+    # directory name is load-bearing: the generated loader calls
+    # `Add<directory>Scripts` with each non-alphanumeric character replaced by
+    # `_`, and the module's own source has to define exactly that symbol.
+    # The clone and the checkout need their own `|| exit 1` because the shell
+    # ignores `set -e` for any command of an AND-OR list other than the last,
+    # and this subshell runs inside one.
+    ( \
+      IFS='|'; \
+      for module in $TORTOISE_MODULES; do \
+        module_directory="${module%%=*}"; \
+        module_source="${module#*=}"; \
+        module_url="${module_source%@*}"; \
+        module_revision="${module_source##*@}"; \
+        module_path="/build/core/modules/$module_directory"; \
+        echo "Cloning module '$module_directory' from $module_url at $module_revision."; \
+        git clone "$module_url" "$module_path" || exit 1; \
+        git -C "$module_path" checkout "$module_revision" || exit 1; \
+        # Upstream discovers a module by its `src/` directory, so a clone that
+        # lands anywhere else, or a repository that is not a module at all,
+        # would otherwise produce an image silently missing it.
+        if [ ! -d "$module_path/src" ]; then \
+          echo "Module '$module_directory' has no 'src/' directory and would not be compiled in."; \
+          exit 1; \
+        fi; \
+        # A module's own SQL is read from `TW_SOURCE_MODULES_DIR`, which CMake
+        # bakes to a path in this build stage's source tree. That path does not
+        # exist in the runtime image and upstream installs the files nowhere,
+        # so bundled module SQL would silently never be applied. Refuse the
+        # build instead of shipping it.
+        if [ -d "$module_path/data/sql" ] && \
+          [ -n "$(find -L "$module_path/data/sql" -xdev ! -type d \
+            -iname '*.sql' -print -quit)" ]; then \
+          echo "Module '$module_directory' ships SQL in 'data/sql/', which this image cannot apply."; \
+          exit 1; \
+        fi; \
+      done; \
+    ); \
+  else \
+    echo "No modules requested."; \
   fi && \
   mkdir -p \
     /opt/tortoise/config \
@@ -77,9 +125,40 @@ RUN \
     -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
     -DUSE_ANTICHEAT=OFF \
     -DUSE_EXTRACTORS=ON \
-    -DDEBUG_SYMBOLS=0 && \
+    -DDEBUG_SYMBOLS=0 \
+    ${TORTOISE_MODULES:+-DMODULES=static} && \
   make -j"$(nproc)" && \
   make install && \
+  if [ -n "$TORTOISE_MODULES" ]; then \
+    # Record the module configuration files `mangosd` insists on at startup so
+    # the container command can name a missing one. The names come from what
+    # upstream installed, built from the same `conf/*.conf.dist` glob as the
+    # list compiled into the binary; `etc/` does not reach the runtime image,
+    # so the list has to be carried out of it. A module need not ship a
+    # configuration file at all, hence the guard on the glob matching.
+    for module_config_dist in /opt/tortoise/etc/modules/*.conf.dist; do \
+      if [ -f "$module_config_dist" ]; then \
+        basename "$module_config_dist" .dist; \
+      fi; \
+    done >/opt/tortoise/module-configs; \
+    # The comparison below is a string compare, so both sides have to agree on
+    # order. Sorting in the C locale matches what `prepare-image-build.sh`
+    # emits, whatever locale it happens to run under.
+    LC_ALL=C sort -o /opt/tortoise/module-configs /opt/tortoise/module-configs; \
+    # Refuse to publish an image that demands a configuration file the
+    # repository ships no example for. Module code floats, so a module can add
+    # or rename a template between builds, and either would make every variant
+    # container exit on startup for want of a bind mount nobody knew to add.
+    # `TORTOISE_MODULE_CONFIGS` is derived from `config/modules/`, so the two
+    # agree only while the shipped examples cover exactly what the build needs.
+    # This also catches an empty list, which would otherwise leave the startup
+    # check with nothing to verify.
+    installed_module_configs="$(tr '\n' ',' </opt/tortoise/module-configs)"; \
+    if [ "${installed_module_configs%,}" != "$TORTOISE_MODULE_CONFIGS" ]; then \
+      echo "This build requires the module configuration files '${installed_module_configs%,}', but the repository ships examples for '$TORTOISE_MODULE_CONFIGS'."; \
+      exit 1; \
+    fi; \
+  fi && \
   # Stage the migrations so `mangosd` can apply them at startup. The applier
   # reads `/opt/tortoise/sql/database_updates/` with one directory per
   # database, so both upstream layouts have to end up in that shape: migrations
