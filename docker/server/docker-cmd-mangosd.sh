@@ -16,10 +16,9 @@ eval "$fixuid_output"
 config_dir="/opt/tortoise/config"
 required_files="mangosd.conf"
 
-# `mangosd` exits when a module configuration file is missing while reporting
-# only that some module configuration could not be loaded, never which. The
-# manifest is written at image build time and is absent from images built
-# without modules.
+# `mangosd` exits when a module configuration file is missing or unreadable;
+# checking here fails earlier and always names the file. The manifest is
+# written at image build time and is absent from images built without modules.
 modules_manifest="/opt/tortoise/module-configs"
 
 if [ -f "$modules_manifest" ]; then
