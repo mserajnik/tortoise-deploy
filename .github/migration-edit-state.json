@@ -8,8 +8,8 @@
   },
   "unstable": {
     "world": {
-      "commit": "93a5faa375083fc49d73fc02bda0f5a214880009",
-      "subject": "Added Module system"
+      "commit": "0ee0748943c08598d2955aee1ad08a0751f2da9e",
+      "subject": "Implementing SkillRaceClassInfo DBC Overrride System"
     },
     "character": null
   }
