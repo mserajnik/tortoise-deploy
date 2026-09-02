@@ -5,9 +5,9 @@
 </h1>
 
 [![Lint status][badge-lint-status]][badge-lint-status-url]
-[![Build status][badge-build-status]][badge-build-status-url]\
+[![Build status][badge-build-status]][badge-build-status-url]  
 [![Latest stable Tortoise-WoW build][badge-latest-stable-build]][badge-latest-stable-build-url]
-[![Latest unstable Tortoise-WoW build][badge-latest-unstable-build]][badge-latest-unstable-build-url]\
+[![Latest unstable Tortoise-WoW build][badge-latest-unstable-build]][badge-latest-unstable-build-url]  
 [![Latest build date][badge-latest-build-date]][badge-latest-build-date-url]
 
 > A Docker setup for Tortoise-WoW
@@ -450,7 +450,7 @@ E.g., to create an administrator account, set the account level to `4`.
 > [`GM.*` options][mangosd-gm-options] in your `mangosd.conf`. These options
 > are inherited from upstream Tortoise-WoW and are tuned for actual Game Master
 > usage rather than regular play (such characters start at level 60, spawn on
-> GM Island, etc.).\
+> GM Island, etc.).  
 > Characters on an account above level `0` are also invulnerable and cannot be
 > killed by damage. This is hardcoded and cannot be disabled via configuration;
 > the in-game `.god off` command turns it off for the current session, but it
