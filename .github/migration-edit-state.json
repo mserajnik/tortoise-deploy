@@ -1,15 +1,15 @@
 {
   "stable": {
     "world": {
-      "commit": "93a5faa375083fc49d73fc02bda0f5a214880009",
-      "subject": "Added Module system"
+      "commit": "417dd84c3a5d7fb8e3ce6c4e7ae9ffeae05dff5e",
+      "subject": "Rename 20260810151900_world.sql to spell_proc_event.sql"
     },
     "character": null
   },
   "unstable": {
     "world": {
-      "commit": "0ee0748943c08598d2955aee1ad08a0751f2da9e",
-      "subject": "Implementing SkillRaceClassInfo DBC Overrride System"
+      "commit": "ee1655cdf61e125001d5a1e59284e8a1498cc6fa",
+      "subject": "Priest fixes"
     },
     "character": null
   }
