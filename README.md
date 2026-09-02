@@ -522,10 +522,10 @@ When a migration edit is detected that affects a database containing user state
 halts startup and prints a message naming the affected database(s) and the
 GitHub link(s) to the upstream commit(s).
 
-Because the server services wait for the database to become healthy,
-`docker compose up -d` keeps waiting while startup is halted. Open a second
-terminal and run `docker compose logs database` to read the message, then run
-the commands below from there.
+Because the server services wait for the database to become healthy, `docker
+compose up -d` keeps waiting while startup is halted. Open a second terminal
+and run `docker compose logs database` to read the message, then run the
+commands below from there.
 
 The container stays running while paused; nothing restarts on its own. To
 resolve:
