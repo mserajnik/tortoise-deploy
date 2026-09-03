@@ -1,8 +1,8 @@
 {
   "stable": {
     "world": {
-      "commit": "417dd84c3a5d7fb8e3ce6c4e7ae9ffeae05dff5e",
-      "subject": "Rename 20260810151900_world.sql to spell_proc_event.sql"
+      "commit": "ee1655cdf61e125001d5a1e59284e8a1498cc6fa",
+      "subject": "Priest fixes"
     },
     "character": null
   },
