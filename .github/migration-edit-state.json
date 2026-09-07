@@ -1,15 +1,15 @@
 {
   "stable": {
     "world": {
-      "commit": "ee1655cdf61e125001d5a1e59284e8a1498cc6fa",
-      "subject": "Priest fixes"
+      "commit": "cea1686c8e4b77aeaf78ddb3612e5e463e055057",
+      "subject": "Updating gossip IDs to mediumint from smallint and adding Balor alliance gossip flight"
     },
     "character": null
   },
   "unstable": {
     "world": {
-      "commit": "ee1655cdf61e125001d5a1e59284e8a1498cc6fa",
-      "subject": "Priest fixes"
+      "commit": "cea1686c8e4b77aeaf78ddb3612e5e463e055057",
+      "subject": "Updating gossip IDs to mediumint from smallint and adding Balor alliance gossip flight"
     },
     "character": null
   }
