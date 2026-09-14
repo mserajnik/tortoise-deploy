@@ -3,28 +3,20 @@
 # SPDX-FileCopyrightText: 2026 Michael Serajnik <https://github.com/mserajnik>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Decides which streams the default workflow builds this run and emits the
-# build units consumed by the server and database build jobs. A stream is
-# skipped when its moving tag (`stable` / `unstable`) already points at the
-# current commit, unless the run is a scheduled Monday rebuild or a manual
-# force rebuild. Each stream always gets its own build, including when `main`
-# and `1181dev` resolve to the same commit: the two streams apply different
-# patch sets and can carry different migration edits, so one image cannot
-# represent both. Records any migration edit per stream in the state file and
-# bakes it into each build's `migration_edits` so the database image can act on
-# it.
+# Decides whether the default workflow builds anything this run and emits the
+# build units consumed by the server and database build jobs. The build is
+# skipped when the `base` moving tag already points at the current commit,
+# unless the run is a scheduled Monday rebuild or a manual force rebuild.
+# Records any migration edit in the state file and bakes it into each build's
+# `migration_edits` so the database image can act on it.
 #
-# A unit is one build leg. Every stream is a unit, and when modules are
-# requested each stream also gets a `<stream>-modules` unit carrying the
-# bundled module set. A variant unit is built exactly when its stream is, so
-# there is no second build decision; it produces a server image only, sharing
-# its stream's database image, and it is not a key in the state file. Hence the
-# two separate lists: the server job builds every unit, the database job only
-# the streams.
-#
-# The cutoff anchors below are used only when the GitHub Container Registry
-# yields no previous build's commit for a stream; subsequent runs resolve it
-# from the registry instead.
+# A unit is one build leg. `base` is the core on its own; when modules are
+# requested, a `modules` unit carrying the bundled module set is added. A
+# variant unit is built exactly when `base` is, so there is no second build
+# decision. It produces a server image only and shares the `base` database
+# image, which keeps it out of the state file. The server job therefore builds
+# every unit, and the database job builds only the units that need a database
+# image of their own.
 
 set -euo pipefail
 
@@ -38,18 +30,18 @@ require_env PACKAGE_OWNER
 require_env PACKAGE_NAME
 require_env TORTOISE_REPOSITORY_OWNER
 require_env TORTOISE_REPOSITORY_NAME
-require_env TORTOISE_STABLE_COMMIT_HASH
-require_env TORTOISE_UNSTABLE_COMMIT_HASH
+require_env TORTOISE_COMMIT_HASH
 require_env STATE_FILE
 
-# The Tortoise-WoW commits we initially pinned for the drift check on `main`
-# and `1181dev`. Both precede the first image built for their stream, so a scan
-# starting here covers every commit that reached a user database.
-TORTOISE_CUTOFF_STABLE="f1dbbf7549829a4fffe9a1f635581822d940ee81"
-TORTOISE_CUTOFF_UNSTABLE="fee5caf96dbca685a1661a055e541a25fd8a4a60"
+# This anchor is the Tortoise-WoW commit that the last image published before
+# the `base` rename was built from. Every run that finds a prior build takes
+# the scan floor from the registry; this anchor supplies it when none is found,
+# as on the first run after the rename. Everything up to this commit was
+# already scanned while the unit was called `stable` and is recorded in the
+# state file, so that run picks up exactly the commits that arrived since.
+TORTOISE_CUTOFF="5fafe43b576116c3aecde435c41c87a47864f943"
 
-stable_commit="$(trim "$TORTOISE_STABLE_COMMIT_HASH")"
-unstable_commit="$(trim "$TORTOISE_UNSTABLE_COMMIT_HASH")"
+tortoise_commit="$(trim "$TORTOISE_COMMIT_HASH")"
 force_rebuild="${FORCE_REBUILD:-false}"
 schedule_force_build="false"
 
@@ -65,56 +57,38 @@ fi
 run_compute() {
   local last_built="$1"
   local current="$2"
-  local stream_key="$3"
+  local unit="$3"
 
   LAST_BUILT_COMMIT_HASH="$last_built" \
     CURRENT_COMMIT_HASH="$current" \
-    STREAM_KEY="$stream_key" \
+    UNIT="$unit" \
     STATE_FILE="$STATE_FILE" \
     "$script_dir/compute-migration-edits.sh"
 }
 
 # shellcheck disable=SC2153
-stable_last_built="$(last_built_commit_for_stream "$PACKAGE_OWNER" "$PACKAGE_NAME" "stable")"
-unstable_last_built="$(last_built_commit_for_stream "$PACKAGE_OWNER" "$PACKAGE_NAME" "unstable")"
+last_built="$(last_built_commit_for_unit "$PACKAGE_OWNER" "$PACKAGE_NAME" "base")"
 
-# The build decisions below use the resolved values as they are; an empty
-# string forces a rebuild. The migration-edit scan instead needs a commit to
-# walk from, so it falls back to the cutoff anchor.
-stable_scan_floor="$stable_last_built"
-if [[ -z "$stable_scan_floor" ]]; then
-  echo "No prior package version with a commit hash tag found for stream 'stable'; falling back to migration edit cutoff."
-  stable_scan_floor="$TORTOISE_CUTOFF_STABLE"
+# The build decision below uses the resolved value as it is; an empty string
+# forces a rebuild. The migration-edit scan instead needs a commit to walk
+# from, so it falls back to the cutoff anchor.
+scan_floor="$last_built"
+if [[ -z "$scan_floor" ]]; then
+  echo "No prior package version with a commit hash tag found for unit 'base'; falling back to migration edit cutoff."
+  scan_floor="$TORTOISE_CUTOFF"
 fi
 
-unstable_scan_floor="$unstable_last_built"
-if [[ -z "$unstable_scan_floor" ]]; then
-  echo "No prior package version with a commit hash tag found for stream 'unstable'; falling back to migration edit cutoff."
-  unstable_scan_floor="$TORTOISE_CUTOFF_UNSTABLE"
+needs_build="false"
+if [[ "$always_build" == "true" || "$last_built" != "$tortoise_commit" ]]; then
+  needs_build="true"
 fi
 
-stable_needs="false"
-if [[ "$always_build" == "true" || "$stable_last_built" != "$stable_commit" ]]; then
-  stable_needs="true"
+# Record any migration edit before building.
+if [[ "$needs_build" == "true" ]]; then
+  run_compute "$scan_floor" "$tortoise_commit" "base"
 fi
 
-unstable_needs="false"
-if [[ "$always_build" == "true" || "$unstable_last_built" != "$unstable_commit" ]]; then
-  unstable_needs="true"
-fi
-
-# Record any migration edit per stream before building. Each stream is scanned
-# against its own lineage, from the commit it was last built from or from its
-# cutoff anchor when the registry has no such commit.
-if [[ "$stable_needs" == "true" ]]; then
-  run_compute "$stable_scan_floor" "$stable_commit" "stable"
-fi
-if [[ "$unstable_needs" == "true" ]]; then
-  run_compute "$unstable_scan_floor" "$unstable_commit" "unstable"
-fi
-
-stable_migration_edits="$("$script_dir/migration-edits-to-arg.sh" "$STATE_FILE" "stable")"
-unstable_migration_edits="$("$script_dir/migration-edits-to-arg.sh" "$STATE_FILE" "unstable")"
+migration_edits="$("$script_dir/migration-edits-to-arg.sh" "$STATE_FILE" "base")"
 
 # The bundled module set, packed into the single `TORTOISE_MODULES` build
 # argument the server Dockerfile takes: `<directory>=<url>@<revision>` entries
@@ -186,48 +160,41 @@ add_metadata() {
      }')")
 }
 
-# Records one stream: one server image and one database image from the same
-# commit. The database image is also published under the stream's variants,
-# which share it; only the server job builds a variant of its own.
-add_stream() {
-  local stream="$1"
-  local tag_set="$2"
-  local commit_hash="$3"
-  local migration_edits="$4"
+# Records the `base` unit: one server image and one database image from the
+# same commit. The database image is also published under the tags of every
+# variant that shares it; only the server job builds a variant of its own.
+add_base() {
+  local commit_hash="$1"
+  local migration_edits="$2"
   local database_alias_units=""
 
   if [[ -n "$modules" ]]; then
-    database_alias_units="$stream-modules"
+    database_alias_units="modules"
   fi
 
-  server_units+=("$stream")
-  database_units+=("$stream")
-  add_metadata "$stream" "$tag_set" "$commit_hash" "$stream" "$migration_edits" \
+  server_units+=("base")
+  database_units+=("base")
+  add_metadata "base" "latest,base" "$commit_hash" "base" "$migration_edits" \
     "" "" "$database_alias_units"
 }
 
-# Records a stream's bundled-module variant. Server image only, and it carries
-# its stream's patch set because patches are per core branch.
+# Records a bundled-module variant. The variant gets a server image only and
+# shares the `base` database image. It carries the `base` patch set, which is
+# the patch set for the core it is built from.
 add_module_variant() {
-  local stream="$1"
+  local unit="$1"
   local commit_hash="$2"
   local migration_edits="$3"
 
-  server_units+=("$stream-modules")
-  add_metadata "$stream-modules" "$stream-modules" "$commit_hash" "$stream" \
+  server_units+=("$unit")
+  add_metadata "$unit" "$unit" "$commit_hash" "base" \
     "$migration_edits" "$modules" "$module_licenses" ""
 }
 
-if [[ "$stable_needs" == "true" ]]; then
-  add_stream "stable" "latest,stable" "$stable_commit" "$stable_migration_edits"
+if [[ "$needs_build" == "true" ]]; then
+  add_base "$tortoise_commit" "$migration_edits"
   if [[ -n "$modules" ]]; then
-    add_module_variant "stable" "$stable_commit" "$stable_migration_edits"
-  fi
-fi
-if [[ "$unstable_needs" == "true" ]]; then
-  add_stream "unstable" "unstable" "$unstable_commit" "$unstable_migration_edits"
-  if [[ -n "$modules" ]]; then
-    add_module_variant "unstable" "$unstable_commit" "$unstable_migration_edits"
+    add_module_variant "modules" "$tortoise_commit" "$migration_edits"
   fi
 fi
 

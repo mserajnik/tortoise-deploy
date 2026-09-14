@@ -52,27 +52,24 @@ jobs:
       database_units_to_build: ${{ steps.prepare-build-matrix.outputs.database_units_to_build }}
       build_metadata: ${{ steps.prepare-build-matrix.outputs.build_metadata }}
       any_images_to_build: ${{ steps.prepare-build-matrix.outputs.any_images_to_build }}
-      stable_commit_hash: ${{ steps.resolve-sources.outputs.tortoise_stable_commit_hash }}
-      unstable_commit_hash: ${{ steps.resolve-sources.outputs.tortoise_unstable_commit_hash }}
+      commit_hash: ${{ steps.resolve-sources.outputs.tortoise_commit_hash }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
       # Resolve the current upstream commit of every source the workflow
-      # depends on to a full commit hash once, up front. Tortoise-WoW is built
-      # from two branches (`main` for `stable`, `1181dev` for `unstable`).
-      # Downstream steps (drift check, build decision, image builds) all
-      # reference these same commit hashes so the run is consistent even if a
-      # branch tip moves mid-run.
+      # depends on to a full commit hash once, up front. Downstream steps
+      # (drift check, build decision, image builds) all reference these same
+      # commit hashes so the run is consistent even if a branch tip moves
+      # during the run.
       - name: Resolve sources
         id: resolve-sources
         env:
           GH_TOKEN: ${{ github.token }}
           TORTOISE_REPOSITORY_OWNER: tortoise-wow
           TORTOISE_REPOSITORY_NAME: tortoise-wow
-          TORTOISE_STABLE_REVISION: main
-          TORTOISE_UNSTABLE_REVISION: 1181dev
+          TORTOISE_REVISION: main
           TW_MOD_AUTOSCALE_REPOSITORY_OWNER: Penqle
           TW_MOD_AUTOSCALE_REPOSITORY_NAME: tw-mod-autoscale
           TW_MOD_AUTOSCALE_REVISION: main
@@ -93,18 +90,15 @@ jobs:
       - name: Check for upstream drift
         id: upstream-drift-check
         env:
-          TORTOISE_STABLE_REPOSITORY: ${{ steps.resolve-sources.outputs.tortoise_repository }}
-          TORTOISE_STABLE_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_stable_commit_hash }}
-          TORTOISE_UNSTABLE_REPOSITORY: ${{ steps.resolve-sources.outputs.tortoise_repository }}
-          TORTOISE_UNSTABLE_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_unstable_commit_hash }}
+          TORTOISE_REPOSITORY: ${{ steps.resolve-sources.outputs.tortoise_repository }}
+          TORTOISE_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_commit_hash }}
           TW_MOD_AUTOSCALE_REPOSITORY: ${{ steps.resolve-sources.outputs.tw_mod_autoscale_repository }}
           TW_MOD_AUTOSCALE_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tw_mod_autoscale_commit_hash }}
           TW_MOD_LEECH_REPOSITORY: ${{ steps.resolve-sources.outputs.tw_mod_leech_repository }}
           TW_MOD_LEECH_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tw_mod_leech_commit_hash }}
           MARIADB_DOCKER_REPOSITORY: ${{ steps.resolve-sources.outputs.mariadb_docker_repository }}
           MARIADB_DOCKER_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.mariadb_docker_commit_hash }}
-          TORTOISE_STABLE_KNOWN_COMMIT_HASH: a59061f4b1a70e3947647bbceedb3a40d5cac790
-          TORTOISE_UNSTABLE_KNOWN_COMMIT_HASH: a59061f4b1a70e3947647bbceedb3a40d5cac790
+          TORTOISE_KNOWN_COMMIT_HASH: a59061f4b1a70e3947647bbceedb3a40d5cac790
           TW_MOD_AUTOSCALE_KNOWN_COMMIT_HASH: 8675af22569674d906479aec0d7883d13d9212bb
           TW_MOD_LEECH_KNOWN_COMMIT_HASH: a3667c2c672b885fddc5afd76e48471dafa4eccc
           # When bumping `MARIADB_DOCKER_KNOWN_COMMIT_HASH`, also update the
@@ -114,10 +108,10 @@ jobs:
           MARIADB_DOCKER_KNOWN_COMMIT_HASH: 063eb10da092170beea08d2c629b6eb79d28cceb
         run: ./.github/scripts/check-upstream-drift.sh
 
-      # Decides which streams to build (skipping any whose moving tag already
-      # points at the current commit, unless this is a scheduled Monday rebuild
-      # or a manual force rebuild) and emits the build units the server and
-      # database jobs consume. Also records any migration edit per stream in
+      # Decides whether to build and emits the build units the server and
+      # database jobs consume. The build is skipped when the `base` moving tag
+      # already points at the current commit, unless this is a scheduled Monday
+      # rebuild or a manual force rebuild. Also records any migration edit in
       # the state file and bakes it into each build's `migration_edits` so the
       # database image can act on it.
       - name: Prepare build matrix
@@ -129,8 +123,7 @@ jobs:
           PACKAGE_NAME: tortoise-database
           TORTOISE_REPOSITORY_OWNER: tortoise-wow
           TORTOISE_REPOSITORY_NAME: tortoise-wow
-          TORTOISE_STABLE_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_stable_commit_hash }}
-          TORTOISE_UNSTABLE_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_unstable_commit_hash }}
+          TORTOISE_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_commit_hash }}
           TW_MOD_AUTOSCALE_REPOSITORY: ${{ steps.resolve-sources.outputs.tw_mod_autoscale_repository }}
           TW_MOD_AUTOSCALE_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tw_mod_autoscale_commit_hash }}
           TW_MOD_LEECH_REPOSITORY: ${{ steps.resolve-sources.outputs.tw_mod_leech_repository }}
@@ -161,7 +154,9 @@ jobs:
     needs: setup
     if: ${{ needs.setup.outputs.any_images_to_build == 'true' }}
     strategy:
-      fail-fast: true
+      # Each unit builds an image of its own, so one failing leg must not
+      # cancel the others.
+      fail-fast: false
       matrix:
         unit: ${{ fromJSON(needs.setup.outputs.server_units_to_build) }}
     permissions:
@@ -172,7 +167,7 @@ jobs:
       image_kind: server
       architectures: both
       push_images: ${{ github.event_name != 'pull_request' }}
-      stream: ${{ matrix.unit }}
+      unit: ${{ matrix.unit }}
       tag_set: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].tag_set }}
       commit_hash: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].commit_hash }}
       patch_set: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].patch_set }}
@@ -187,7 +182,7 @@ jobs:
     needs: [setup, build-and-push-server-images]
     if: ${{ needs.setup.outputs.any_images_to_build == 'true' }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         unit: ${{ fromJSON(needs.setup.outputs.database_units_to_build) }}
     permissions:
@@ -198,7 +193,7 @@ jobs:
       image_kind: database
       architectures: both
       push_images: ${{ github.event_name != 'pull_request' }}
-      stream: ${{ matrix.unit }}
+      unit: ${{ matrix.unit }}
       tag_set: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].tag_set }}
       commit_hash: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].commit_hash }}
       patch_set: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].patch_set }}
@@ -239,8 +234,7 @@ jobs:
 
       - name: Upload badge JSON files to web server
         env:
-          STABLE_COMMIT_HASH: ${{ needs.setup.outputs.stable_commit_hash }}
-          UNSTABLE_COMMIT_HASH: ${{ needs.setup.outputs.unstable_commit_hash }}
+          COMMIT_HASH: ${{ needs.setup.outputs.commit_hash }}
           BADGES_FTP_HOST: ${{ secrets.BADGES_FTP_HOST }}
           BADGES_FTP_USERNAME: ${{ secrets.BADGES_FTP_USERNAME }}
           BADGES_FTP_PASSWORD: ${{ secrets.BADGES_FTP_PASSWORD }}

@@ -1,6 +1,6 @@
 services:
   database:
-    image: ghcr.io/mserajnik/tortoise-database:stable-modules
+    image: ghcr.io/mserajnik/tortoise-database:modules
     restart: unless-stopped
     # The healthcheck reports whether the container is working as expected by
     # marking it `healthy` or `unhealthy`; note that Docker Compose does not
@@ -75,7 +75,7 @@ services:
       - TORTOISE_PROCESS_CUSTOM_SQL=1
 
   realmd:
-    image: ghcr.io/mserajnik/tortoise-server:stable-modules
+    image: ghcr.io/mserajnik/tortoise-server:modules
     # If you are using a Linux host and your user's UID and GID are not 1000,
     # change these values to reflect your user's UID and GID. This will cause
     # the user in the container to use the same UID and GID and prevent
@@ -119,7 +119,7 @@ services:
       - TZ=Etc/UTC # Change this to your desired time zone (usually you want to match your host system's time zone).
 
   mangosd:
-    image: ghcr.io/mserajnik/tortoise-server:stable-modules
+    image: ghcr.io/mserajnik/tortoise-server:modules
     # If you are using a Linux host and your user's UID and GID are not 1000,
     # change these values to reflect your user's UID and GID. This will cause
     # the user in the container to use the same UID and GID and prevent

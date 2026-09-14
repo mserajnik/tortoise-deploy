@@ -8,7 +8,7 @@ ARG TORTOISE_MODULES=
 ARG TORTOISE_MODULE_CONFIGS=
 ARG TORTOISE_PATCHES_REPOSITORY_URL
 ARG TORTOISE_FAIL_ON_PATCH_ERROR=0
-ARG TORTOISE_PATCH_SET=stable
+ARG TORTOISE_PATCH_SET=base
 ARG TORTOISE_USER_ID=1000
 ARG TORTOISE_GROUP_ID=1000
 ARG TORTOISE_USER_NAME=tortoise
@@ -43,10 +43,10 @@ RUN \
     echo "Cloning and applying patches from $TORTOISE_PATCHES_REPOSITORY_URL."; \
     git clone "$TORTOISE_PATCHES_REPOSITORY_URL" /build/patches || exit 1; \
     patch_count=0; \
-    # Patches in `all` are applied to every build; patches in `<build>` (the
-    # `TORTOISE_PATCH_SET` value, `stable` or `unstable`) only to the matching
-    # build. All of them apply to `/build/core`. The `<build>` directory is
-    # optional and may not exist.
+    # Patches in `all` are applied to every image. Patches in the
+    # `TORTOISE_PATCH_SET` directory, which is optional and may not exist, are
+    # applied only to images built with that set. Every patch applies to
+    # `/build/core`.
     for patch in \
       /build/patches/all/*.patch \
       /build/patches/"$TORTOISE_PATCH_SET"/*.patch; \
@@ -69,7 +69,7 @@ RUN \
     echo "No repository to apply patches from provided."; \
   fi && \
   if [ -n "$TORTOISE_MODULES" ]; then \
-    # Bundled modules for the `-modules` image variants, as
+    # Bundled modules for a bundled-module variant, as
     # `<directory>=<url>@<revision>` entries separated by `|`. They are cloned
     # after the patch loop because every patch targets the core itself. The
     # directory name is load-bearing: the generated loader calls

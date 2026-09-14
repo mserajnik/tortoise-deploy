@@ -1,16 +1,15 @@
 {
-  "stable": {
-    "world": {
-      "commit": "f62cd95b63439ebdc7915053016ffa2753f98121",
-      "subject": "refactor: finalize manager-owned headless session lifecycle"
-    },
-    "character": null
-  },
-  "unstable": {
-    "world": {
-      "commit": "f62cd95b63439ebdc7915053016ffa2753f98121",
-      "subject": "refactor: finalize manager-owned headless session lifecycle"
-    },
-    "character": null
+  "version": 1,
+  "source_kind": "repository",
+  "streams": {
+    "base": {
+      "world": {
+        "core": {
+          "commit": "f62cd95b63439ebdc7915053016ffa2753f98121",
+          "subject": "refactor: finalize manager-owned headless session lifecycle"
+        }
+      },
+      "character": {}
+    }
   }
 }

@@ -55,14 +55,12 @@ body:
     validations:
       required: true
   - type: dropdown
-    id: build
+    id: variant
     attributes:
-      label: Image build
+      label: Image variant
       options:
-        - stable
-        - stable-modules
-        - unstable
-        - unstable-modules
+        - base
+        - modules
     validations:
       required: true
   - type: textarea
@@ -78,12 +76,12 @@ body:
     attributes:
       label: Image versions
       description: |
-        The output of the following commands (replace `<build>` with the image build you use):
+        The output of the following commands (replace `<tag>` with the tag each service in your `compose.yaml` uses):
 
         ```sh
         docker compose images
-        docker image inspect --format '{{ json .Config.Labels }}' ghcr.io/mserajnik/tortoise-server:<build>
-        docker image inspect --format '{{ json .Config.Labels }}' ghcr.io/mserajnik/tortoise-database:<build>
+        docker image inspect --format '{{ json .Config.Labels }}' ghcr.io/mserajnik/tortoise-server:<tag>
+        docker image inspect --format '{{ json .Config.Labels }}' ghcr.io/mserajnik/tortoise-database:<tag>
         ```
       render: text
     validations:

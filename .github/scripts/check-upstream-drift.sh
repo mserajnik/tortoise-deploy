@@ -37,9 +37,8 @@ add_github_check() {
   local known_commit_hash="$2"
   local latest_commit_hash="$3"
   local path="$4"
-  local label="${5:-}"
 
-  local desc="$owner_repo${label:+@$label}:$path"
+  local desc="$owner_repo:$path"
   local known_url="https://raw.githubusercontent.com/$owner_repo/$known_commit_hash/$path"
   local latest_url="https://raw.githubusercontent.com/$owner_repo/$latest_commit_hash/$path"
 
@@ -65,9 +64,6 @@ add_github_check() {
 # Files we only patch (such as `AutoUpdater.cpp`) are not watched here: a drift
 # that breaks a patch already fails the build via
 # `TORTOISE_FAIL_ON_PATCH_ERROR`.
-#
-# Tortoise-WoW is built from two branches (`main` and `1181dev`) that can
-# diverge, so each is checked against its own pinned commit.
 tortoise_paths=(
   CMakeLists.txt
   sql/base/tw_world_migrations.sql
@@ -76,39 +72,25 @@ tortoise_paths=(
   src/realmd/realmd.conf.dist.in
 )
 
-if [[ -n "${TORTOISE_STABLE_REPOSITORY:-}${TORTOISE_STABLE_LATEST_COMMIT_HASH:-}${TORTOISE_STABLE_KNOWN_COMMIT_HASH:-}" ]]; then
-  require_env TORTOISE_STABLE_REPOSITORY
-  require_env TORTOISE_STABLE_LATEST_COMMIT_HASH
-  require_env TORTOISE_STABLE_KNOWN_COMMIT_HASH
+if [[ -n "${TORTOISE_REPOSITORY:-}${TORTOISE_LATEST_COMMIT_HASH:-}${TORTOISE_KNOWN_COMMIT_HASH:-}" ]]; then
+  require_env TORTOISE_REPOSITORY
+  require_env TORTOISE_LATEST_COMMIT_HASH
+  require_env TORTOISE_KNOWN_COMMIT_HASH
 
-  tortoise_stable_latest_commit_hash="$(trim "$TORTOISE_STABLE_LATEST_COMMIT_HASH")"
+  tortoise_latest_commit_hash="$(trim "$TORTOISE_LATEST_COMMIT_HASH")"
 
   for path in "${tortoise_paths[@]}"; do
-    add_github_check "$TORTOISE_STABLE_REPOSITORY" \
-      "$TORTOISE_STABLE_KNOWN_COMMIT_HASH" "$tortoise_stable_latest_commit_hash" "$path" main
+    add_github_check "$TORTOISE_REPOSITORY" \
+      "$TORTOISE_KNOWN_COMMIT_HASH" "$tortoise_latest_commit_hash" "$path"
   done
 fi
 
-if [[ -n "${TORTOISE_UNSTABLE_REPOSITORY:-}${TORTOISE_UNSTABLE_LATEST_COMMIT_HASH:-}${TORTOISE_UNSTABLE_KNOWN_COMMIT_HASH:-}" ]]; then
-  require_env TORTOISE_UNSTABLE_REPOSITORY
-  require_env TORTOISE_UNSTABLE_LATEST_COMMIT_HASH
-  require_env TORTOISE_UNSTABLE_KNOWN_COMMIT_HASH
-
-  tortoise_unstable_latest_commit_hash="$(trim "$TORTOISE_UNSTABLE_LATEST_COMMIT_HASH")"
-
-  for path in "${tortoise_paths[@]}"; do
-    add_github_check "$TORTOISE_UNSTABLE_REPOSITORY" \
-      "$TORTOISE_UNSTABLE_KNOWN_COMMIT_HASH" "$tortoise_unstable_latest_commit_hash" "$path" 1181dev
-  done
-fi
-
-# Each module bundled into the `-modules` image variants has its configuration
-# template watched, because we vendor it as
-# `config/modules/<module>.conf.example`; a new key, a rename or a removal has
-# to reach that copy or variant users are handed a stale template. The module
-# code itself floats, exactly as the core's does. A rename or a removal needs
-# no special handling here; `fetch_reference` already fails the run when a
-# watched path stops resolving.
+# Each module bundled into a variant image has its configuration template
+# watched, because we vendor it as `config/modules/<module>.conf.example`; a
+# new key, a rename or a removal has to reach that copy or variant users are
+# handed a stale template. The module code itself floats, exactly as the core's
+# does. A rename or a removal needs no special handling here; `fetch_reference`
+# already fails the run when a watched path stops resolving.
 if [[ -n "${TW_MOD_AUTOSCALE_REPOSITORY:-}${TW_MOD_AUTOSCALE_LATEST_COMMIT_HASH:-}${TW_MOD_AUTOSCALE_KNOWN_COMMIT_HASH:-}" ]]; then
   require_env TW_MOD_AUTOSCALE_REPOSITORY
   require_env TW_MOD_AUTOSCALE_LATEST_COMMIT_HASH

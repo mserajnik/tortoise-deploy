@@ -5,13 +5,13 @@
 
 # Produces the per build metadata consumed by the reusable build workflow:
 # Dockerfile path, target architectures, image tags, build arguments, OCI
-# annotations, and labels for the requested image kind and stream. A stream is
-# described by its name (`STREAM`), its moving tag(s) (`TAG_SET`), the commit
-# to build, and the patch set to apply. A bundled-module variant additionally
-# carries the module set to build in (`MODULES`) and the licenses those modules
-# add to the image (`MODULE_LICENSES`). `ALIAS_UNITS` names further units this
-# same image is published under, which is how one database image serves a
-# stream and its variants.
+# annotations, and labels for the requested image kind and unit. A unit is
+# described by its name (`UNIT`), its moving tags (`TAG_SET`), the commit to
+# build, and the patch set to apply. A bundled-module variant also carries the
+# module set to build in (`MODULES`) and the licenses those modules add to the
+# image (`MODULE_LICENSES`). `ALIAS_UNITS` names further units this same image
+# is published under, which is how one database image serves `base` and a
+# variant of it.
 
 set -euo pipefail
 
@@ -22,7 +22,7 @@ source "$script_dir/helpers.sh"
 require_env REGISTRY
 require_env IMAGE_KIND
 require_env ARCHITECTURES
-require_env STREAM
+require_env UNIT
 require_env TAG_SET
 require_env COMMIT_HASH
 require_env OCI_ANNOTATION_AUTHORS
@@ -43,7 +43,7 @@ tortoise_patches_repository_url="$(trim "${TORTOISE_PATCHES_REPOSITORY_URL:-}")"
 # shellcheck disable=SC2153
 commit_hash="$(trim "$COMMIT_HASH")"
 # shellcheck disable=SC2153
-stream="$(trim "$STREAM")"
+unit="$(trim "$UNIT")"
 patch_set="$(trim "${PATCH_SET:-}")"
 modules="$(trim "${MODULES:-}")"
 alias_units="$(trim "${ALIAS_UNITS:-}")"
@@ -138,15 +138,15 @@ for moving_tag in "${moving_tags[@]}"; do
     tags+=("$image:$moving_tag")
   fi
 done
-ref_name="$image:$stream-$commit_hash"
+ref_name="$image:$unit-$commit_hash"
 tags+=("$ref_name")
 
 # Units that share this exact image get the same pair of tags, a moving one and
 # a commit one, so selecting by either is uniform across the images a setup
-# uses. One database image serves its stream and every bundled-module variant
-# of it, because the modules add no SQL of their own; publishing the variant's
-# tags here now means users never have to change the tag if that ever stops
-# being true.
+# uses. One database image serves `base` and every bundled-module variant whose
+# modules add no SQL of their own; publishing the variant's tags here now means
+# users never have to change the tag if that ever stops being true for a
+# variant that shares it today.
 if [[ -n "$alias_units" ]]; then
   IFS=',' read -r -a alias_unit_names <<<"$alias_units"
   for alias_unit in "${alias_unit_names[@]}"; do

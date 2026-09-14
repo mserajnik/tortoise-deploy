@@ -3,10 +3,15 @@
 # SPDX-FileCopyrightText: 2026 Michael Serajnik <https://github.com/mserajnik>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Walks the commits between the previous and current build of a stream and
+# Walks the commits between the previous and current build of a unit and
 # updates `.github/migration-edit-state.json` with the most recent commit that
 # edited each target database's SQL sources. A recorded edit is kept until a
 # newer one supersedes it.
+#
+# Under each target sits one entry per source the edit came from, which today
+# is always `core`. The entry's shape follows the remedy: a bare object where
+# the database image can re-create the target, and a list where the operator
+# fixes it by hand.
 #
 # Targets are classified by directory, which is how the server itself decides
 # where a migration goes: `AutoUpdater::ProcessUpdates` joins
@@ -40,18 +45,18 @@ source "$script_dir/helpers.sh"
 require_env TORTOISE_REPOSITORY_OWNER
 require_env TORTOISE_REPOSITORY_NAME
 require_env STATE_FILE
-require_env STREAM_KEY
+require_env UNIT
 require_env LAST_BUILT_COMMIT_HASH
 require_env CURRENT_COMMIT_HASH
 
 repo="$TORTOISE_REPOSITORY_OWNER/$TORTOISE_REPOSITORY_NAME"
 # shellcheck disable=SC2153
-stream_key="$(trim "$STREAM_KEY")"
-# jq would create a key that is not there, so an unrecognized stream writes the
-# edit into a top-level key nothing reads.
-case "$stream_key" in
-  stable | unstable) ;;
-  *) fail "Unsupported stream '$stream_key'." ;;
+unit="$(trim "$UNIT")"
+# jq would create a key that is not there, so an unrecognized unit writes the
+# edit where nothing reads it.
+case "$unit" in
+  base) ;;
+  *) fail "Unsupported unit '$unit'." ;;
 esac
 # shellcheck disable=SC2153
 last_built_commit_hash="$(trim "$LAST_BUILT_COMMIT_HASH")"
@@ -59,6 +64,7 @@ last_built_commit_hash="$(trim "$LAST_BUILT_COMMIT_HASH")"
 current_commit_hash="$(trim "$CURRENT_COMMIT_HASH")"
 
 db_names=(world character)
+db_kinds=(recreate manual)
 
 # The backslashes are doubled because `awk -v` processes escape sequences in
 # the value.
@@ -86,21 +92,31 @@ regional_pattern='^sql/database_updates/[^/]+/cn/[^/]+\\.sql$'
 
 # A state file jq cannot read as an object would make the writeback's
 # comparison read as "already up to date" and silently drop an edit the walk
-# just found.
+# just found. `version` marks this shape, so the flat one that preceded it
+# cannot pass as a valid state.
 if ! jq -e '
   type == "object"
+  and .version == 1
+  and (.streams | type) == "object"
+  and all(.streams[]; type == "object"
+      and (keys_unsorted - ["world", "character"]) == []
+      and all(.[]; type == "object"
+          and all(.[];
+                (type == "object" and has("commit"))
+                or (type == "array" and length > 0
+                    and all(.[]; type == "object" and has("commit"))))))
   and all(.. | objects | select(has("commit")) | .commit;
           type == "string" and length == 40 and test("^[0-9a-f]{40}$"))
 ' "$STATE_FILE" >/dev/null; then
-  fail "State file '$STATE_FILE' is missing, is not a JSON object, or holds a malformed commit hash."
+  fail "State file '$STATE_FILE' is missing, is not a version 1 state object with 'world' and 'character' targets, or holds a malformed commit hash."
 fi
 
 if [[ "$last_built_commit_hash" == "$current_commit_hash" ]]; then
-  echo "Last built and current commit are identical for stream '$stream_key'; nothing to scan."
+  echo "Last built and current commit are identical for unit '$unit'; nothing to scan."
   exit 0
 fi
 
-echo "Scanning '$repo' for migration edits between $last_built_commit_hash and $current_commit_hash (stream '$stream_key')..."
+echo "Scanning '$repo' for migration edits between $last_built_commit_hash and $current_commit_hash (unit '$unit')..."
 
 clone_dir="$(mktemp -d)"
 trap 'rm -rf "$clone_dir"' EXIT
@@ -234,7 +250,7 @@ while IFS= read -r commit_hash; do
       latest_commits[i]="$commit_hash"
       latest_subjects[i]="$subject"
       found_count=$((found_count + 1))
-      echo "  - $stream_key/${db_names[$i]}: $commit_hash ($subject)"
+      echo "  - $unit/${db_names[$i]}: $commit_hash ($subject)"
     fi
   done
 done <<<"$commit_hashes_newest_first"
@@ -242,35 +258,52 @@ done <<<"$commit_hashes_newest_first"
 echo "Scanned $scanned commit(s); found edits for $found_count target(s)."
 
 if [[ "$found_count" -eq 0 ]]; then
-  echo "No new migration edits for stream '$stream_key'; state file unchanged."
+  echo "No new migration edits for unit '$unit'; state file unchanged."
   exit 0
 fi
 
-# The single-quoted string is a jq filter, not a bash expression; `$existing`
-# and `$stream` are jq variables. Rebuilding the stream's object from the
-# target list is what drops a target that is no longer watched.
+# The single-quoted string is a jq filter, not a Bash expression; `$existing`
+# and `$unit` are jq variables. Rebuilding the unit's object from the target
+# list is what drops a target that is no longer watched, and every watched
+# target keeps a key even when nothing is recorded under it. The top-level key
+# is `streams` because that is the key docker-deploy-actions reads and writes.
 # shellcheck disable=SC2016
-state_filter='. as $existing | .[$stream] = {'
+state_filter='. as $existing | .streams[$unit] = {'
 for i in "${!db_names[@]}"; do
   if [[ "$i" -gt 0 ]]; then
     state_filter+=','
   fi
-  state_filter+=" \"${db_names[$i]}\": \$existing[\$stream].\"${db_names[$i]}\""
+  state_filter+=" \"${db_names[$i]}\": (\$existing.streams[\$unit].\"${db_names[$i]}\" // {})"
 done
 state_filter+=' }'
 
-new_state="$(jq --arg stream "$stream_key" "$state_filter" "$STATE_FILE")"
+new_state="$(jq --arg unit "$unit" "$state_filter" "$STATE_FILE")"
 
 for i in "${!db_names[@]}"; do
-  if [[ -n "${latest_commits[$i]}" ]]; then
-    new_state="$(jq \
-      --arg stream "$stream_key" \
-      --arg db "${db_names[$i]}" \
-      --arg commit_hash "${latest_commits[$i]}" \
-      --arg subject "${latest_subjects[$i]}" \
-      '.[$stream][$db] = {commit: $commit_hash, subject: $subject}' \
-      <<<"$new_state")"
+  if [[ -z "${latest_commits[$i]}" ]]; then
+    continue
   fi
+
+  # `edit_filter` persists across iterations. Clearing it first makes a kind
+  # with no arm below fail on an unbound variable.
+  unset edit_filter
+  # Both values are jq filters, not Bash expressions; `$commit_hash` and
+  # `$subject` are jq variables bound below. A `manual` target's list holds the
+  # newest edit at index 0, which is where `migration-edits-to-arg.sh` reads it
+  # from.
+  # shellcheck disable=SC2016
+  case "${db_kinds[$i]}" in
+    recreate) edit_filter='{commit: $commit_hash, subject: $subject}' ;;
+    manual) edit_filter='[{commit: $commit_hash, subject: $subject}]' ;;
+  esac
+
+  new_state="$(jq \
+    --arg unit "$unit" \
+    --arg db "${db_names[$i]}" \
+    --arg commit_hash "${latest_commits[$i]}" \
+    --arg subject "${latest_subjects[$i]}" \
+    ".streams[\$unit][\$db].core = $edit_filter" \
+    <<<"$new_state")"
 done
 
 existing_state="$(<"$STATE_FILE")"

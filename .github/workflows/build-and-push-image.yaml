@@ -19,7 +19,7 @@ on:
       push_images:
         type: boolean
         required: true
-      stream:
+      unit:
         type: string
         required: true
       tag_set:
@@ -90,7 +90,7 @@ jobs:
         env:
           IMAGE_KIND: ${{ inputs.image_kind }}
           ARCHITECTURES: ${{ inputs.architectures }}
-          STREAM: ${{ inputs.stream }}
+          UNIT: ${{ inputs.unit }}
           TAG_SET: ${{ inputs.tag_set }}
           COMMIT_HASH: ${{ inputs.commit_hash }}
           PATCH_SET: ${{ inputs.patch_set }}

@@ -126,20 +126,16 @@ resolve_commit_hash() {
   printf '%s' "$result"
 }
 
-# Resolves the Tortoise-WoW commit a stream's moving tag (`stable` or
-# `unstable`) was last built from, by reading the commit hash tag that shares
-# the package version of that moving tag. The streams share one package, so the
-# commit cannot be taken from "the newest hash tag"; it must come from the same
-# version the moving tag points at. Prints an empty string when the stream has
-# no prior build.
-last_built_commit_for_stream() {
+# Resolves the Tortoise-WoW commit a unit's moving tag was last built from, by
+# reading the commit hash tag that shares the package version of that moving
+# tag. The units share one package, so the commit cannot be taken from "the
+# newest hash tag"; it must come from the same version the moving tag points
+# at. Prints an empty string when the unit has no prior build.
+last_built_commit_for_unit() {
   local package_owner="$1"
   local package_name="$2"
   local moving_tag="$3"
-  # The bare form matches images published before commit hash tags carried the
-  # stream name.
-  # TODO: Drop the bare form once no such version is left.
-  local commit_tag_regex="^($moving_tag-)?[0-9a-f]{40}$"
+  local commit_tag_regex="^$moving_tag-[0-9a-f]{40}$"
   local endpoint
   local commit_tag
   local errors
