@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG TORTOISE_REPOSITORY_URL=https://github.com/Penqle/tortoise-wow.git
+ARG TORTOISE_REPOSITORY_URL=https://github.com/tortoise-wow/tortoise-wow.git
 ARG TORTOISE_REVISION=main
 ARG TORTOISE_MIGRATION_EDITS=
 

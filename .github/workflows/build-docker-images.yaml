@@ -69,7 +69,7 @@ jobs:
         id: resolve-sources
         env:
           GH_TOKEN: ${{ github.token }}
-          TORTOISE_REPOSITORY_OWNER: Penqle
+          TORTOISE_REPOSITORY_OWNER: tortoise-wow
           TORTOISE_REPOSITORY_NAME: tortoise-wow
           TORTOISE_STABLE_REVISION: main
           TORTOISE_UNSTABLE_REVISION: 1181dev
@@ -127,7 +127,7 @@ jobs:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           PACKAGE_OWNER: ${{ github.repository_owner }}
           PACKAGE_NAME: tortoise-database
-          TORTOISE_REPOSITORY_OWNER: Penqle
+          TORTOISE_REPOSITORY_OWNER: tortoise-wow
           TORTOISE_REPOSITORY_NAME: tortoise-wow
           TORTOISE_STABLE_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_stable_commit_hash }}
           TORTOISE_UNSTABLE_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tortoise_unstable_commit_hash }}

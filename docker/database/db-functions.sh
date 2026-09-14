@@ -277,7 +277,7 @@ process_world_correction() {
     # intact instead of leaving an empty one behind.
     schema="$(extract_world_schema)"
 
-    tortoise_log "Re-creating world database to apply migration edit (Penqle/tortoise-wow@${commit_hash:0:7})..."
+    tortoise_log "Re-creating world database to apply migration edit (tortoise-wow/tortoise-wow@${commit_hash:0:7})..."
     drop_database "tw_world"
     create_database "tw_world"
     grant_permissions "tw_world"
@@ -295,7 +295,7 @@ process_world_correction() {
 
   # We deliberately do not record an acknowledgement here so the warning
   # repeats on every start until the user takes action.
-  tortoise_log "WARNING: Migration edit detected for the world database (Penqle/tortoise-wow@${commit_hash:0:7}) but both 'TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS' and 'TORTOISE_HALT_ON_MIGRATION_EDITS' are disabled; continuing without applying or acknowledging. Your world database no longer matches this image and the server may misbehave or fail to start." >&2
+  tortoise_log "WARNING: Migration edit detected for the world database (tortoise-wow/tortoise-wow@${commit_hash:0:7}) but both 'TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS' and 'TORTOISE_HALT_ON_MIGRATION_EDITS' are disabled; continuing without applying or acknowledging. Your world database no longer matches this image and the server may misbehave or fail to start." >&2
 }
 
 # The ledger and the baked wire string key on logical target names, but the
@@ -335,7 +335,7 @@ process_userstate_correction() {
 
   # We deliberately do not record an acknowledgement here so the warning
   # repeats on every start until the user takes action.
-  tortoise_log "WARNING: Migration edit detected for '$(correction_database_name "$db_name")' database (Penqle/tortoise-wow@${commit_hash:0:7}) but 'TORTOISE_HALT_ON_MIGRATION_EDITS' is disabled; continuing without acknowledging." >&2
+  tortoise_log "WARNING: Migration edit detected for '$(correction_database_name "$db_name")' database (tortoise-wow/tortoise-wow@${commit_hash:0:7}) but 'TORTOISE_HALT_ON_MIGRATION_EDITS' is disabled; continuing without acknowledging." >&2
 }
 
 print_correction_abort_message() {
@@ -354,7 +354,7 @@ EOF
     name="${PENDING_DB_NAMES[$i]}"
     commit_hash="${PENDING_DB_COMMIT_HASHES[$i]}"
     printf '  - %s (%s)\n' "$name" "$(correction_database_name "$name")" >&2
-    printf '    https://github.com/Penqle/tortoise-wow/commit/%s\n' "$commit_hash" >&2
+    printf '    https://github.com/tortoise-wow/tortoise-wow/commit/%s\n' "$commit_hash" >&2
     i=$((i + 1))
   done
 

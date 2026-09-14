@@ -747,9 +747,9 @@ non-commercial use only and comes with no warranty.
 [phpmyadmin]: https://www.phpmyadmin.net/
 [pull-requests]: https://github.com/mserajnik/tortoise-deploy/pulls
 [reuse-spec]: https://reuse.software/spec/
-[tortoise-example-commit]: https://github.com/Penqle/tortoise-wow/commit/fee5caf96dbca685a1661a055e541a25fd8a4a60
-[tortoise-wow]: https://github.com/Penqle/tortoise-wow
-[tortoise-wow-modules]: https://github.com/Penqle/tortoise-wow/blob/main/modules/README.md
+[tortoise-example-commit]: https://github.com/tortoise-wow/tortoise-wow/commit/fee5caf96dbca685a1661a055e541a25fd8a4a60
+[tortoise-wow]: https://github.com/tortoise-wow/tortoise-wow
+[tortoise-wow-modules]: https://github.com/tortoise-wow/tortoise-wow/blob/main/modules/README.md
 [tw-mod-autoscale]: https://github.com/Penqle/tw-mod-autoscale
 [tw-mod-leech]: https://github.com/Penqle/tw-mod-leech
 [vmangos]: https://github.com/vmangos/core
