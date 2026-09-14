@@ -1,8 +1,8 @@
 {
   "stable": {
     "world": {
-      "commit": "cea1686c8e4b77aeaf78ddb3612e5e463e055057",
-      "subject": "Updating gossip IDs to mediumint from smallint and adding Balor alliance gossip flight"
+      "commit": "f62cd95b63439ebdc7915053016ffa2753f98121",
+      "subject": "refactor: finalize manager-owned headless session lifecycle"
     },
     "character": null
   },
