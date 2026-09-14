@@ -16,14 +16,15 @@ eval "$fixuid_output"
 config_dir="/opt/tortoise/config"
 required_files="mangosd.conf"
 
-# `mangosd` exits when a module configuration file is missing or unreadable;
-# checking here fails earlier and always names the file. The manifest is
-# written at image build time and is absent from images built without modules.
+# `mangosd` exits when a module configuration file is missing or unreadable.
+# Checking here names the file the user has to add. The build writes the
+# manifest, and its paths are relative to this directory. An image built
+# without modules has none.
 modules_manifest="/opt/tortoise/module-configs"
 
 if [ -f "$modules_manifest" ]; then
   required_files="$required_files
-$(sed '/^[[:space:]]*$/d; s|^|modules/|' "$modules_manifest")"
+$(sed '/^[[:space:]]*$/d' "$modules_manifest")"
 fi
 
 # Read a line at a time rather than leaning on word splitting, so a

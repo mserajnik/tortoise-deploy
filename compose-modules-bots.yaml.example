@@ -1,6 +1,6 @@
 services:
   database:
-    image: ghcr.io/mserajnik/tortoise-database:modules
+    image: ghcr.io/mserajnik/tortoise-database:modules-bots
     restart: unless-stopped
     # The healthcheck reports whether the container is working as expected by
     # marking it `healthy` or `unhealthy`; note that Docker Compose does not
@@ -75,7 +75,7 @@ services:
       - TORTOISE_PROCESS_CUSTOM_SQL=1
 
   realmd:
-    image: ghcr.io/mserajnik/tortoise-server:modules
+    image: ghcr.io/mserajnik/tortoise-server:modules-bots
     # If you are using a Linux host and your user's UID and GID are not 1000,
     # change these values to reflect your user's UID and GID. This will cause
     # the user in the container to use the same UID and GID and prevent
@@ -119,7 +119,7 @@ services:
       - TZ=Etc/UTC # Change this to your desired time zone (usually you want to match your host system's time zone).
 
   mangosd:
-    image: ghcr.io/mserajnik/tortoise-server:modules
+    image: ghcr.io/mserajnik/tortoise-server:modules-bots
     # If you are using a Linux host and your user's UID and GID are not 1000,
     # change these values to reflect your user's UID and GID. This will cause
     # the user in the container to use the same UID and GID and prevent
@@ -177,11 +177,17 @@ services:
     volumes:
       - ./config/mangosd.conf:/opt/tortoise/config/mangosd.conf:ro
       # A missing module configuration file makes `mangosd` exit on startup.
-      # Copy each `config/modules/<module>.conf.example` to `<module>.conf`
-      # before you start the containers for the first time. Modules are inert
-      # until you enable them in these files.
+      # Copy each `.conf.example` below to `.conf` before you start the
+      # containers for the first time. Modules are inert until you enable them
+      # in these files.
       - ./config/modules/tw-mod-autoscale.conf:/opt/tortoise/config/modules/tw-mod-autoscale.conf:ro
       - ./config/modules/tw-mod-leech.conf:/opt/tortoise/config/modules/tw-mod-leech.conf:ro
+      # The files below belong to TortoiseBots. Both come from
+      # `config/modules-bots/`, while their container paths differ: the core
+      # reads `aiplayerbot.conf` from beside `mangosd.conf`. Bots stay off
+      # until you set `AiPlayerbot.Enabled = 1` in your copy.
+      - ./config/modules-bots/aiplayerbot.conf:/opt/tortoise/config/aiplayerbot.conf:ro
+      - ./config/modules-bots/tortoise_bots.conf:/opt/tortoise/config/modules/tortoise_bots.conf:ro
       - ./storage/mangosd/extracted-data:/opt/tortoise/storage/extracted-data:ro
       - ./storage/mangosd/logs:/opt/tortoise/storage/logs
       - ./storage/mangosd/honor:/opt/tortoise/storage/honor

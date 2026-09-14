@@ -76,6 +76,9 @@ jobs:
           TW_MOD_LEECH_REPOSITORY_OWNER: Penqle
           TW_MOD_LEECH_REPOSITORY_NAME: tw-mod-leech
           TW_MOD_LEECH_REVISION: master
+          TW_MOD_TORTOISEBOTS_REPOSITORY_OWNER: Sagiroth
+          TW_MOD_TORTOISEBOTS_REPOSITORY_NAME: TortoiseBots
+          TW_MOD_TORTOISEBOTS_REVISION: main
           MARIADB_DOCKER_REPOSITORY_OWNER: MariaDB
           MARIADB_DOCKER_REPOSITORY_NAME: mariadb-docker
           MARIADB_DOCKER_REVISION: master
@@ -96,11 +99,14 @@ jobs:
           TW_MOD_AUTOSCALE_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tw_mod_autoscale_commit_hash }}
           TW_MOD_LEECH_REPOSITORY: ${{ steps.resolve-sources.outputs.tw_mod_leech_repository }}
           TW_MOD_LEECH_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tw_mod_leech_commit_hash }}
+          TW_MOD_TORTOISEBOTS_REPOSITORY: ${{ steps.resolve-sources.outputs.tw_mod_tortoisebots_repository }}
+          TW_MOD_TORTOISEBOTS_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tw_mod_tortoisebots_commit_hash }}
           MARIADB_DOCKER_REPOSITORY: ${{ steps.resolve-sources.outputs.mariadb_docker_repository }}
           MARIADB_DOCKER_LATEST_COMMIT_HASH: ${{ steps.resolve-sources.outputs.mariadb_docker_commit_hash }}
           TORTOISE_KNOWN_COMMIT_HASH: a59061f4b1a70e3947647bbceedb3a40d5cac790
           TW_MOD_AUTOSCALE_KNOWN_COMMIT_HASH: 8675af22569674d906479aec0d7883d13d9212bb
           TW_MOD_LEECH_KNOWN_COMMIT_HASH: a3667c2c672b885fddc5afd76e48471dafa4eccc
+          TW_MOD_TORTOISEBOTS_KNOWN_COMMIT_HASH: ba6e9cbe2455ff9ca8c2b97633cccb9570ae3925
           # When bumping `MARIADB_DOCKER_KNOWN_COMMIT_HASH`, also update the
           # matching commit hash in `docker/database/Dockerfile` and the header
           # comment in `docker/database/docker-entrypoint.sh` so all three stay
@@ -128,7 +134,12 @@ jobs:
           TW_MOD_AUTOSCALE_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tw_mod_autoscale_commit_hash }}
           TW_MOD_LEECH_REPOSITORY: ${{ steps.resolve-sources.outputs.tw_mod_leech_repository }}
           TW_MOD_LEECH_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tw_mod_leech_commit_hash }}
+          TW_MOD_TORTOISEBOTS_REPOSITORY: ${{ steps.resolve-sources.outputs.tw_mod_tortoisebots_repository }}
+          TW_MOD_TORTOISEBOTS_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tw_mod_tortoisebots_commit_hash }}
           MODULE_LICENSES: MIT
+          BOTS_MODULE_LICENSES: MIT AND LicenseRef-TortoiseBots
+          REGISTRY: ghcr.io
+          PACKAGE_NAME_SERVER: tortoise-server
           FORCE_REBUILD: ${{ inputs.force_rebuild }}
           STATE_FILE: .github/migration-edit-state.json
         run: ./.github/scripts/prepare-build-matrix.sh
@@ -173,7 +184,10 @@ jobs:
       patch_set: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].patch_set }}
       migration_edits: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].migration_edits }}
       modules: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].modules }}
+      module_configs: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].module_configs }}
       module_licenses: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].module_licenses }}
+      module_build_packages: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].module_build_packages }}
+      module_sql_modules: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].module_sql_modules }}
 
   # We build database images only after the server build succeeds; otherwise, a
   # failure there could leave the latest database images out of sync.

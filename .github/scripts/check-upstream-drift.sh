@@ -49,8 +49,7 @@ add_github_check() {
 # `db-functions.sh`) isolates its `tw_world` section with format-sensitive awk
 # anchors (the dump preamble and the `CREATE DATABASE` / `USE` lines); a
 # regenerated dump in a different format (e.g. an upstream database rebase)
-# would silently mis-extract, and this check is what catches that before an
-# image is built.
+# would mis-extract, and this check catches that before the build starts.
 #
 # `sql/base/tw_world_migrations.sql` is the one base dump
 # `compute-migration-edits.sh` deliberately ignores. It only dumps the
@@ -85,12 +84,11 @@ if [[ -n "${TORTOISE_REPOSITORY:-}${TORTOISE_LATEST_COMMIT_HASH:-}${TORTOISE_KNO
   done
 fi
 
-# Each module bundled into a variant image has its configuration template
-# watched, because we vendor it as `config/modules/<module>.conf.example`; a
-# new key, a rename or a removal has to reach that copy or variant users are
-# handed a stale template. The module code itself floats, exactly as the core's
-# does. A rename or a removal needs no special handling here; `fetch_reference`
-# already fails the run when a watched path stops resolving.
+# Every module configuration template the repository vendors as a
+# `*.conf.example` stays under watch, for all variants. The module code itself
+# floats, exactly as the core's does. A rename or a removal does not need
+# handling here, because `fetch_reference` already fails the run when a watched
+# path stops resolving.
 if [[ -n "${TW_MOD_AUTOSCALE_REPOSITORY:-}${TW_MOD_AUTOSCALE_LATEST_COMMIT_HASH:-}${TW_MOD_AUTOSCALE_KNOWN_COMMIT_HASH:-}" ]]; then
   require_env TW_MOD_AUTOSCALE_REPOSITORY
   require_env TW_MOD_AUTOSCALE_LATEST_COMMIT_HASH
@@ -113,6 +111,29 @@ if [[ -n "${TW_MOD_LEECH_REPOSITORY:-}${TW_MOD_LEECH_LATEST_COMMIT_HASH:-}${TW_M
   add_github_check "$TW_MOD_LEECH_REPOSITORY" \
     "$TW_MOD_LEECH_KNOWN_COMMIT_HASH" "$tw_mod_leech_latest_commit_hash" \
     conf/tw-mod-leech.conf.dist
+fi
+
+# TortoiseBots has two configuration templates. The core reads
+# `aiplayerbot.conf` from beside `mangosd.conf`, and it reads
+# `tortoise_bots.conf` from the module configuration directory. The repository
+# vendors both, so both stay under watch.
+if [[ -n "${TW_MOD_TORTOISEBOTS_REPOSITORY:-}${TW_MOD_TORTOISEBOTS_LATEST_COMMIT_HASH:-}${TW_MOD_TORTOISEBOTS_KNOWN_COMMIT_HASH:-}" ]]; then
+  require_env TW_MOD_TORTOISEBOTS_REPOSITORY
+  require_env TW_MOD_TORTOISEBOTS_LATEST_COMMIT_HASH
+  require_env TW_MOD_TORTOISEBOTS_KNOWN_COMMIT_HASH
+
+  tw_mod_tortoisebots_latest_commit_hash="$(trim "$TW_MOD_TORTOISEBOTS_LATEST_COMMIT_HASH")"
+
+  tw_mod_tortoisebots_paths=(
+    ai/playerbot/aiplayerbot.conf.dist.in
+    conf/tortoise_bots.conf.dist
+  )
+
+  for path in "${tw_mod_tortoisebots_paths[@]}"; do
+    add_github_check "$TW_MOD_TORTOISEBOTS_REPOSITORY" \
+      "$TW_MOD_TORTOISEBOTS_KNOWN_COMMIT_HASH" \
+      "$tw_mod_tortoisebots_latest_commit_hash" "$path"
+  done
 fi
 
 if [[ -n "${MARIADB_DOCKER_REPOSITORY:-}${MARIADB_DOCKER_LATEST_COMMIT_HASH:-}${MARIADB_DOCKER_KNOWN_COMMIT_HASH:-}" ]]; then

@@ -5,16 +5,22 @@
 
 # Flattens a unit's entry in `.github/migration-edit-state.json` to the
 # `TORTOISE_MIGRATION_EDITS` build argument: pipe-separated
-# `<database>:<commit-hash>` entries for each of `world` and `character` (empty
-# value where the unit has no recorded edit for that target). Units are built
-# separately, so a unit is required alongside the state file.
+# `<target>:<source>@<commit-hash>[,<source>@<commit-hash>]...` entries for
+# each of `world` and `character`, with an empty source list where the unit has
+# no recorded edit for that target. The build handles one unit at a time. This
+# script takes a unit alongside the state file.
 #
-# A target is recorded under the source its edit came from, which today is
-# always `core`, and in the shape its remedy takes: a bare object where the
-# database image can re-create the target, and a list where the operator has to
-# fix it by hand. The argument keeps only the commit hash the container-side
-# parser reads, so both shapes flatten to it. A list holds its newest edit at
-# index 0.
+# A target gets one entry per source its edits came from, because migrations
+# for one target can come from several sources. Each entry keeps its source,
+# because the container prints the commit in its messages, and a module's
+# commit belongs to the module's repository. Sorting the sources makes one
+# state always render the same argument, which keeps a rebuild from changing
+# the image for no reason.
+#
+# Where the database image can re-create the target, the record is a bare
+# object. Where the operator has to fix it by hand, the record is a list. The
+# argument keeps only the commit hash the container-side parser reads. Both
+# forms reduce to that. In a list, index 0 is the newest edit.
 
 set -euo pipefail
 
@@ -36,10 +42,12 @@ unit="$2"
 if ! jq -e '
   type == "object"
   and .version == 1
+  and .source_kind == "repository"
   and (.streams | type) == "object"
   and all(.streams[]; type == "object"
       and (keys_unsorted - ["world", "character"]) == []
       and all(.[]; type == "object"
+          and (keys_unsorted - ["core", "tortoisebots"]) == []
           and all(.[];
                 (type == "object" and has("commit"))
                 or (type == "array" and length > 0
@@ -47,7 +55,7 @@ if ! jq -e '
   and all(.. | objects | select(has("commit")) | .commit;
           type == "string" and length == 40 and test("^[0-9a-f]{40}$"))
 ' "$state_file" >/dev/null; then
-  fail "State file '$state_file' is missing, is not a version 1 state object with 'world' and 'character' targets, or holds a malformed commit hash."
+  fail "State file '$state_file' is missing, is not a version 1 repository-sourced state object with 'world' and 'character' targets and 'core' and 'tortoisebots' sources, or holds a malformed commit hash."
 fi
 
 # An unrecognized unit indexes to `null`, which renders the same empty token
@@ -60,8 +68,13 @@ jq -r --arg unit "$unit" '
   ["world", "character"] as $order
   | .streams[$unit] as $targets
   | [$order[] as $db
-     | ($targets[$db].core // null) as $edit
-     | (if ($edit | type) == "array" then $edit[0].commit else $edit.commit end) as $commit
-     | "\($db):\($commit // "")"]
+     | [(($targets[$db] // {}) | to_entries | sort_by(.key))[]
+        | .key as $source
+        | (if (.value | type) == "array"
+           then .value[0].commit
+           else .value.commit end) as $commit
+        | "\($source)@\($commit)"]
+       | join(",") as $sources
+     | "\($db):\($sources)"]
   | join("|")
 ' "$state_file"

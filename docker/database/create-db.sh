@@ -48,11 +48,11 @@ fi
 ensure_maintenance_db_exists
 parse_migration_edits
 
-if [[ -n "$MIGRATION_EDIT_WORLD" ]]; then
-  acknowledge_correction "world" "$MIGRATION_EDIT_WORLD"
-fi
-if [[ -n "$MIGRATION_EDIT_CHARACTER" ]]; then
-  acknowledge_correction "character" "$MIGRATION_EDIT_CHARACTER"
-fi
+for commit_hash in "${MIGRATION_EDIT_WORLD_COMMITS[@]}"; do
+  acknowledge_correction "world" "$commit_hash"
+done
+for commit_hash in "${MIGRATION_EDIT_CHARACTER_COMMITS[@]}"; do
+  acknowledge_correction "character" "$commit_hash"
+done
 
 mark_database_ready

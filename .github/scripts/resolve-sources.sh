@@ -67,6 +67,22 @@ if [[ -n "${TW_MOD_LEECH_REPOSITORY_OWNER:-}${TW_MOD_LEECH_REPOSITORY_NAME:-}${T
   resolved_any=true
 fi
 
+if [[ -n "${TW_MOD_TORTOISEBOTS_REPOSITORY_OWNER:-}${TW_MOD_TORTOISEBOTS_REPOSITORY_NAME:-}${TW_MOD_TORTOISEBOTS_REVISION:-}" ]]; then
+  require_env TW_MOD_TORTOISEBOTS_REPOSITORY_OWNER
+  require_env TW_MOD_TORTOISEBOTS_REPOSITORY_NAME
+  require_env TW_MOD_TORTOISEBOTS_REVISION
+
+  tw_mod_tortoisebots_repository="$TW_MOD_TORTOISEBOTS_REPOSITORY_OWNER/$TW_MOD_TORTOISEBOTS_REPOSITORY_NAME"
+  tw_mod_tortoisebots_commit_hash="$(resolve_commit_hash \
+    "$TW_MOD_TORTOISEBOTS_REPOSITORY_OWNER" "$TW_MOD_TORTOISEBOTS_REPOSITORY_NAME" \
+    "$TW_MOD_TORTOISEBOTS_REVISION")"
+  if [[ "$resolved_any" != "true" ]]; then printf 'Resolved sources:\n'; fi
+  printf '  %s@%s\n' "$tw_mod_tortoisebots_repository" "$tw_mod_tortoisebots_commit_hash"
+  write_output tw_mod_tortoisebots_repository "$tw_mod_tortoisebots_repository"
+  write_output tw_mod_tortoisebots_commit_hash "$tw_mod_tortoisebots_commit_hash"
+  resolved_any=true
+fi
+
 if [[ -n "${MARIADB_DOCKER_REPOSITORY_OWNER:-}${MARIADB_DOCKER_REPOSITORY_NAME:-}${MARIADB_DOCKER_REVISION:-}" ]]; then
   require_env MARIADB_DOCKER_REPOSITORY_OWNER
   require_env MARIADB_DOCKER_REPOSITORY_NAME

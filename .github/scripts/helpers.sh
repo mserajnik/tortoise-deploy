@@ -180,3 +180,116 @@ last_built_commit_for_unit() {
 
   printf '%s' "${commit_tag#"$moving_tag-"}"
 }
+
+# Resolves the module revision a unit's moving tag was last built from, by
+# reading the label the build wrote onto that image.
+#
+# The build writes a label into a per-architecture image configuration, and the
+# index contains none, so this walks the index, then the child manifest, then
+# the configuration blob. It prints an empty string when the image or the label
+# is absent, and the caller turns that into the cutoff anchor.
+last_built_module_commit_for_unit() {
+  local registry_host="$1"
+  local package_owner="$2"
+  local package_name="$3"
+  local moving_tag="$4"
+  local module_directory="$5"
+  local repository="$package_owner/$package_name"
+  local accept='application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.oci.image.manifest.v1+json'
+  local token
+  local index
+  local manifest
+  local child_digest
+  local config_digest
+  local revision
+  local body
+  local status
+  local config
+
+  token="$(curl --fail --silent --show-error \
+    "https://$registry_host/token?scope=repository:$repository:pull&service=$registry_host" |
+    jq -r '.token // empty')" || true
+  if [[ -z "$token" ]]; then
+    fail "Could not obtain a pull token for '$repository' from $registry_host."
+  fi
+
+  # Only a 404 means there is no prior image. Collapsing 401, 403, 5xx, and a
+  # transport error into the same answer would reset the scan floor to the
+  # cutoff anchor and report that as fact.
+  body="$(mktemp)" || fail "Failed to create a temporary file."
+  status="$(curl --silent --show-error --location --output "$body" \
+    --write-out '%{http_code}' \
+    --header "Authorization: Bearer $token" --header "Accept: $accept" \
+    "https://$registry_host/v2/$repository/manifests/$moving_tag")" || {
+    rm -f "$body"
+    fail "Could not reach $registry_host for '$repository:$moving_tag'."
+  }
+  case "$status" in
+    200) index="$(cat "$body")" ;;
+    404)
+      rm -f "$body"
+      printf '%s' ""
+      return 0
+      ;;
+    *)
+      rm -f "$body"
+      fail "$registry_host answered HTTP $status for '$repository:$moving_tag'."
+      ;;
+  esac
+  rm -f "$body"
+
+  # A single-architecture image returns a manifest, and its own configuration
+  # is then the one to read.
+  child_digest="$(jq -r \
+    'first(.manifests[]? | select(.platform.architecture != "unknown")) | .digest // empty' \
+    <<<"$index")" ||
+    fail "Index for '$repository:$moving_tag' is not readable."
+  manifest="$index"
+  if [[ -n "$child_digest" ]]; then
+    if ! manifest="$(curl --fail --silent --show-error --location \
+      --header "Authorization: Bearer $token" --header "Accept: $accept" \
+      "https://$registry_host/v2/$repository/manifests/$child_digest")"; then
+      fail "Could not read the child manifest $child_digest of '$repository:$moving_tag'."
+    fi
+  fi
+
+  if [[ -z "${manifest//[[:space:]]/}" ]]; then
+    fail "Manifest for '$repository:$moving_tag' is empty."
+  fi
+
+  config_digest="$(jq -r 'if type == "object" then .config.digest // empty
+     else error("not a manifest") end' <<<"$manifest")" ||
+    fail "Manifest for '$repository:$moving_tag' is not readable as a manifest."
+  if [[ -z "$config_digest" ]]; then
+    fail "Manifest for '$repository:$moving_tag' names no image config."
+  fi
+
+  if ! config="$(curl --fail --silent --show-error --location \
+    --header "Authorization: Bearer $token" \
+    "https://$registry_host/v2/$repository/blobs/$config_digest")"; then
+    fail "Could not read the image config $config_digest of '$repository:$moving_tag'."
+  fi
+
+  # An empty body does not contain a JSON value, so `jq` skips the filter and
+  # exits 0. The guard below stops the floor falling back to the anchor in
+  # silence.
+  if [[ -z "${config//[[:space:]]/}" ]]; then
+    fail "Image config $config_digest of '$repository:$moving_tag' is empty."
+  fi
+
+  # An image built before the module joined the variant does not have this
+  # label. An empty return then points the caller at the cutoff anchor, which
+  # matches the answer for a missing image and is the right one, because
+  # nothing published so far went through a scan for this module.
+  revision="$(jq -r \
+    --arg label "io.github.mserajnik.tortoise-deploy.modules.$module_directory.revision" \
+    'if type == "object" then .config.Labels[$label] // empty
+     else error("not an image config") end' <<<"$config")" ||
+    fail "Image config $config_digest of '$repository:$moving_tag' is not readable as an image config."
+
+  if [[ -n "$revision" && ! "$revision" =~ ^[0-9a-f]{40}$ ]]; then
+    fail "Label for module '$module_directory' on '$repository:$moving_tag' is not a 40-character commit hash: '$revision'."
+  fi
+
+  printf '%s' "$revision"
+}

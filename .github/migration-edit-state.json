@@ -10,6 +10,15 @@
         }
       },
       "character": {}
+    },
+    "modules-bots": {
+      "world": {
+        "core": {
+          "commit": "f62cd95b63439ebdc7915053016ffa2753f98121",
+          "subject": "refactor: finalize manager-owned headless session lifecycle"
+        }
+      },
+      "character": {}
     }
   }
 }

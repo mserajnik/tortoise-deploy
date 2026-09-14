@@ -37,7 +37,16 @@ on:
       modules:
         type: string
         required: false
+      module_configs:
+        type: string
+        required: false
       module_licenses:
+        type: string
+        required: false
+      module_build_packages:
+        type: string
+        required: false
+      module_sql_modules:
         type: string
         required: false
       alias_units:
@@ -96,7 +105,10 @@ jobs:
           PATCH_SET: ${{ inputs.patch_set }}
           MIGRATION_EDITS: ${{ inputs.migration_edits }}
           MODULES: ${{ inputs.modules }}
+          MODULE_CONFIGS: ${{ inputs.module_configs }}
           MODULE_LICENSES: ${{ inputs.module_licenses }}
+          MODULE_BUILD_PACKAGES: ${{ inputs.module_build_packages }}
+          MODULE_SQL_MODULES: ${{ inputs.module_sql_modules }}
           ALIAS_UNITS: ${{ inputs.alias_units }}
         run: ./.github/scripts/prepare-image-build.sh
 

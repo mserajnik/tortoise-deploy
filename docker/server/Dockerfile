@@ -6,6 +6,8 @@ ARG TORTOISE_REPOSITORY_URL=https://github.com/tortoise-wow/tortoise-wow.git
 ARG TORTOISE_REVISION=main
 ARG TORTOISE_MODULES=
 ARG TORTOISE_MODULE_CONFIGS=
+ARG TORTOISE_MODULE_SQL_MODULES=
+ARG TORTOISE_MODULE_BUILD_PACKAGES=
 ARG TORTOISE_PATCHES_REPOSITORY_URL
 ARG TORTOISE_FAIL_ON_PATCH_ERROR=0
 ARG TORTOISE_PATCH_SET=base
@@ -21,10 +23,19 @@ ARG TORTOISE_REPOSITORY_URL
 ARG TORTOISE_REVISION
 ARG TORTOISE_MODULES
 ARG TORTOISE_MODULE_CONFIGS
+ARG TORTOISE_MODULE_SQL_MODULES
+ARG TORTOISE_MODULE_BUILD_PACKAGES
 ARG TORTOISE_PATCHES_REPOSITORY_URL
 ARG TORTOISE_FAIL_ON_PATCH_ERROR
 ARG TORTOISE_PATCH_SET
 
+# The packages below are what the core needs. A module may need more, and a
+# module can leave that requirement undeclared. TortoiseBots includes six Boost
+# headers directly, and its build declares neither a `find_package` nor a link
+# rule for them. Each variant supplies such packages through
+# `TORTOISE_MODULE_BUILD_PACKAGES`, which the matrix sets. A variant without
+# such a module installs exactly what it did before. This passes the value
+# unquoted on purpose, because apt takes it split into arguments.
 RUN \
   apt update && \
   apt install -y --no-install-recommends \
@@ -35,7 +46,8 @@ RUN \
     libace-dev \
     libmysqlclient-dev \
     libssl-dev \
-    zlib1g-dev && \
+    zlib1g-dev \
+    $TORTOISE_MODULE_BUILD_PACKAGES && \
   git clone "$TORTOISE_REPOSITORY_URL" /build/core && \
   cd /build/core && \
   git checkout "$TORTOISE_REVISION" && \
@@ -96,17 +108,6 @@ RUN \
           echo "Module '$module_directory' has no 'src/' directory and would not be compiled in."; \
           exit 1; \
         fi; \
-        # A module's own SQL is read from `TW_SOURCE_MODULES_DIR`, which CMake
-        # bakes to a path in this build stage's source tree. That path does not
-        # exist in the runtime image and upstream installs the files nowhere,
-        # so bundled module SQL would silently never be applied. Refuse the
-        # build instead of shipping it.
-        if [ -d "$module_path/data/sql" ] && \
-          [ -n "$(find -L "$module_path/data/sql" -xdev ! -type d \
-            -iname '*.sql' -print -quit)" ]; then \
-          echo "Module '$module_directory' ships SQL in 'data/sql/', which this image cannot apply."; \
-          exit 1; \
-        fi; \
       done; \
     ); \
   else \
@@ -130,34 +131,125 @@ RUN \
   make -j"$(nproc)" && \
   make install && \
   if [ -n "$TORTOISE_MODULES" ]; then \
-    # Record the module configuration files `mangosd` insists on at startup so
-    # the container command can name a missing one. The names come from what
-    # upstream installed, built from the same `conf/*.conf.dist` glob as the
-    # list compiled into the binary; `etc/` does not reach the runtime image,
-    # so the list has to be carried out of it. A module need not ship a
-    # configuration file at all, hence the guard on the glob matching.
-    for module_config_dist in /opt/tortoise/etc/modules/*.conf.dist; do \
-      if [ -f "$module_config_dist" ]; then \
-        basename "$module_config_dist" .dist; \
-      fi; \
-    done >/opt/tortoise/module-configs; \
+    # Record the module configuration files this image needs at startup so the
+    # container command can report a missing one. The names come from what
+    # `make install` put under `/opt/tortoise/etc`, which the runtime `COPY`
+    # excludes. The manifest at `/opt/tortoise/module-configs` is outside that
+    # exclusion.
+    #
+    # Each entry is a path relative to the configuration directory, because a
+    # module may install a file beside `mangosd.conf`, outside `modules/`. The
+    # core installs only `.dist` templates at either level, so a plain `.conf`
+    # belongs to a module wherever it is. The check leaves out a template at
+    # the top level, because the core's own `realmd.conf.dist` is there.
+    # TortoiseBots installs `aiplayerbot.conf` that way. When that file is
+    # missing, the module logs one line and disables itself, which the startup
+    # check exists to prevent.
+    { \
+      for module_config_dist in /opt/tortoise/etc/modules/*.conf.dist; do \
+        if [ -f "$module_config_dist" ]; then \
+          printf 'modules/%s\n' "$(basename "$module_config_dist" .dist)"; \
+        fi; \
+      done; \
+      for module_config in /opt/tortoise/etc/*.conf; do \
+        if [ -f "$module_config" ]; then \
+          basename "$module_config"; \
+        fi; \
+      done; \
+      for module_config in /opt/tortoise/etc/modules/*.conf; do \
+        if [ -f "$module_config" ]; then \
+          printf 'modules/%s\n' "$(basename "$module_config")"; \
+        fi; \
+      done; \
+    } >/opt/tortoise/module-configs; \
     # The comparison below is a string compare, so both sides have to agree on
-    # order. Sorting in the C locale matches what `prepare-image-build.sh`
-    # emits, whatever locale it happens to run under.
-    LC_ALL=C sort -o /opt/tortoise/module-configs /opt/tortoise/module-configs; \
-    # Refuse to publish an image that demands a configuration file the
-    # repository ships no example for. Module code floats, so a module can add
+    # order. Sorting in the C locale matches what `prepare-build-matrix.sh`
+    # emits, whatever locale it happens to run under. `-u` because a module
+    # that installs both a `.conf` and its own `.conf.dist` appears twice
+    # above.
+    LC_ALL=C sort -u -o /opt/tortoise/module-configs /opt/tortoise/module-configs; \
+    # Refuse to publish an image whose installed configuration set differs from
+    # the list this variant declared. Module code floats, so a module can add
     # or rename a template between builds, and either would make every variant
     # container exit on startup for want of a bind mount nobody knew to add.
-    # `TORTOISE_MODULE_CONFIGS` is derived from `config/modules/`, so the two
-    # agree only while the shipped examples cover exactly what the build needs.
     # This also catches an empty list, which would otherwise leave the startup
     # check with nothing to verify.
     installed_module_configs="$(tr '\n' ',' </opt/tortoise/module-configs)"; \
     if [ "${installed_module_configs%,}" != "$TORTOISE_MODULE_CONFIGS" ]; then \
-      echo "This build requires the module configuration files '${installed_module_configs%,}', but the repository ships examples for '$TORTOISE_MODULE_CONFIGS'."; \
+      echo "This build requires the module configuration files '${installed_module_configs%,}', but the variant declares '$TORTOISE_MODULE_CONFIGS'."; \
       exit 1; \
     fi; \
+    # The applier reads a module's SQL from `/opt/tortoise/modules`, where the
+    # `use-installed-module-sql-path` patch points `TW_SOURCE_MODULES_DIR`. The
+    # applier reads `<module>/data/sql/<target>` for the three targets pinned
+    # by `pin-migration-paths`. A file installed under any other name is never
+    # applied, and nothing in the log says so. The check runs after
+    # `make install`, which is what puts the files in place.
+    #
+    # The check maps each file the module provides to the target it has to end
+    # up under, then compares the result with what `make install` produced. The
+    # mapping covers the source directories the bundled modules use. A module
+    # that uses a different one fails this build until the mapping gains it.
+    # TortoiseBots provides `char/` and installs it as `character/`.
+    #
+    # Both searches abort the build on a `find` failure, because two empty
+    # lists compare equal and would pass.
+    #
+    # A module may provide SQL only while `TORTOISE_MODULE_SQL_MODULES` lists
+    # it. That list is empty for every variant sharing another unit's database
+    # image. A curated module that grows a `data/sql/` directory then fails
+    # this build.
+    ( \
+      IFS='|'; \
+      for module in $TORTOISE_MODULES; do \
+        module_directory="${module%%=*}"; \
+        module_path="/build/core/modules/$module_directory"; \
+        installed_sql="/opt/tortoise/modules/$module_directory/data/sql"; \
+        : >/build/module-sql-expected; \
+        : >/build/module-sql-installed; \
+        find -L "$module_path" -xdev -type f -iname '*.sql' \
+          -not -path "$module_path/.git/*" -printf '%P\n' \
+          >/build/module-sql-shipped || exit 1; \
+        if [ -s /build/module-sql-shipped ]; then \
+          case ",$TORTOISE_MODULE_SQL_MODULES," in \
+            *",$module_directory,"*) ;; \
+            *) \
+              echo "Module '$module_directory' ships SQL, which this variant does not apply. Only the modules named in 'TORTOISE_MODULE_SQL_MODULES' may carry SQL."; \
+              exit 1 ;; \
+          esac; \
+        fi; \
+        while IFS= read -r shipped_path; do \
+          case "$shipped_path" in \
+            data/sql/char/*/*|data/sql/world/*/*) \
+              echo "Module '$module_directory' ships the SQL file '$shipped_path' in a subdirectory. The applier does not descend, so the file would never be applied."; \
+              exit 1 ;; \
+            data/sql/char/*) target=character ;; \
+            data/sql/world/*) target=world ;; \
+            *) \
+              echo "Module '$module_directory' ships the SQL file '$shipped_path', which this image maps to no database."; \
+              exit 1 ;; \
+          esac; \
+          printf '%s/%s\n' "$target" "${shipped_path##*/}" \
+            >>/build/module-sql-expected; \
+        done </build/module-sql-shipped; \
+        if [ -d "$installed_sql" ]; then \
+          find -L "$installed_sql" -mindepth 2 -maxdepth 2 -xdev -type f \
+            -name '*.sql' \
+            \( -path "$installed_sql/auth/*" \
+              -o -path "$installed_sql/character/*" \
+              -o -path "$installed_sql/world/*" \) \
+            -printf '%P\n' >/build/module-sql-installed || exit 1; \
+        fi; \
+        LC_ALL=C sort -o /build/module-sql-expected /build/module-sql-expected; \
+        LC_ALL=C sort -o /build/module-sql-installed /build/module-sql-installed; \
+        if ! cmp -s /build/module-sql-expected /build/module-sql-installed; then \
+          expected_list="$(tr '\n' ',' </build/module-sql-expected)"; \
+          installed_list="$(tr '\n' ',' </build/module-sql-installed)"; \
+          echo "Module '$module_directory' has to install the SQL files '${expected_list%,}' under '$installed_sql', but installed '${installed_list%,}'."; \
+          exit 1; \
+        fi; \
+      done; \
+    ); \
   fi && \
   # Stage the migrations so `mangosd` can apply them at startup. The applier
   # reads `/opt/tortoise/sql/database_updates/` with one directory per

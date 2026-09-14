@@ -38,8 +38,25 @@ fi
 ensure_maintenance_db_exists
 parse_migration_edits
 
-process_world_correction "$MIGRATION_EDIT_WORLD"
-process_userstate_correction "character" "$MIGRATION_EDIT_CHARACTER"
+# One target can have edits from several sources. The loop below handles each
+# source separately. A start that finds more than one unacknowledged world edit
+# re-creates the world database once per edit. That is wasteful and correct,
+# because the later re-creations repeat work the first one already did.
+edit_index=0
+while [[ "$edit_index" -lt "${#MIGRATION_EDIT_WORLD_COMMITS[@]}" ]]; do
+  process_world_correction \
+    "${MIGRATION_EDIT_WORLD_SOURCES[$edit_index]}" \
+    "${MIGRATION_EDIT_WORLD_COMMITS[$edit_index]}"
+  edit_index=$((edit_index + 1))
+done
+
+edit_index=0
+while [[ "$edit_index" -lt "${#MIGRATION_EDIT_CHARACTER_COMMITS[@]}" ]]; do
+  process_userstate_correction "character" \
+    "${MIGRATION_EDIT_CHARACTER_SOURCES[$edit_index]}" \
+    "${MIGRATION_EDIT_CHARACTER_COMMITS[$edit_index]}"
+  edit_index=$((edit_index + 1))
+done
 
 if [[ "${#PENDING_DB_NAMES[@]}" -gt 0 ]]; then
   print_correction_abort_message

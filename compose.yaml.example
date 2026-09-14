@@ -31,10 +31,10 @@ services:
       - TORTOISE_REALMLIST_ICON=1 # Sets the icon of the realm; 0 = Normal, 1 = PvP, 6 = RP, 8 = RP PVP.
       - TORTOISE_REALMLIST_TIMEZONE=0 # Sets the time zone of the realm; some common values are: 2 = United States, 3 = Oceanic, 4 = Latin America, 8 = English, 9 = German, 10 = French, 11 = Spanish, 12 = Russian.
       - TORTOISE_REALMLIST_ALLOWED_SECURITY_LEVEL=0 # Sets the minimum account security level required to log in to the realm; 0 = regular players.
-      # tortoise-deploy keeps track of upstream Tortoise-WoW commits that edit
-      # already released migration files, which would otherwise leave your
-      # world database in an inconsistent state when updating and require
-      # manual intervention to rectify. In such cases, tortoise-deploy can
+      # tortoise-deploy keeps track of upstream commits that edit already
+      # released migration files, which would otherwise leave your world
+      # database in an inconsistent state when updating and require manual
+      # intervention to rectify. In such cases, tortoise-deploy can
       # automatically re-create your world database. Your accounts, characters
       # and saved game state (such as world event progress) live in separate
       # databases that are not touched, so they are unaffected; any changes you

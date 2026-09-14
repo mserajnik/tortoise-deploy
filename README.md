@@ -31,6 +31,8 @@ a Tortoise-WoW setup:
   yourself every time you want to update.
 - __Multiple variants to choose from__: the `base` images contain Tortoise-WoW
   alone, while the `modules` images add a curated set of modules on top.
+  `modules-bots` adds [TortoiseBots][tortoisebots], a Playerbot module, to that
+  set.
 - __Seamless, automated database migrations__: when pulling the latest Docker
   images and re-creating the containers, migrations are applied automatically
   to keep your databases up to date at all times.
@@ -56,7 +58,8 @@ a Tortoise-WoW setup:
   - [Instructions](#instructions)
     - [Cloning the repository and adjusting the Tortoise-WoW configuration](#cloning-the-repository-and-adjusting-the-tortoise-wow-configuration)
     - [Adjusting the Docker Compose configuration](#adjusting-the-docker-compose-configuration)
-    - [Using the bundled-module images (optional)](#using-the-bundled-module-images-optional)
+    - [Using the `modules` images (optional)](#using-the-modules-images-optional)
+    - [Using the `modules-bots` images (optional)](#using-the-modules-bots-images-optional)
     - [Extracting the client data](#extracting-the-client-data)
     - [A note on Warden](#a-note-on-warden)
     - [Modifying the world database with custom changes (optional)](#modifying-the-world-database-with-custom-changes-optional)
@@ -138,12 +141,21 @@ cp ./config/realmd.conf.example ./config/realmd.conf
 ```
 
 If you intend to use the `modules` variant (see
-_[Using the bundled-module images (optional)](#using-the-bundled-module-images-optional)_),
+_[Using the `modules` images (optional)](#using-the-modules-images-optional)_),
 also copy a configuration file for every bundled module:
 
 ```sh
 cp ./config/modules/tw-mod-autoscale.conf.example ./config/modules/tw-mod-autoscale.conf
 cp ./config/modules/tw-mod-leech.conf.example ./config/modules/tw-mod-leech.conf
+```
+
+For the `modules-bots` variant (see
+_[Using the `modules-bots` images (optional)](#using-the-modules-bots-images-optional)_),
+copy those two as well, plus this variant's own two files:
+
+```sh
+cp ./config/modules-bots/aiplayerbot.conf.example ./config/modules-bots/aiplayerbot.conf
+cp ./config/modules-bots/tortoise_bots.conf.example ./config/modules-bots/tortoise_bots.conf
 ```
 
 Next, adjust the configuration files you have just created for your desired
@@ -152,7 +164,7 @@ may still want to adjust certain things such as the `GameType` or the
 `RealmZone`. Descriptions are provided for most options in the configuration
 files, so you should be able to find your way around easily.
 
-> [!CAUTION]
+> [!WARNING]
 > Options relating to certain things that tortoise-deploy relies on to work
 > correctly (like the database connections or configured directories such as
 > the `DataDir` or the `LogsDir`) should not be adjusted unless you absolutely
@@ -166,16 +178,22 @@ files, so you should be able to find your way around easily.
 Once you are done adjusting the Tortoise-WoW configuration, the first thing to
 decide on is which image variant you want to use:
 
-| Variant   | `tortoise-server` tag                       | `tortoise-database` tag                       |
-| --------- | ------------------------------------------- | --------------------------------------------- |
-| `base`    | `ghcr.io/mserajnik/tortoise-server:base`    | `ghcr.io/mserajnik/tortoise-database:base`    |
-| `modules` | `ghcr.io/mserajnik/tortoise-server:modules` | `ghcr.io/mserajnik/tortoise-database:modules` |
+| Variant        | `tortoise-server` tag                            | `tortoise-database` tag                            |
+| -------------- | ------------------------------------------------ | -------------------------------------------------- |
+| `base`         | `ghcr.io/mserajnik/tortoise-server:base`         | `ghcr.io/mserajnik/tortoise-database:base`         |
+| `modules`      | `ghcr.io/mserajnik/tortoise-server:modules`      | `ghcr.io/mserajnik/tortoise-database:modules`      |
+| `modules-bots` | `ghcr.io/mserajnik/tortoise-server:modules-bots` | `ghcr.io/mserajnik/tortoise-database:modules-bots` |
 
-Both variants come from the same Tortoise-WoW commit, the tip of the `main`
-branch. The `modules` variant is the `base` variant plus a curated set of
-bundled modules;
-_[Using the bundled-module images (optional)](#using-the-bundled-module-images-optional)_
+All three variants come from the same Tortoise-WoW commit, the tip of the
+`main` branch, and each adds to the one before it. The `modules` variant is the
+`base` variant plus a curated set of bundled modules;
+_[Using the `modules` images (optional)](#using-the-modules-images-optional)_
 describes what is in the set and what that variant additionally needs from you.
+The `modules-bots` variant is always the `modules` variant plus
+[TortoiseBots][tortoisebots], so everything the `modules` variant gives you is
+in it too;
+_[Using the `modules-bots` images (optional)](#using-the-modules-bots-images-optional)_
+describes what that adds.
 
 Then copy the Docker Compose example file for your chosen variant to
 `compose.yaml`. For the `base` variant:
@@ -185,26 +203,38 @@ cp ./compose.yaml.example ./compose.yaml
 ```
 
 For the `modules` variant, use
-[`compose-modules.yaml.example`](compose-modules.yaml.example) instead. The two
+[`compose-modules.yaml.example`](compose-modules.yaml.example) instead, and for
+the `modules-bots` variant,
+[`compose-modules-bots.yaml.example`](compose-modules-bots.yaml.example). The
 files share the same structure.
 
 > [!WARNING]
-> Switching an existing setup between `base` and `modules` should work today,
-> since the two use the same database image. It is untested and unsupported,
-> and it may stop working at any point in the future.
+> Switching between different variants is untested, unsupported, and highly
+> discouraged. It may stop working at any point in the future without further
+> notice. If you still want to attempt it, the following options should work:
+>
+> `base` and `modules` share the same database image, so switching between them
+> should be safe in both directions.
+>
+> Switching from `base` or `modules` to `modules-bots` should also work.
+> `modules-bots` contains additional migrations on top, which puts your
+> database in a state that does not match what `base` or `modules` expect.
+> Switching back is not possible cleanly without manual database edits, and it
+> might not work at all.
 
 Alternatively, you can select specific images via the Tortoise-WoW commit hash
 they have been built from. To allow for this, the `tortoise-server` image (used
 by the `realmd` and `mangosd` services) and the `tortoise-database` image (used
 by the `database` service) have tags that combine the variant they belong to
-with the respective commit hash. Both variants come from the same commit, so
-the variant name is part of the tag. For example, for commit
+with the respective commit hash. All three variants come from the same commit,
+so the variant name is part of the tag. For example, for commit
 [`5fafe43b576116c3aecde435c41c87a47864f943`][tortoise-example-commit]:
 
-| `realmd` / `mangosd` service image                                                   | `database` service image                                                               |
-| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| `ghcr.io/mserajnik/tortoise-server:base-5fafe43b576116c3aecde435c41c87a47864f943`    | `ghcr.io/mserajnik/tortoise-database:base-5fafe43b576116c3aecde435c41c87a47864f943`    |
-| `ghcr.io/mserajnik/tortoise-server:modules-5fafe43b576116c3aecde435c41c87a47864f943` | `ghcr.io/mserajnik/tortoise-database:modules-5fafe43b576116c3aecde435c41c87a47864f943` |
+| `realmd` / `mangosd` service image                                                        | `database` service image                                                                    |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `ghcr.io/mserajnik/tortoise-server:base-5fafe43b576116c3aecde435c41c87a47864f943`         | `ghcr.io/mserajnik/tortoise-database:base-5fafe43b576116c3aecde435c41c87a47864f943`         |
+| `ghcr.io/mserajnik/tortoise-server:modules-5fafe43b576116c3aecde435c41c87a47864f943`      | `ghcr.io/mserajnik/tortoise-database:modules-5fafe43b576116c3aecde435c41c87a47864f943`      |
+| `ghcr.io/mserajnik/tortoise-server:modules-bots-5fafe43b576116c3aecde435c41c87a47864f943` | `ghcr.io/mserajnik/tortoise-database:modules-bots-5fafe43b576116c3aecde435c41c87a47864f943` |
 
 > [!IMPORTANT]
 > When you decide to select images via Tortoise-WoW commit hash you should
@@ -234,13 +264,13 @@ should also be of interest; changing the `TORTOISE_REALMLIST_ADDRESS` to a LAN
 IP, a WAN IP or a domain name is required if you want to allow non-local
 connections.
 
-> [!CAUTION]
+> [!WARNING]
 > Anything in your `compose.yaml` that is not commented or explicitly mentioned
 > in this README, regardless of the section, is likely something you do not
 > have to (or, in some cases, _must not_) change. Doing so may lead to
 > unexpected behavior and is not supported.
 
-#### Using the bundled-module images (optional)
+#### Using the `modules` images (optional)
 
 In August 2026, Tortoise-WoW moved its auto-scaling and leech features out of
 the core and into [its module system][tortoise-wow-modules]. The `base` images
@@ -251,10 +281,10 @@ the same Tortoise-WoW commit as the `base` variant, with a curated set of
 modules compiled in. Currently, the set consists of those two features that
 were previously part of the core:
 
-| Module                                 | Enabled by default |
-| -------------------------------------- | ------------------ |
-| [`tw-mod-autoscale`][tw-mod-autoscale] | No                 |
-| [`tw-mod-leech`][tw-mod-leech]         | No                 |
+| Module                               | Enabled by default |
+| ------------------------------------ | ------------------ |
+| [tw-mod-autoscale][tw-mod-autoscale] | No                 |
+| [tw-mod-leech][tw-mod-leech]         | No                 |
 
 Each module is turned on in its own configuration file. Those files are read
 after `config/mangosd.conf`, so a setting there also overrides a leftover copy
@@ -266,6 +296,35 @@ of the same setting in your `config/mangosd.conf`.
 > module to the set is therefore a breaking change, and one you have to act on
 > before `mangosd` will start again. Such changes are listed in the
 > _[Breaking changes](#breaking-changes)_ section.
+
+#### Using the `modules-bots` images (optional)
+
+[TortoiseBots][tortoisebots] is a native Playerbot module for Tortoise-WoW. It
+allows you to spawn bots from characters on your own account, populate the
+world with AI-controlled players that level, quest, group up and run dungeons,
+and simulate a living economy in the auction house.
+
+The `modules-bots` variant is the `modules` variant with TortoiseBots compiled
+in on top, so it contains tw-mod-autoscale and tw-mod-leech as well. It is
+built from the same Tortoise-WoW commit as the other two.
+
+| Module                       | Enabled by default |
+| ---------------------------- | ------------------ |
+| [TortoiseBots][tortoisebots] | No                 |
+
+TortoiseBots reads two configuration files, both under
+[`config/modules-bots/`](config/modules-bots). `tortoise_bots.conf` contains
+the module's own settings and `aiplayerbot.conf` contains the bot behavior
+settings.
+
+The former should not require any changes from the defaults. Depending on what
+you want to achieve, you have to configure the latter to varying degrees. Read
+[TortoiseBots' own documentation][tortoisebots-docs] to learn what you can do
+with the module and how to set it up for that.
+
+> [!NOTE]
+> tortoise-deploy does not include optional TortoiseBots tools such as the
+> observability dashboard.
 
 #### Extracting the client data
 
@@ -377,7 +436,7 @@ This pulls the Docker images first and afterwards automatically creates and
 starts the containers. During the first startup it might take a little longer
 until the server becomes available due to the initial database creation.
 
-> [!CAUTION]
+> [!WARNING]
 > Make sure to not (accidentally) stop Tortoise-WoW before the database
 > creation process has finished; otherwise, you will likely end up with a
 > broken database and will have to delete and re-create it.
@@ -425,13 +484,12 @@ The available account levels are:
 E.g., to create an administrator account, set the account level to `4`.
 
 > [!NOTE]
-> Setting an account level above `0` grants elevated (Game Master and admin)
-> permissions, and some Game Master-specific behavior begins to apply to
-> characters on that account; you can modify some of it via the
-> [`GM.*` options][mangosd-gm-options] in your `mangosd.conf`. These options
-> are inherited from upstream Tortoise-WoW and are tuned for actual Game Master
-> usage rather than regular play (such characters start at level 60, spawn on
-> GM Island, etc.).  
+> Setting an account level above `0` grants elevated permissions, and some Game
+> Master-specific behavior begins to apply to characters on that account; you
+> can modify some of it via the [`GM.*` options][mangosd-gm-options] in your
+> `mangosd.conf`. These options are inherited from upstream Tortoise-WoW and
+> are tuned for actual Game Master usage rather than regular play (such
+> characters start at level 60, spawn on GM Island, etc.).  
 > Characters on an account above level `0` are also invulnerable and cannot be
 > killed by damage. This is hardcoded and cannot be disabled via configuration;
 > the in-game `.god off` command turns it off for the current session, but it
@@ -477,9 +535,9 @@ When you re-create the containers with newer images, `mangosd` automatically
 applies any pending migrations at startup, so your databases are kept up to
 date without manual steps.
 
-tortoise-deploy also detects upstream Tortoise-WoW commits that edit already
-released migration files. Such changes would otherwise leave the affected
-database in an inconsistent state and require manual intervention to rectify.
+tortoise-deploy also detects upstream commits that edit already released
+migration files. Such changes would otherwise leave the affected database in an
+inconsistent state and require manual intervention to rectify.
 
 By default, tortoise-deploy will
 [automatically re-create your world database][compose-automatic-world-db-corrections]
@@ -528,7 +586,7 @@ resolve:
 tortoise-deploy will then record the acknowledgement and continue startup. If
 you instead want to abort, run `docker compose down`.
 
-> [!CAUTION]
+> [!WARNING]
 > When you run `tortoise-confirm-changes`, tortoise-deploy treats the listed
 > commits as applied and continues. It does not check your database to verify
 > that the changes you made match what the commits describe. If your manual fix
@@ -573,7 +631,7 @@ they become irrelevant), sorted by newest first:
   `-modules` tag as well, copying each module's configuration example into
   place and adding a bind mount for it, and tuning the settings in that copy
   rather than in `config/mangosd.conf`; see the
-  _[Using the bundled-module images (optional)](#using-the-bundled-module-images-optional)_
+  _[Using the `modules` images (optional)](#using-the-modules-images-optional)_
   section. Moving from a build to its `-modules` variant works as of this
   entry; moving back the other way is unsupported and is not guaranteed to
   work.
@@ -743,6 +801,8 @@ non-commercial use only and comes with no warranty.
 [tortoise-example-commit]: https://github.com/tortoise-wow/tortoise-wow/commit/5fafe43b576116c3aecde435c41c87a47864f943
 [tortoise-wow]: https://github.com/tortoise-wow/tortoise-wow
 [tortoise-wow-modules]: https://github.com/tortoise-wow/tortoise-wow/blob/main/modules/README.md
+[tortoisebots]: https://github.com/Sagiroth/TortoiseBots
+[tortoisebots-docs]: https://github.com/Sagiroth/TortoiseBots/tree/main/docs
 [tw-mod-autoscale]: https://github.com/Penqle/tw-mod-autoscale
 [tw-mod-leech]: https://github.com/Penqle/tw-mod-leech
 [vmangos]: https://github.com/vmangos/core

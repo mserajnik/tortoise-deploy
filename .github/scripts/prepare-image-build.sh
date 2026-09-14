@@ -7,11 +7,10 @@
 # Dockerfile path, target architectures, image tags, build arguments, OCI
 # annotations, and labels for the requested image kind and unit. A unit is
 # described by its name (`UNIT`), its moving tags (`TAG_SET`), the commit to
-# build, and the patch set to apply. A bundled-module variant also carries the
-# module set to build in (`MODULES`) and the licenses those modules add to the
-# image (`MODULE_LICENSES`). `ALIAS_UNITS` names further units this same image
-# is published under, which is how one database image serves `base` and a
-# variant of it.
+# build, and the patch set to apply. A bundled-module variant adds the module
+# set to build in, together with the values its build derives from that set.
+# `ALIAS_UNITS` lists further units this same image publishes under, so one
+# database image covers `base` and a variant of it.
 
 set -euo pipefail
 
@@ -46,6 +45,9 @@ commit_hash="$(trim "$COMMIT_HASH")"
 unit="$(trim "$UNIT")"
 patch_set="$(trim "${PATCH_SET:-}")"
 modules="$(trim "${MODULES:-}")"
+module_configs="$(trim "${MODULE_CONFIGS:-}")"
+module_build_packages="$(trim "${MODULE_BUILD_PACKAGES:-}")"
+module_sql_modules="$(trim "${MODULE_SQL_MODULES:-}")"
 alias_units="$(trim "${ALIAS_UNITS:-}")"
 
 module_licenses="$(trim "${MODULE_LICENSES:-}")"
@@ -166,32 +168,57 @@ if [[ "$IMAGE_KIND" == "server" ]]; then
     "TORTOISE_PATCH_SET=$patch_set"
   )
   if [[ -n "$modules" ]]; then
-    # The configuration files the repository vendors an example for. The build
-    # compares this against what the modules actually install and refuses to
-    # produce an image that would demand a file no example covers.
-    declare -a module_configs=()
-    for module_config_example in config/modules/*.conf.example; do
-      if [[ -f "$module_config_example" ]]; then
-        module_configs+=("$(basename "$module_config_example" .example)")
+    # The configuration files this variant's modules need an example for. Each
+    # variant states its own list, and the build compares it against what the
+    # modules install.
+    if [[ -z "$module_configs" ]]; then
+      fail "Modules were requested for unit '$unit', but no module configuration example was named."
+    fi
+
+    # A named example that is absent arrives at the build as a demand the
+    # repository cannot meet.
+    #
+    # Each entry is a path relative to the container's configuration directory,
+    # while the repository groups its examples by variant. The spellings
+    # differ, and the lookup matches by basename. Every bundled-module variant
+    # other than `modules` builds as a superset of it and shares the curated
+    # examples in `config/modules/`.
+    declare -a example_directories=("config/$unit")
+    if [[ "$unit" != "modules" ]]; then
+      example_directories+=("config/modules")
+    fi
+
+    IFS=',' read -r -a module_config_names <<<"$module_configs"
+    for module_config_name in "${module_config_names[@]}"; do
+      module_config_example="${module_config_name##*/}.example"
+      example_found="false"
+      for example_directory in "${example_directories[@]}"; do
+        if [[ -f "$example_directory/$module_config_example" ]]; then
+          example_found="true"
+          break
+        fi
+      done
+      if [[ "$example_found" != "true" ]]; then
+        searched="$(printf "'%s/' or " "${example_directories[@]}")"
+        fail "Unit '$unit' needs '$module_config_example', which the repository does not ship in ${searched% or }."
       fi
     done
 
-    if ((${#module_configs[@]} == 0)); then
-      fail "Modules were requested but 'config/modules/' vendors no configuration example."
-    fi
-
-    # Sorted in the C locale, because the build compares this against a list
-    # the build container globs for itself and a string compare makes the order
-    # load-bearing. Sort first: `mapfile` reports only its own status, so a
-    # failing `sort` would silently read as "no module configuration files".
-    module_configs_sorted="$(printf '%s\n' "${module_configs[@]}" | LC_ALL=C sort)"
-    mapfile -t module_configs < <(printf '%s' "$module_configs_sorted")
-
-    printf -v module_configs_output '%s,' "${module_configs[@]}"
     build_args+=(
       "TORTOISE_MODULES=$modules"
-      "TORTOISE_MODULE_CONFIGS=${module_configs_output%,}"
+      "TORTOISE_MODULE_CONFIGS=$module_configs"
     )
+
+    # The Dockerfile already defaults to an empty value. This build argument
+    # appears only when the variant lists a module. Where the list is empty,
+    # the build refuses any module that has SQL in its tree.
+    if [[ -n "$module_sql_modules" ]]; then
+      build_args+=("TORTOISE_MODULE_SQL_MODULES=$module_sql_modules")
+    fi
+
+    if [[ -n "$module_build_packages" ]]; then
+      build_args+=("TORTOISE_MODULE_BUILD_PACKAGES=$module_build_packages")
+    fi
   fi
 else
   migration_edits="$(trim "${MIGRATION_EDITS:-}")"

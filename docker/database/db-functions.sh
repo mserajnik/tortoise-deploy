@@ -19,7 +19,7 @@ tortoise_fail() {
 }
 
 sql_escape() {
-  printf '%s' "$1" | sed "s/'/''/g"
+  printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e "s/'/''/g"
 }
 
 mark_database_ready() {
@@ -62,14 +62,19 @@ drop_database() {
 grant_permissions() {
   local db_name="$1"
   local silent="${2:-false}"
+  local user
+  local password
 
   if [[ "$silent" = false ]]; then
     tortoise_log "Granting permissions to database user '$MARIADB_USER' for database '$db_name'..."
   fi
 
+  user="$(sql_escape "$MARIADB_USER")"
+  password="$(sql_escape "$MARIADB_PASSWORD")"
+
   mariadb -u root -p"$MARIADB_ROOT_PASSWORD" -e \
-    "CREATE USER IF NOT EXISTS '$MARIADB_USER'@'%' IDENTIFIED BY '$MARIADB_PASSWORD'; \
-    GRANT ALL ON \`$db_name\`.* TO '$MARIADB_USER'@'%'; \
+    "CREATE USER IF NOT EXISTS '$user'@'%' IDENTIFIED BY '$password'; \
+    GRANT ALL ON \`$db_name\`.* TO '$user'@'%'; \
     FLUSH PRIVILEGES;"
 }
 
@@ -113,16 +118,24 @@ import_base_data() {
 configure_realm() {
   local realm_name
   local realm_address
+  local realm_port
+  local realm_icon
+  local realm_timezone
+  local realm_allowed_security_level
 
   realm_name="$(sql_escape "$TORTOISE_REALMLIST_NAME")"
   realm_address="$(sql_escape "$TORTOISE_REALMLIST_ADDRESS")"
+  realm_port="$(sql_escape "$TORTOISE_REALMLIST_PORT")"
+  realm_icon="$(sql_escape "$TORTOISE_REALMLIST_ICON")"
+  realm_timezone="$(sql_escape "$TORTOISE_REALMLIST_TIMEZONE")"
+  realm_allowed_security_level="$(sql_escape "$TORTOISE_REALMLIST_ALLOWED_SECURITY_LEVEL")"
   tortoise_log "Configuring realm '$TORTOISE_REALMLIST_NAME'..."
 
   mariadb -u root -p"$MARIADB_ROOT_PASSWORD" "tw_logon" -e \
     "INSERT INTO \`realmlist\` \
        (\`id\`, \`name\`, \`address\`, \`port\`, \`icon\`, \`timezone\`, \`allowedSecurityLevel\`) \
      VALUES \
-       (1, '$realm_name', '$realm_address', '$TORTOISE_REALMLIST_PORT', '$TORTOISE_REALMLIST_ICON', '$TORTOISE_REALMLIST_TIMEZONE', '$TORTOISE_REALMLIST_ALLOWED_SECURITY_LEVEL') \
+       (1, '$realm_name', '$realm_address', '$realm_port', '$realm_icon', '$realm_timezone', '$realm_allowed_security_level') \
      ON DUPLICATE KEY UPDATE \
        \`name\` = VALUES(\`name\`), \
        \`address\` = VALUES(\`address\`), \
@@ -145,18 +158,39 @@ ensure_maintenance_db_exists() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
 }
 
-# The `TORTOISE_MIGRATION_EDITS` build argument is baked into
-# `/sql/migration-edits` at image build time; manual builds leave the file
-# empty and both globals stay empty, which makes every per-database correction
-# a no-op.
-#
-# Leaks the two `MIGRATION_EDIT_*` globals to the parent script by design;
-# `update-db.sh` and `create-db.sh` consume them after sourcing.
-# shellcheck disable=SC2034
-parse_migration_edits() {
-  MIGRATION_EDIT_WORLD=""
-  MIGRATION_EDIT_CHARACTER=""
+# Maps a migration edit source to the repository its commits belong to, so a
+# message can link the commit the user needs to look at.
+correction_source_repository() {
+  local source_name="$1"
 
+  case "$source_name" in
+    core) printf 'tortoise-wow/tortoise-wow' ;;
+    tortoisebots) printf 'Sagiroth/TortoiseBots' ;;
+    *) tortoise_fail "Unknown migration edit source '$source_name'." ;;
+  esac
+}
+
+# The build writes the `TORTOISE_MIGRATION_EDITS` build argument into
+# `/sql/migration-edits`. A manual build leaves the file blank, every array
+# then ends up empty, and each per-database correction turns into a no-op.
+#
+# The wire is `<target>:<source>@<commit>[,<source>@<commit>]...` entries
+# separated by `|`, with an empty source list where a target has no recorded
+# edit. A target can have edits from more than one source.
+#
+# This leaks the four `MIGRATION_EDIT_*` arrays to the parent script by design.
+# `update-db.sh` and `create-db.sh` consume them after sourcing.
+parse_migration_edits() {
+  MIGRATION_EDIT_WORLD_SOURCES=()
+  MIGRATION_EDIT_WORLD_COMMITS=()
+  MIGRATION_EDIT_CHARACTER_SOURCES=()
+  MIGRATION_EDIT_CHARACTER_COMMITS=()
+
+  # The build writes the wire into the image from a build argument the workflow
+  # sets from `migration-edits-to-arg.sh`, which validates the state file and
+  # renders the target names as literals. That build argument is the only
+  # writer, so this function can trust its input and checks only what it has to
+  # route.
   local file="/sql/migration-edits"
   if [[ ! -f "$file" ]]; then
     return 0
@@ -171,26 +205,33 @@ parse_migration_edits() {
     return 0
   fi
 
-  local pair key value
-  local saved_ifs="$IFS"
-  IFS='|'
-  for pair in $raw; do
-    IFS="$saved_ifs"
-    # Both parameter expansions below yield the whole token when it holds no
-    # colon, which would turn a malformed entry into its own commit hash.
-    if [[ "$pair" != *:* ]]; then
-      IFS='|'
-      continue
-    fi
-    key="${pair%%:*}"
-    value="${pair#*:}"
-    case "$key" in
-      world) MIGRATION_EDIT_WORLD="$value" ;;
-      character) MIGRATION_EDIT_CHARACTER="$value" ;;
-    esac
-    IFS='|'
+  local entry target sources token source_name commit_hash
+  local entries=() tokens=()
+
+  # `IFS` as a prefix assignment applies to `read` alone. The loop bodies below
+  # do not have to save and restore it.
+  IFS='|' read -r -a entries <<<"$raw"
+  for entry in "${entries[@]}"; do
+    target="${entry%%:*}"
+    sources="${entry#*:}"
+
+    IFS=',' read -r -a tokens <<<"$sources"
+    for token in "${tokens[@]}"; do
+      source_name="${token%%@*}"
+      commit_hash="${token#*@}"
+
+      case "$target" in
+        world)
+          MIGRATION_EDIT_WORLD_SOURCES+=("$source_name")
+          MIGRATION_EDIT_WORLD_COMMITS+=("$commit_hash")
+          ;;
+        character)
+          MIGRATION_EDIT_CHARACTER_SOURCES+=("$source_name")
+          MIGRATION_EDIT_CHARACTER_COMMITS+=("$commit_hash")
+          ;;
+      esac
+    done
   done
-  IFS="$saved_ifs"
 }
 
 correction_acknowledged() {
@@ -254,30 +295,51 @@ import_world_schema() {
 }
 
 PENDING_DB_NAMES=()
+PENDING_DB_SOURCES=()
 PENDING_DB_COMMIT_HASHES=()
 
 process_world_correction() {
-  local commit_hash="$1"
-  local schema
-
-  if [[ -z "$commit_hash" ]]; then
-    return 0
-  fi
+  local source_name="$1"
+  local commit_hash="$2"
+  local schema use_count world_use_count
+  local repository
 
   if correction_acknowledged "world" "$commit_hash"; then
     return 0
   fi
 
+  repository="$(correction_source_repository "$source_name")"
+
   local enable_auto="${TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS:-0}"
   local halt_on_edits="${TORTOISE_HALT_ON_MIGRATION_EDITS:-0}"
 
   if [[ "$enable_auto" = "1" ]]; then
-    # The slice depends only on the dump, so extract it before dropping
-    # anything. A failing `awk` then aborts with the existing world database
-    # intact instead of leaving an empty one behind.
+    # The slice depends only on the dump, so extract and check it before
+    # dropping anything: a slice that fails the checks below aborts the start
+    # with the existing world database intact.
+    #
+    # The slice has to hold tables, and every `USE` in it has to be the
+    # `tw_world` one. A dump without `CREATE DATABASE` lines leaves the
+    # preamble running to the end of the file, and the slice then contains all
+    # four databases. Importing that re-creates the other three from their own
+    # `USE` statements. The count below catches the line-leading `USE` switches
+    # the `awk` anchor misses.
     schema="$(extract_world_schema)"
+    # `grep -c` exits 1 on a count of zero, which is one of the cases this
+    # guard exists to reject, so without `|| true` errexit kills the start here
+    # and the abort below never says why.
+    use_count="$(grep -ciE '^[[:space:]]*use([^a-z0-9_$]|$)' <<<"$schema" || true)"
+    # shellcheck disable=SC2016
+    world_use_count="$(grep -c '^USE `tw_world`;' <<<"$schema" || true)"
 
-    tortoise_log "Re-creating world database to apply migration edit (tortoise-wow/tortoise-wow@${commit_hash:0:7})..."
+    # shellcheck disable=SC2016
+    if ! grep -q '^CREATE TABLE' <<<"$schema" ||
+      ! grep -q '^USE `tw_world`;' <<<"$schema" ||
+      [[ "$use_count" -ne "$world_use_count" ]]; then
+      tortoise_fail "Could not extract the world database table structure from '/sql/create_databases.sql'."
+    fi
+
+    tortoise_log "Re-creating world database to apply migration edit ($repository@${commit_hash:0:7})..."
     drop_database "tw_world"
     create_database "tw_world"
     grant_permissions "tw_world"
@@ -289,13 +351,14 @@ process_world_correction() {
 
   if [[ "$halt_on_edits" = "1" ]]; then
     PENDING_DB_NAMES+=("world")
+    PENDING_DB_SOURCES+=("$source_name")
     PENDING_DB_COMMIT_HASHES+=("$commit_hash")
     return 0
   fi
 
   # We deliberately do not record an acknowledgement here so the warning
   # repeats on every start until the user takes action.
-  tortoise_log "WARNING: Migration edit detected for the world database (tortoise-wow/tortoise-wow@${commit_hash:0:7}) but both 'TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS' and 'TORTOISE_HALT_ON_MIGRATION_EDITS' are disabled; continuing without applying or acknowledging. Your world database no longer matches this image and the server may misbehave or fail to start." >&2
+  tortoise_log "WARNING: Migration edit detected for the world database ($repository@${commit_hash:0:7}) but both 'TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS' and 'TORTOISE_HALT_ON_MIGRATION_EDITS' are disabled; continuing without applying or acknowledging. Your world database no longer matches this image and the server may misbehave or fail to start." >&2
 }
 
 # The ledger and the baked wire string key on logical target names, but the
@@ -306,7 +369,7 @@ correction_database_name() {
   case "$db_name" in
     world) printf 'tw_world' ;;
     character) printf 'tw_char' ;;
-    *) printf '%s' "$db_name" ;;
+    *) tortoise_fail "Unknown migration edit target '$db_name'." ;;
   esac
 }
 
@@ -315,59 +378,65 @@ correction_database_name() {
 # remedy at all: the operator applies the SQL by hand and confirms.
 process_userstate_correction() {
   local db_name="$1"
-  local commit_hash="$2"
-
-  if [[ -z "$commit_hash" ]]; then
-    return 0
-  fi
+  local source_name="$2"
+  local commit_hash="$3"
+  local repository
 
   if correction_acknowledged "$db_name" "$commit_hash"; then
     return 0
   fi
 
+  repository="$(correction_source_repository "$source_name")"
+
   local halt_on_edits="${TORTOISE_HALT_ON_MIGRATION_EDITS:-0}"
 
   if [[ "$halt_on_edits" = "1" ]]; then
     PENDING_DB_NAMES+=("$db_name")
+    PENDING_DB_SOURCES+=("$source_name")
     PENDING_DB_COMMIT_HASHES+=("$commit_hash")
     return 0
   fi
 
   # We deliberately do not record an acknowledgement here so the warning
   # repeats on every start until the user takes action.
-  tortoise_log "WARNING: Migration edit detected for '$(correction_database_name "$db_name")' database (tortoise-wow/tortoise-wow@${commit_hash:0:7}) but 'TORTOISE_HALT_ON_MIGRATION_EDITS' is disabled; continuing without acknowledging." >&2
+  tortoise_log "WARNING: Migration edit detected for the $db_name database ($repository@${commit_hash:0:7}) but 'TORTOISE_HALT_ON_MIGRATION_EDITS' is disabled; continuing without acknowledging." >&2
 }
 
 print_correction_abort_message() {
   cat >&2 <<'EOF'
-[tortoise-deploy]: ERROR: Migration edits detected in Tortoise-WoW that affect
-the following databases. tortoise-deploy will not apply these changes for you.
-Startup is halted.
+[tortoise-deploy]: ERROR: Migration edits detected. tortoise-deploy will not
+apply these changes for you. Startup is halted.
 
-Affected databases:
+Affected databases, one entry per edit:
 EOF
 
   local i=0
   local name
+  local source_name
   local commit_hash
+  local repository
+  local database_name
   while [[ "$i" -lt "${#PENDING_DB_NAMES[@]}" ]]; do
     name="${PENDING_DB_NAMES[$i]}"
+    source_name="${PENDING_DB_SOURCES[$i]}"
     commit_hash="${PENDING_DB_COMMIT_HASHES[$i]}"
-    printf '  - %s (%s)\n' "$name" "$(correction_database_name "$name")" >&2
-    printf '    https://github.com/tortoise-wow/tortoise-wow/commit/%s\n' "$commit_hash" >&2
+    repository="$(correction_source_repository "$source_name")"
+    database_name="$(correction_database_name "$name")"
+    printf '  - %s (%s)\n' "$name" "$database_name" >&2
+    printf '    https://github.com/%s/commit/%s\n' "$repository" "$commit_hash" >&2
     i=$((i + 1))
   done
 
   cat >&2 <<'EOF'
 
-For each affected database:
+For each entry above:
 
-  1. Open its GitHub link above to see what changed.
+  1. Open its GitHub link to see what changed.
   2. Apply the equivalent SQL to the running database yourself, using the name
      in parentheses above:
        docker compose exec database mariadb -u root -p <database>
      (mariadb will prompt for the password; it matches your
-     `MARIADB_ROOT_PASSWORD` setting in `compose.yaml`.)
+     'MARIADB_ROOT_PASSWORD' setting in 'compose.yaml'.)
 
 When you have applied the changes to all of them, confirm by running on the
 host:
@@ -422,18 +491,32 @@ process_custom_sql() {
   fi
 
   # Collect the listing before the loop rather than piping into it, where a
-  # failed `find` would abort with nothing said about which step failed.
+  # failed `find` would abort with nothing said about which step failed. The
+  # listing is NUL-separated and goes through a file, because these names come
+  # from a user's bind mount and a command substitution drops a NUL byte.
+  sql_files_raw="$(mktemp)"
   set +e
-  sql_files_raw="$(find "$file_directory" -type f -name '*.sql')"
+  find "$file_directory" -type f -name '*.sql' -print0 >"$sql_files_raw"
   status=$?
   set -e
 
   if [[ $status -ne 0 ]]; then
+    rm -f "$sql_files_raw"
     tortoise_fail "Failed to list custom SQL files in '$file_directory'."
   fi
 
-  sql_files_raw="$(sort <<<"$sql_files_raw")"
-  mapfile -t sql_files < <(printf '%s' "$sql_files_raw")
+  set +e
+  sort -z -o "$sql_files_raw" "$sql_files_raw"
+  status=$?
+  set -e
+
+  if [[ $status -ne 0 ]]; then
+    rm -f "$sql_files_raw"
+    tortoise_fail "Failed to sort the custom SQL file listing in '$file_directory'."
+  fi
+
+  mapfile -d '' -t sql_files <"$sql_files_raw"
+  rm -f "$sql_files_raw"
 
   tortoise_log "Found ${#sql_files[@]} custom SQL file(s) to process."
 
