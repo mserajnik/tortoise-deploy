@@ -137,6 +137,20 @@ AiPlayerbot.AllowIsolatedCustomStartingZones = 0
 # with a logged reason instead of being filled badly.
 #AiPlayerbot.RandomBotLftAllowRoleBorrow = 0
 
+# Issue #192: on-demand companion hiring (.bot hire + <Mercenary Hire> inn
+# recruiters, entries 95000-95045). Party hires 1-4 escalate (~15g total at
+# 60); raid hires 5+ use the flat bulk rate. All scale linearly with level.
+#AiPlayerbot.HireEnabled = 1
+#AiPlayerbot.HireMinAccountSecurity = 0
+#AiPlayerbot.HireMaxBotsPerPlayer = 4
+#AiPlayerbot.HireRequiresResting = 1
+#AiPlayerbot.HireBaseCostCopper = 15000
+#AiPlayerbot.HirePartyMult2 = 1.66
+#AiPlayerbot.HirePartyMult3 = 2.66
+#AiPlayerbot.HirePartyMult4 = 4.66
+#AiPlayerbot.HireRaidFlatCostCopper = 10000
+#AiPlayerbot.HireDisconnectGracePeriod = 300
+
 # Bounded AH market population through the native bot/session auction path. Default off.
 # When enabled, online random Headless bots use real inventory items, pricing, deposits,
 # account limits, and HandleAuctionSellItem. Auctioneer spawns are loaded once and
