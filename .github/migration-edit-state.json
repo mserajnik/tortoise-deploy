@@ -16,6 +16,10 @@
         "core": {
           "commit": "f62cd95b63439ebdc7915053016ffa2753f98121",
           "subject": "refactor: finalize manager-owned headless session lifecycle"
+        },
+        "tortoisebots": {
+          "commit": "b58e1039955c5107bfbf44bbdb9c71b3e6a6b85d",
+          "subject": "feat(hire): complete world coverage with TortoiseWoW and late-vanilla recruiters"
         }
       },
       "character": {}
