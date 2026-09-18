@@ -132,6 +132,10 @@ AiPlayerbot.AllowIsolatedCustomStartingZones = 0
 #AiPlayerbot.RandomBotLftEnabled = 0
 #AiPlayerbot.RandomBotLftUpdateInterval = 15000
 #AiPlayerbot.RandomBotLftMaxFillsPerInterval = 1
+# Issue #189: allow the LFT fill to respec a bot into a missing role (role
+# borrowing). Default 0 keeps each bot's own spec; a missing role stays empty
+# with a logged reason instead of being filled badly.
+#AiPlayerbot.RandomBotLftAllowRoleBorrow = 0
 
 # Bounded AH market population through the native bot/session auction path. Default off.
 # When enabled, online random Headless bots use real inventory items, pricing, deposits,
