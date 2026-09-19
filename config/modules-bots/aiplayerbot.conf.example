@@ -554,6 +554,11 @@ AiPlayerbot.AutoLearnDroppedSpells = 0
 # Default: 1 (enabled)
 # AiPlayerbot.AutoDoQuests = 1
 
+# Companion Mage/Warlock bots auto-place conjured food/water/healthstones into
+# the trade window when a player opens trade with them.
+# Default: 1 (enabled)
+AiPlayerbot.AutoShareConjuredOnTrade = 1
+
 # Generate and persist the full TravelNode/navmesh cache at AI startup.
 # This can load every map and perform a large database rebuild. Leave disabled
 # unless a core path-filter implementation is available; the pinned Tortoise
@@ -1252,7 +1257,8 @@ AiPlayerbot.RandomBotNonCombatStrategies = +grind,+loot,+custom::say,+tfish,+wan
 #AiPlayerbot.RandomBotDeadStrategies =
 # Keep these empty so the spec/role defaults above remain authoritative for
 # player-owned bots. Add explicit overrides only when intentionally changing a
-# bot's role or autonomous behavior.
+# bot's role or autonomous behavior. The C++ fallback for owned bots adds
+# +loot (corpse looting) on top of +return,+delayed roll.
 AiPlayerbot.CombatStrategies = ""
 AiPlayerbot.NonCombatStrategies = ""
 #AiPlayerbot.ReactStrategies =
