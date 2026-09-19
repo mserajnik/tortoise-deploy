@@ -66,6 +66,13 @@ rm -rf ./Buildings ./dbc ./maps ./mmaps ./vmaps
 # `-f 0` keeps terrain heights as full floats; Tortoise-WoW's `mapextractor`
 # otherwise quantizes them to integers.
 "$extractors_dir/mapextractor" -f 0
+
+# `mapextractor` writes the DBC files first, so data from an unsupported client
+# version fails here, ahead of the VMap and MMap steps. A failure here stops
+# the script under `set -e` and leaves the previous extraction in place,
+# because this script writes the extracted data directory only at the end.
+verify-client-data "$client_data_dir/dbc"
+
 # `-l` writes the full ("precise") WMO geometry instead of the default
 # collision-filtered subset, giving the server's VMaps (collision, line of
 # sight, model height) more complete model data.

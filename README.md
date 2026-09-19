@@ -62,6 +62,7 @@ a Tortoise-WoW setup:
     - [Using the `modules` images (optional)](#using-the-modules-images-optional)
     - [Using the `modules-bots` images (optional)](#using-the-modules-bots-images-optional)
     - [Extracting the client data](#extracting-the-client-data)
+    - [Verifying existing extracted data](#verifying-existing-extracted-data)
     - [A note on Warden](#a-note-on-warden)
     - [Modifying the world database with custom changes (optional)](#modifying-the-world-database-with-custom-changes-optional)
 - [Usage](#usage)
@@ -333,7 +334,17 @@ Tortoise-WoW uses data that is generated from extracted client data to handle
 things like mob movement and line of sight. If you have already acquired this
 data previously, you can place it directly into
 [`storage/mangosd/extracted-data/`](storage/mangosd/extracted-data) and skip
-the next steps.
+the extraction below. Then check it as described in the
+_[Verifying existing extracted data](#verifying-existing-extracted-data)_
+section.
+
+> [!WARNING]
+> Tortoise-WoW targets an unmodified copy of the final Turtle WoW client
+> 1.18.1.7272 with the 2026-04-12 hotfixes. Data extracted from a different
+> version causes gameplay problems that look like Tortoise-WoW bugs.
+> tortoise-deploy aborts the extraction when it detects an unsupported client
+> version. It also refuses to start the server with pre-existing data from such
+> a client in place.
 
 To extract the data, first copy the contents of your client directory into
 [`storage/mangosd/client-data/`](storage/mangosd/client-data). Next, simply run
@@ -370,6 +381,11 @@ There are two things to look out for here:
 > notices/errors during the process are normal and usually nothing to worry
 > about (as long as the execution continues afterwards).
 
+The extraction compares the DBC files it produces against hashes Tortoise-WoW
+publishes. That happens early, before the steps that take the bulk of the time.
+With an unsupported client version the run stops within minutes and leaves
+[`storage/mangosd/extracted-data/`](storage/mangosd/extracted-data) as it was.
+
 Once the extraction is finished you can find the data in
 [`storage/mangosd/extracted-data/`](storage/mangosd/extracted-data). Note that
 you may want to re-run the process in the future if Tortoise-WoW makes changes
@@ -392,6 +408,25 @@ docker run \
   --user 1000:1000 \
   ghcr.io/mserajnik/tortoise-server:base \
   extract-client-data --force
+```
+
+#### Verifying existing extracted data
+
+The extraction checks the data it produces, so this command is unnecessary
+after a run that completed without errors. Use it for data you extracted
+earlier or obtained from another source, to confirm it came from the supported
+client version before you start the server.
+
+To check the data in
+[`storage/mangosd/extracted-data/`](storage/mangosd/extracted-data), run:
+
+```sh
+docker run \
+  -v ./storage/mangosd/extracted-data:/opt/tortoise/storage/extracted-data \
+  --rm \
+  --user 1000:1000 \
+  ghcr.io/mserajnik/tortoise-server:base \
+  verify-client-data
 ```
 
 #### A note on Warden
@@ -607,6 +642,16 @@ Sometimes, there may be new features or changes that require manual
 intervention. Such breaking changes will be listed here (and removed again once
 they become irrelevant), sorted by newest first:
 
+- __[2026-09-19] - Extracted client data is now verified__: tortoise-deploy now
+  checks the extracted DBC files against hashes published by Tortoise-WoW, both
+  when you extract and on every server start. A mismatch stops the extraction
+  and keeps the server from starting. There is exactly one supported client
+  version, the final Turtle WoW client 1.18.1.7272 with the 2026-04-12
+  hotfixes. Data from any other version produces gameplay problems that look
+  like Tortoise-WoW bugs. Run `verify-client-data` as shown in the
+  _[Verifying existing extracted data](#verifying-existing-extracted-data)_
+  section to check your data. If it fails, obtain that version and re-run the
+  extraction.
 - __[2026-09-14] - The image variants have been consolidated and renamed__: the
   `unstable` and `unstable-modules` variants are no longer available.
   Tortoise-WoW now merges its `1181dev` branch, which those variants were built

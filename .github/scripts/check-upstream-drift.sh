@@ -60,6 +60,11 @@ add_github_check() {
 # `CMakeLists.txt` are watched too; the latter is where new `find_package(...)`
 # would typically introduce a new dependency that we would need to install.
 #
+# `tools/dbc_verification/dbc_verifier.py` contains the hashes that go into the
+# server image at build time. A change to its format or its name breaks the
+# parse that turns them into the image's manifest for verifying extracted
+# client data.
+#
 # Files we only patch (such as `AutoUpdater.cpp`) are not watched here: a drift
 # that breaks a patch already fails the build via
 # `TORTOISE_FAIL_ON_PATCH_ERROR`.
@@ -69,6 +74,7 @@ tortoise_paths=(
   sql/create_databases.sql
   src/mangosd/mangosd.conf.dist.in
   src/realmd/realmd.conf.dist.in
+  tools/dbc_verification/dbc_verifier.py
 )
 
 if [[ -n "${TORTOISE_REPOSITORY:-}${TORTOISE_LATEST_COMMIT_HASH:-}${TORTOISE_KNOWN_COMMIT_HASH:-}" ]]; then

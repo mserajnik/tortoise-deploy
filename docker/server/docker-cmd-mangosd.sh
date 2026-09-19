@@ -42,4 +42,8 @@ done <<EOF
 $required_files
 EOF
 
+# Data from the wrong client produces gameplay faults that read as server bugs.
+# A failure here stops the script under `set -e`, before the `exec` below.
+verify-client-data
+
 exec /opt/tortoise/bin/mangosd -c "$config_dir/mangosd.conf"

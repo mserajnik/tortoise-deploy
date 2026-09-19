@@ -272,7 +272,49 @@ RUN \
   cp \
     /build/core/tools/mmap/mmapSettings.txt \
     /build/core/tools/mmap/offmesh.txt \
-    /opt/tortoise/bin/
+    /opt/tortoise/bin/ && \
+  # Turn Tortoise-WoW's hash table into a `sha256sum -c` manifest. The runtime
+  # then checks extracted DBC data without a Python interpreter. The table also
+  # lists `hashes.txt`, which the extractors never produce. The parse takes
+  # only the `.dbc` entries.
+  #
+  # The pattern accepts either quote character and either hash case, because a
+  # regenerated table may change the quoting or the hash case. `sha256sum -c`
+  # reads both cases. The extension is lowercased first, to match the name the
+  # extractors write.
+  #
+  # The floor below catches a parse that returns an implausible number of
+  # `.dbc` entries.
+  sed -n \
+    -e "s/\\.[Dd][Bb][Cc]\\(['\"][[:space:]]*:\\)/.dbc\\1/" \
+    -e "s/^[[:space:]]*['\"]\\([^'\"]*\\.dbc\\)['\"][[:space:]]*:[[:space:]]*['\"]\\([0-9a-fA-F]\\{64\\}\\)['\"][^'\"]*\$/\\2  \\1/p" \
+    /build/core/tools/dbc_verification/dbc_verifier.py \
+    >/opt/tortoise/dbc-hashes && \
+  dbc_hash_count="$(grep -cE '^[0-9a-fA-F]{64}  ' /opt/tortoise/dbc-hashes || true)" && \
+  dbc_hash_count="${dbc_hash_count:-0}" && \
+  if [ "$dbc_hash_count" -lt 100 ]; then \
+    echo "Parsed $dbc_hash_count DBC hashes from 'tools/dbc_verification/dbc_verifier.py', which is too few for a complete manifest."; \
+    exit 1; \
+  fi && \
+  # A partial parse passes the floor and still loses hashes, which leaves an
+  # image that refuses every client. The parsed hashes have to match the
+  # table's `.dbc` keys, and a key whose value the parse cannot read fails the
+  # build. The key counter reads only lines that begin with a quoted `.dbc`
+  # key.
+  dbc_key_count="$(grep -cE "^[[:space:]]*['\"][^'\"]*\\.[Dd][Bb][Cc]['\"][[:space:]]*:" \
+    /build/core/tools/dbc_verification/dbc_verifier.py)" && \
+  if [ "$dbc_hash_count" -ne "$dbc_key_count" ]; then \
+    echo "Parsed $dbc_hash_count DBC hashes from 'tools/dbc_verification/dbc_verifier.py', which names $dbc_key_count DBC files."; \
+    exit 1; \
+  fi && \
+  # A duplicated entry alongside an omitted one keeps the line count, so the
+  # runtime file count still matches while the omitted file goes unhashed and
+  # the check reports success.
+  dbc_unique_count="$(awk '{ sub(/^[^ ]*  /, "") } !seen[$0]++ { n++ } END { print n + 0 }' /opt/tortoise/dbc-hashes)" && \
+  if [ "$dbc_hash_count" -ne "$dbc_unique_count" ]; then \
+    echo "Parsed $dbc_hash_count DBC hashes from 'tools/dbc_verification/dbc_verifier.py' for only $dbc_unique_count distinct DBC files."; \
+    exit 1; \
+  fi
 
 FROM ubuntu:26.04
 
@@ -336,6 +378,7 @@ COPY --from=build --exclude=tortoise/etc* --chown=$TORTOISE_USER_NAME:$TORTOISE_
 COPY --chmod=755 ./docker/server/docker-cmd-mangosd.sh /usr/local/bin/mangosd
 COPY --chmod=755 ./docker/server/docker-cmd-realmd.sh /usr/local/bin/realmd
 COPY --chmod=755 ./docker/server/docker-cmd-extract-client-data.sh /usr/local/bin/extract-client-data
+COPY --chmod=755 ./docker/server/docker-cmd-verify-client-data.sh /usr/local/bin/verify-client-data
 
 RUN find /opt/tortoise/bin/ -type f ! -name '*.txt' -exec chmod +x {} +
 
