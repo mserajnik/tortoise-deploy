@@ -126,74 +126,20 @@ resolve_commit_hash() {
   printf '%s' "$result"
 }
 
-# Resolves the Tortoise-WoW commit a unit's moving tag was last built from, by
-# reading the commit hash tag that shares the package version of that moving
-# tag. The units share one package, so the commit cannot be taken from "the
-# newest hash tag"; it must come from the same version the moving tag points
-# at. Prints an empty string when the unit has no prior build.
-last_built_commit_for_unit() {
-  local package_owner="$1"
-  local package_name="$2"
-  local moving_tag="$3"
-  local commit_tag_regex="^$moving_tag-[0-9a-f]{40}$"
-  local endpoint
-  local commit_tag
-  local errors
-  local status
-
-  endpoint="$(package_versions_endpoint "$package_owner" "$package_name")"
-
-  # An empty endpoint means the owner lookup failed; report that rather than
-  # querying the API root.
-  if [[ -z "$endpoint" ]]; then
-    fail "Failed to resolve the package versions endpoint for '$package_owner/$package_name'."
-  fi
-
-  # `gh`'s stderr is kept out of the value: an advisory on an otherwise
-  # successful call would land inside the prefix strip below.
-  errors="$(mktemp)" || fail "Failed to create a temporary file."
-
-  set +e
-  commit_tag="$(gh api --paginate "$endpoint?per_page=100" \
-    --jq "[.[]
-           | select((.metadata.container.tags // []) | index(\"$moving_tag\"))
-           | .metadata.container.tags[]
-           | select(test(\"$commit_tag_regex\"))]
-          | first // empty" 2>"$errors")"
-  status=$?
-  set -e
-
-  if [[ $status -ne 0 ]]; then
-    # `gh` writes the error body to stdout, so only stderr can be tested here.
-    if grep -Fq "HTTP 404" "$errors"; then
-      rm -f "$errors"
-      printf '%s' ""
-      return 0
-    fi
-
-    cat "$errors" >&2
-    rm -f "$errors"
-    fail "Failed to query package versions for '$package_owner/$package_name'."
-  fi
-
-  rm -f "$errors"
-
-  printf '%s' "${commit_tag#"$moving_tag-"}"
-}
-
-# Resolves the module revision a unit's moving tag was last built from, by
-# reading the label the build wrote onto that image.
+# Reads one label off the image a unit's moving tag points at.
 #
-# The build writes a label into a per-architecture image configuration, and the
-# index contains none, so this walks the index, then the child manifest, then
-# the configuration blob. It prints an empty string when the image or the label
-# is absent, and the caller turns that into the cutoff anchor.
-last_built_module_commit_for_unit() {
+# The build writes a label into a per-architecture image configuration, which
+# an index does not carry, so this walks the index, then the child manifest,
+# then the configuration blob. It prints an empty string when the image or the
+# label is absent.
+image_label_for_unit() {
+  require_env GH_TOKEN
+
   local registry_host="$1"
   local package_owner="$2"
   local package_name="$3"
   local moving_tag="$4"
-  local module_directory="$5"
+  local label="$5"
   local repository="$package_owner/$package_name"
   local accept='application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.oci.image.manifest.v1+json'
   local token
@@ -201,21 +147,23 @@ last_built_module_commit_for_unit() {
   local manifest
   local child_digest
   local config_digest
-  local revision
+  local value
   local body
   local status
   local config
 
-  token="$(curl --fail --silent --show-error \
+  # The request sends credentials so that a package that does not exist reaches
+  # the 404 branch at the manifest hop below, where an absent image becomes an
+  # empty result. GHCR refuses an anonymous request for such a package with
+  # 403, and the walk aborts.
+  token="$(curl --fail --silent --show-error --user "x:$GH_TOKEN" \
     "https://$registry_host/token?scope=repository:$repository:pull&service=$registry_host" |
     jq -r '.token // empty')" || true
   if [[ -z "$token" ]]; then
-    fail "Could not obtain a pull token for '$repository' from $registry_host."
+    fail "Could not obtain a pull token for '$repository' from $registry_host. Check the credential and its package access."
   fi
 
-  # Only a 404 means there is no prior image. Collapsing 401, 403, 5xx, and a
-  # transport error into the same answer would reset the scan floor to the
-  # cutoff anchor and report that as fact.
+  # Only a 404 means there is no prior image.
   body="$(mktemp)" || fail "Failed to create a temporary file."
   status="$(curl --silent --show-error --location --output "$body" \
     --write-out '%{http_code}' \
@@ -271,25 +219,47 @@ last_built_module_commit_for_unit() {
   fi
 
   # An empty body does not contain a JSON value, so `jq` skips the filter and
-  # exits 0. The guard below stops the floor falling back to the anchor in
-  # silence.
+  # exits 0. The guard below stops an empty answer passing for a recorded one.
   if [[ -z "${config//[[:space:]]/}" ]]; then
     fail "Image config $config_digest of '$repository:$moving_tag' is empty."
   fi
 
-  # An image built before the module joined the variant does not have this
-  # label. An empty return then points the caller at the cutoff anchor, which
-  # matches the answer for a missing image and is the right one, because
-  # nothing published so far went through a scan for this module.
-  revision="$(jq -r \
-    --arg label "io.github.mserajnik.tortoise-deploy.modules.$module_directory.revision" \
+  # An image without this label returns empty, which means the same as a
+  # missing image: there is nothing to compare against.
+  value="$(jq -r --arg label "$label" \
     'if type == "object" then .config.Labels[$label] // empty
      else error("not an image config") end' <<<"$config")" ||
     fail "Image config $config_digest of '$repository:$moving_tag' is not readable as an image config."
 
-  if [[ -n "$revision" && ! "$revision" =~ ^[0-9a-f]{40}$ ]]; then
-    fail "Label for module '$module_directory' on '$repository:$moving_tag' is not a 40-character commit hash: '$revision'."
+  if [[ -n "$value" && ! "$value" =~ ^[0-9a-f]{40}$ ]]; then
+    fail "Label '$label' on '$repository:$moving_tag' is not a 40-character commit hash: '$value'."
   fi
 
-  printf '%s' "$revision"
+  printf '%s' "$value"
+}
+
+# Resolves the Tortoise-WoW commit a unit's moving tag was last built from, by
+# reading the label the build wrote onto that image. Prints an empty string
+# when the image does not record a commit.
+last_built_commit_for_unit() {
+  local registry_host="$1"
+  local package_owner="$2"
+  local package_name="$3"
+  local moving_tag="$4"
+
+  image_label_for_unit "$registry_host" "$package_owner" "$package_name" \
+    "$moving_tag" org.opencontainers.image.revision
+}
+
+# The revision of one bundled module, read off the variant's own image.
+last_built_module_commit_for_unit() {
+  local registry_host="$1"
+  local package_owner="$2"
+  local package_name="$3"
+  local moving_tag="$4"
+  local module_directory="$5"
+
+  image_label_for_unit "$registry_host" "$package_owner" "$package_name" \
+    "$moving_tag" \
+    "io.github.mserajnik.tortoise-deploy.modules.$module_directory.revision"
 }

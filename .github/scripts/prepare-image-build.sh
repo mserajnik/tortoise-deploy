@@ -130,9 +130,9 @@ esac
 
 image="$REGISTRY/$image_name"
 
-# The unit's moving tag(s) plus the immutable commit hash tag. The latter
-# carries the unit name because several units can build the same upstream
-# commit and still be different images.
+# The unit's moving tags plus the commit hash tag. The commit hash tag includes
+# the unit name, because several units can build the same upstream commit and
+# still be different images.
 IFS=',' read -r -a moving_tags <<<"$TAG_SET"
 for moving_tag in "${moving_tags[@]}"; do
   moving_tag="$(trim "$moving_tag")"

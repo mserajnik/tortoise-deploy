@@ -52,6 +52,7 @@ jobs:
       database_units_to_build: ${{ steps.prepare-build-matrix.outputs.database_units_to_build }}
       build_metadata: ${{ steps.prepare-build-matrix.outputs.build_metadata }}
       any_images_to_build: ${{ steps.prepare-build-matrix.outputs.any_images_to_build }}
+      any_database_images_to_build: ${{ steps.prepare-build-matrix.outputs.any_database_images_to_build }}
       commit_hash: ${{ steps.resolve-sources.outputs.tortoise_commit_hash }}
 
     steps:
@@ -114,12 +115,10 @@ jobs:
           MARIADB_DOCKER_KNOWN_COMMIT_HASH: 063eb10da092170beea08d2c629b6eb79d28cceb
         run: ./.github/scripts/check-upstream-drift.sh
 
-      # Decides whether to build and emits the build units the server and
-      # database jobs consume. The build is skipped when the `base` moving tag
-      # already points at the current commit, unless this is a scheduled Monday
-      # rebuild or a manual force rebuild. Also records any migration edit in
-      # the state file and bakes it into each build's `migration_edits` so the
-      # database image can act on it.
+      # Decides which units build this run and emits the build units the server
+      # and database jobs consume. Also records any migration edit in the state
+      # file and bakes it into each build's `migration_edits` so the database
+      # image can act on it.
       - name: Prepare build matrix
         id: prepare-build-matrix
         env:
@@ -194,7 +193,9 @@ jobs:
   build-and-push-database-images:
     name: Build and push database images
     needs: [setup, build-and-push-server-images]
-    if: ${{ needs.setup.outputs.any_images_to_build == 'true' }}
+    # Its own flag, because `modules` rebuilding alone shares the `base`
+    # database image and leaves this matrix empty, which a workflow refuses.
+    if: ${{ needs.setup.outputs.any_database_images_to_build == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -222,7 +223,14 @@ jobs:
   delete-old-package-versions:
     name: Delete old package versions
     needs: [setup, build-and-push-server-images, build-and-push-database-images]
-    if: ${{ needs.setup.outputs.any_images_to_build == 'true' && github.event_name != 'pull_request' }}
+    # A `modules`-only rebuild skips the database job, which `!= 'failure'`
+    # admits. `!cancelled()` disables the implicit `success()` over `needs:`,
+    # which refuses any dependency that did not succeed.
+    if: >-
+      ${{ !cancelled()
+      && needs.build-and-push-server-images.result == 'success'
+      && needs.build-and-push-database-images.result != 'failure'
+      && github.event_name != 'pull_request' }}
     runs-on: ubuntu-24.04
     permissions:
       packages: write
@@ -239,7 +247,10 @@ jobs:
   update-badges:
     name: Update badges
     needs: [setup, build-and-push-server-images, build-and-push-database-images, delete-old-package-versions]
-    if: ${{ needs.setup.outputs.any_images_to_build == 'true' && github.event_name != 'pull_request' }}
+    # The badges track the canonical `base` image.
+    if: >-
+      ${{ contains(fromJSON(needs.setup.outputs.server_units_to_build), 'base')
+      && github.event_name != 'pull_request' }}
     runs-on: ubuntu-24.04
 
     steps:

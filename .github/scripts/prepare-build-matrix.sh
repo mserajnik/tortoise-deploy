@@ -3,24 +3,27 @@
 # SPDX-FileCopyrightText: 2026 Michael Serajnik <https://github.com/mserajnik>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Decides whether the default workflow builds anything this run and emits the
-# build units consumed by the server and database build jobs. The build is
-# skipped when the `base` moving tag already points at the current commit,
-# unless the run is a scheduled Monday rebuild or a manual force rebuild.
+# Decides which units the default workflow builds this run and emits them for
+# the server and database build jobs. A unit builds when one of its sources
+# changed, and when one of the images it publishes is behind the core. A
+# scheduled Monday rebuild or a manual force rebuild builds every unit.
 # Records any migration edit in the state file and bakes it into each build's
 # `migration_edits` so the database image can act on it.
 #
 # A unit is one build leg. `base` is the core on its own. A configured module
 # set becomes a `modules` unit, and adding TortoiseBots to that set produces a
-# `modules-bots` unit. Each variant builds exactly when `base` does, and no
-# second build decision exists.
+# `modules-bots` unit. Each variant has a build decision of its own, taken
+# against the images that variant publishes: it builds when any of them records
+# a commit other than the core's, or when any module it lists is at a revision
+# other than the one that image records. A label states each module revision.
 #
 # A variant that contributes no SQL of its own shares the `base` database
 # image, which keeps it out of the state file. `modules` works that way. A
 # variant whose modules contribute migrations needs a database image of its
 # own, because an edit found in a module belongs to a deployment running it
 # alone. The server job builds every unit, and the database job builds the
-# units that need a database image of their own.
+# units that need a database image of their own, which can be none of them when
+# `modules` rebuilds on its own.
 
 set -euo pipefail
 
@@ -30,8 +33,10 @@ source "$script_dir/helpers.sh"
 
 require_env GH_TOKEN
 require_env GITHUB_EVENT_NAME
+require_env REGISTRY
 require_env PACKAGE_OWNER
 require_env PACKAGE_NAME
+require_env PACKAGE_NAME_SERVER
 require_env TORTOISE_REPOSITORY_OWNER
 require_env TORTOISE_REPOSITORY_NAME
 require_env TORTOISE_COMMIT_HASH
@@ -83,22 +88,68 @@ run_compute() {
     "$script_dir/compute-migration-edits.sh"
 }
 
+# The migration-edit scan needs a commit to walk from. The `base` database
+# image holds the core's edits. The commit it records is the floor.
 # shellcheck disable=SC2153
-last_built="$(last_built_commit_for_unit "$PACKAGE_OWNER" "$PACKAGE_NAME" "base")"
-
-# The build decision below uses the resolved value as it is; an empty string
-# forces a rebuild. The migration-edit scan instead needs a commit to walk
-# from, so it falls back to the cutoff anchor.
-scan_floor="$last_built"
+scan_floor="$(last_built_commit_for_unit \
+  "$REGISTRY" "$PACKAGE_OWNER" "$PACKAGE_NAME" "base")"
 if [[ -z "$scan_floor" ]]; then
-  echo "No prior package version with a commit hash tag found for unit 'base'; falling back to migration edit cutoff."
+  echo "No prior 'base' database image records a commit; falling back to migration edit cutoff."
   scan_floor="$TORTOISE_CUTOFF"
 fi
 
-needs_build="false"
-if [[ "$always_build" == "true" || "$last_built" != "$tortoise_commit" ]]; then
-  needs_build="true"
-fi
+# Both functions below run as an `if` condition, where Bash suspends `errexit`
+# for everything they do, command substitutions included. The explicit `exit`
+# is what turns a refused lookup into a failed run.
+
+# Returns success when every image a unit publishes already records the current
+# core commit. Checking each unit against its own images lets the next run
+# catch a leg that failed while its sibling published.
+unit_core_is_current() {
+  local unit="$1"
+  shift
+
+  local package recorded
+  for package in "$@"; do
+    recorded="$(last_built_commit_for_unit \
+      "$REGISTRY" "$PACKAGE_OWNER" "$package" "$unit")" || exit 1
+
+    if [[ "$recorded" != "$tortoise_commit" ]]; then
+      echo "Unit '$unit' rebuilds: its '$package' image records ${recorded:-<none>} and the core is at $tortoise_commit."
+      return 1
+    fi
+  done
+
+  return 0
+}
+
+# Returns success when a module a variant bundles is at a revision other than
+# the one the variant's published image records for it.
+#
+# An empty answer means there is nothing to compare against. The inequality
+# below covers it, and it does not need a case of its own.
+#
+# The first difference settles the answer. The loop stops there and reads no
+# further label.
+variant_modules_moved() {
+  local unit="$1"
+  shift
+
+  local entry directory revision recorded
+  for entry in "$@"; do
+    directory="${entry%%=*}"
+    revision="${entry##*@}"
+    recorded="$(last_built_module_commit_for_unit \
+      "$REGISTRY" "$PACKAGE_OWNER" "$PACKAGE_NAME_SERVER" "$unit" "$directory")" || exit 1
+
+    if [[ "$recorded" != "$revision" ]]; then
+      echo "Unit '$unit' rebuilds: module '$directory' is at $revision and its last image recorded ${recorded:-<none>}."
+      return 0
+    fi
+  done
+
+  return 1
+}
 
 # The bundled module set, packed into the single `TORTOISE_MODULES` build
 # argument the server Dockerfile takes: `<directory>=<url>@<revision>` entries
@@ -225,10 +276,61 @@ if [[ "$bots_modules" != "$modules" ]]; then
   echo "Bots module set: $bots_modules"
 fi
 
+# Each variant needs a decision of its own, because a module can change while
+# the core does not. A variant keeps its published image when the core is
+# unchanged and every module it lists is at the revision that image records.
+#
+# The decision for each unit reads that unit's own images. A new core commit
+# rebuilds all three, and no variant reads another variant's result. `modules`
+# publishes a server image alone, because it shares the `base` database image.
+base_needs_build="$always_build"
+modules_needs_build="$always_build"
+bots_needs_build="$always_build"
+
+if [[ "$base_needs_build" != "true" ]] &&
+  ! unit_core_is_current base "$PACKAGE_NAME_SERVER" "$PACKAGE_NAME"; then
+  base_needs_build="true"
+fi
+
+# `base` publishes the `modules` database tag as an alias of its own database
+# image. A `modules` build does not publish a database image, so it cannot
+# restore the tag.
+if [[ "$base_needs_build" != "true" && -n "$modules" ]]; then
+  modules_alias_commit="$(last_built_commit_for_unit \
+    "$REGISTRY" "$PACKAGE_OWNER" "$PACKAGE_NAME" modules)"
+
+  if [[ "$modules_alias_commit" != "$tortoise_commit" ]]; then
+    echo "Unit 'base' rebuilds: its 'modules' database alias records ${modules_alias_commit:-<none>} and the core is at $tortoise_commit."
+    base_needs_build="true"
+  fi
+fi
+
+if [[ -n "$modules" ]]; then
+  if [[ "$modules_needs_build" != "true" ]] &&
+    ! unit_core_is_current modules "$PACKAGE_NAME_SERVER"; then
+    modules_needs_build="true"
+  fi
+  if [[ "$modules_needs_build" != "true" ]] &&
+    variant_modules_moved modules "${module_entries[@]}"; then
+    modules_needs_build="true"
+  fi
+fi
+
+if [[ "$bots_modules" != "$modules" ]]; then
+  if [[ "$bots_needs_build" != "true" ]] &&
+    ! unit_core_is_current modules-bots "$PACKAGE_NAME_SERVER" "$PACKAGE_NAME"; then
+    bots_needs_build="true"
+  fi
+  if [[ "$bots_needs_build" != "true" ]] &&
+    variant_modules_moved modules-bots "${bots_module_entries[@]}"; then
+    bots_needs_build="true"
+  fi
+fi
+
 # Record any migration edit before building. Every unit built from the core's
 # commit takes the core's edits, so one walk covers them all. The module's
 # edits go to the variant that bundles it.
-if [[ "$needs_build" == "true" ]]; then
+if [[ "$base_needs_build" == "true" ]]; then
   core_units="base"
   if [[ "$bots_modules" != "$modules" ]]; then
     core_units="base,modules-bots"
@@ -236,25 +338,24 @@ if [[ "$needs_build" == "true" ]]; then
 
   run_compute "$scan_floor" "$tortoise_commit" core \
     "$TORTOISE_REPOSITORY_OWNER/$TORTOISE_REPOSITORY_NAME" "$core_units"
+fi
 
-  if [[ "$bots_modules" != "$modules" ]]; then
-    require_env REGISTRY
-    require_env PACKAGE_NAME_SERVER
+# The module's own walk follows the bots variant's decision, because the edits
+# it records belong to that variant's database image and to no other.
+if [[ "$bots_modules" != "$modules" && "$bots_needs_build" == "true" ]]; then
+  # A tag contains the core's commit alone. The module's floor comes from the
+  # label on the previous `modules-bots` server image, where the module is.
+  tortoisebots_scan_floor="$(last_built_module_commit_for_unit \
+    "$REGISTRY" "$PACKAGE_OWNER" "$PACKAGE_NAME_SERVER" \
+    modules-bots "${tortoisebots_repository##*/}")"
 
-    # A tag contains the core's commit alone. The module's floor comes from the
-    # label on the previous `modules-bots` server image, where the module is.
-    tortoisebots_scan_floor="$(last_built_module_commit_for_unit \
-      "$REGISTRY" "$PACKAGE_OWNER" "$PACKAGE_NAME_SERVER" \
-      modules-bots "${tortoisebots_repository##*/}")"
-
-    if [[ -z "$tortoisebots_scan_floor" ]]; then
-      echo "No prior bots image records a TortoiseBots revision; falling back to migration edit cutoff."
-      tortoisebots_scan_floor="$TW_MOD_TORTOISEBOTS_CUTOFF"
-    fi
-
-    run_compute "$tortoisebots_scan_floor" "$tortoisebots_commit" \
-      tortoisebots "$tortoisebots_repository" modules-bots
+  if [[ -z "$tortoisebots_scan_floor" ]]; then
+    echo "No prior bots image records a TortoiseBots revision; falling back to migration edit cutoff."
+    tortoisebots_scan_floor="$TW_MOD_TORTOISEBOTS_CUTOFF"
   fi
+
+  run_compute "$tortoisebots_scan_floor" "$tortoisebots_commit" \
+    tortoisebots "$tortoisebots_repository" modules-bots
 fi
 
 migration_edits="$("$script_dir/migration-edits-to-arg.sh" "$STATE_FILE" "base")"
@@ -349,27 +450,35 @@ add_bots_variant() {
     "$bots_module_sql_modules" ""
 }
 
-if [[ "$needs_build" == "true" ]]; then
+if [[ "$base_needs_build" == "true" ]]; then
   add_base "$tortoise_commit" "$migration_edits"
-  if [[ -n "$modules" ]]; then
-    add_module_variant "modules" "$tortoise_commit" "$migration_edits"
-  fi
-  if [[ "$bots_modules" != "$modules" ]]; then
-    add_bots_variant "modules-bots" "$tortoise_commit" \
-      "$bots_migration_edits"
-  fi
+fi
+if [[ -n "$modules" && "$modules_needs_build" == "true" ]]; then
+  add_module_variant "modules" "$tortoise_commit" "$migration_edits"
+fi
+if [[ "$bots_modules" != "$modules" && "$bots_needs_build" == "true" ]]; then
+  add_bots_variant "modules-bots" "$tortoise_commit" \
+    "$bots_migration_edits"
 fi
 
 if ((${#server_units[@]} == 0)); then
   server_units_to_build="[]"
-  database_units_to_build="[]"
   build_metadata="{}"
   any_images_to_build="false"
 else
   server_units_to_build="$(jq -nc '$ARGS.positional' --args "${server_units[@]}")"
-  database_units_to_build="$(jq -nc '$ARGS.positional' --args "${database_units[@]}")"
   build_metadata="$(printf '%s\n' "${metadata_entries[@]}" | jq -sc 'add')"
   any_images_to_build="true"
+fi
+
+# `modules` shares the `base` database image, and this can be empty while
+# server units are not. A workflow matrix refuses an empty vector.
+if ((${#database_units[@]} == 0)); then
+  database_units_to_build="[]"
+  any_database_images_to_build="false"
+else
+  database_units_to_build="$(jq -nc '$ARGS.positional' --args "${database_units[@]}")"
+  any_database_images_to_build="true"
 fi
 
 echo "Server units to build: $server_units_to_build"
@@ -377,6 +486,7 @@ echo "Database units to build: $database_units_to_build"
 echo "Build metadata: $build_metadata"
 
 write_output any_images_to_build "$any_images_to_build"
+write_output any_database_images_to_build "$any_database_images_to_build"
 write_output server_units_to_build "$server_units_to_build"
 write_output database_units_to_build "$database_units_to_build"
 write_output build_metadata "$build_metadata"

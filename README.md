@@ -46,9 +46,10 @@ a Tortoise-WoW setup:
 
 > [!NOTE]
 > The Docker images are built on a daily schedule, unless there have been no
-> new commits to Tortoise-WoW since the last build. Additionally, every Monday,
-> the latest images are rebuilt to ensure software and dependencies are up to
-> date, even if there have been no updates to Tortoise-WoW itself.
+> new commits since the last build, either to Tortoise-WoW or to the modules an
+> image bundles. Every Monday, the latest images are rebuilt to ensure software
+> and dependencies are up to date, even if there have been no updates to
+> Tortoise-WoW itself.
 
 ## Table of contents
 
