@@ -33,6 +33,19 @@ AiPlayerbot.ExplicitDbStoreSave = 0
 # Keep random bots logged out for an BotInWorldTime interval
 # AiPlayerbot.RandomBotTimedOffline = 0
 
+# Level ladder: choose the next random bot to log in by level instead of round-robin over
+# the whole pool. The levels are cut into bands of LevelLadderBandSize (1-5, 6-10, ... 56-59)
+# plus level 60 on its own; every low band gets an equal share of the online target and
+# level 60 gets LevelLadderMaxLevelShare percent of it (a hard cap - the other 60s stay
+# offline as a reserve). The band with the largest shortfall is filled first, inside a band
+# the highest-level character logs in first, so the leaders keep playing until they reach 60
+# and the fresh characters wait in the pool until a slot frees up. Once every
+# LevelLadderLogMinutes the service logs the online count per band.
+# AiPlayerbot.LevelLadder = 0
+# AiPlayerbot.LevelLadderBandSize = 5
+# AiPlayerbot.LevelLadderMaxLevelShare = 10
+# AiPlayerbot.LevelLadderLogMinutes = 5
+
 # Login Bots when real players login
 # AiPlayerbot.RandomBotLoginWithPlayer = 0
 
@@ -1241,6 +1254,16 @@ AiPlayerbot.RpgDistance = 200
 
 # Bot can flee for enemy
 AiPlayerbot.FleeingEnabled = 1
+
+# Universal raid survival (issue #201): bomb carriers run BombRunoutDistance
+# clear of the raid anchor; spread/flank steps use HazardEvasionDistance.
+#AiPlayerbot.BombRunoutDistance = 30.0
+#AiPlayerbot.HazardEvasionDistance = 12.0
+
+# Custom Turtle raid tactics (issue #203): Emerald Sanctum (807), Lower
+# Karazhan (532), Karazhan Crypt (800). Geometry-dependent behavior stays
+# manual pending playtesting (#237); this gates the transition strategies.
+AiPlayerbot.EnableCustomRaidTactics = 1
 
 # Health/Mana levels
 #AiPlayerbot.CriticalHealth = 25
