@@ -298,7 +298,7 @@ AiPlayerbot.GenerateItemCaches = 1
 # Chance for bot to use potions
 #AiPlayerbot.UsePotionChance = 1.0
 
-# Bots will speed up when following to stay close.
+# Bots will mount up to catch up when far behind the master while following.
 # AiPlayerbot.BoostFollow = 1
 
 # Bots and npcs turn to eachother during an rpg interaction
@@ -424,7 +424,7 @@ AiPlayerbot.BotLogFile =
 # AiPlayerbot.TalentsInPublicNote = 0
 
 #max limit of members in a guild (bots will leave guild if there are more members than this number)
-# AiPlayerbot.guildMaxBotLimit = 1000
+# AiPlayerbot.GuildMaxBotLimit = 1000
 
 ##################################################################################
 #
