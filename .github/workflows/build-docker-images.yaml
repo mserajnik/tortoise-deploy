@@ -107,7 +107,7 @@ jobs:
           TORTOISE_KNOWN_COMMIT_HASH: a59061f4b1a70e3947647bbceedb3a40d5cac790
           TW_MOD_AUTOSCALE_KNOWN_COMMIT_HASH: 8675af22569674d906479aec0d7883d13d9212bb
           TW_MOD_LEECH_KNOWN_COMMIT_HASH: a3667c2c672b885fddc5afd76e48471dafa4eccc
-          TW_MOD_TORTOISEBOTS_KNOWN_COMMIT_HASH: 101d78dfbff41bd65dbd92638e42a34d97a0dcf2
+          TW_MOD_TORTOISEBOTS_KNOWN_COMMIT_HASH: 564319896b4230936ef6764e78ab5a1fba102d1c
           # When bumping `MARIADB_DOCKER_KNOWN_COMMIT_HASH`, also update the
           # matching commit hash in `docker/database/Dockerfile` and the header
           # comment in `docker/database/docker-entrypoint.sh` so all three stay
