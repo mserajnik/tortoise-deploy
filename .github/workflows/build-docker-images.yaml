@@ -41,7 +41,7 @@ concurrency:
 jobs:
   setup:
     name: Setup
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       # `contents: write` is needed to commit the updated migration edit state
       # back to the repository via the GraphQL API.
@@ -231,7 +231,7 @@ jobs:
       && needs.build-and-push-server-images.result == 'success'
       && needs.build-and-push-database-images.result != 'failure'
       && github.event_name != 'pull_request' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       packages: write
 
@@ -251,7 +251,7 @@ jobs:
     if: >-
       ${{ contains(fromJSON(needs.setup.outputs.server_units_to_build), 'base')
       && github.event_name != 'pull_request' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout repository
