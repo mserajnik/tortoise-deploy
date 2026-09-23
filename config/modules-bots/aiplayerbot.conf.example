@@ -1283,7 +1283,7 @@ AiPlayerbot.RandomBotNonCombatStrategies = +grind,+loot,+custom::say,+tfish,+wan
 # bot's role or autonomous behavior. The C++ fallback for owned bots adds
 # +loot (corpse looting) on top of +return,+delayed roll.
 AiPlayerbot.CombatStrategies = ""
-AiPlayerbot.NonCombatStrategies = ""
+#AiPlayerbot.NonCombatStrategies = ""
 #AiPlayerbot.ReactStrategies =
 #AiPlayerbot.DeadStrategies =
 
