@@ -307,9 +307,8 @@ RUN \
     echo "Parsed $dbc_hash_count DBC hashes from 'tools/dbc_verification/dbc_verifier.py', which names $dbc_key_count DBC files."; \
     exit 1; \
   fi && \
-  # A duplicated entry alongside an omitted one keeps the line count, so the
-  # runtime file count still matches while the omitted file goes unhashed and
-  # the check reports success.
+  # A duplicated entry alongside an omitted one keeps the line count, and the
+  # runtime check then rejects the client data for a defect in the image.
   dbc_unique_count="$(awk '{ sub(/^[^ ]*  /, "") } !seen[$0]++ { n++ } END { print n + 0 }' /opt/tortoise/dbc-hashes)" && \
   if [ "$dbc_hash_count" -ne "$dbc_unique_count" ]; then \
     echo "Parsed $dbc_hash_count DBC hashes from 'tools/dbc_verification/dbc_verifier.py' for only $dbc_unique_count distinct DBC files."; \
