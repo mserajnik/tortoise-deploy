@@ -30,6 +30,7 @@ AiPlayerbot.ExplicitDbStoreSave = 0
 # Log out random bots after BotInWorldTime interval
 # AiPlayerbot.RandomBotTimedLogout = 1
 
+# Currently has no effect (read but unused).
 # Keep random bots logged out for an BotInWorldTime interval
 # AiPlayerbot.RandomBotTimedOffline = 0
 
@@ -41,7 +42,8 @@ AiPlayerbot.ExplicitDbStoreSave = 0
 # the highest-level character logs in first, so the leaders keep playing until they reach 60
 # and the fresh characters wait in the pool until a slot frees up. Once every
 # LevelLadderLogMinutes the service logs the online count per band.
-# AiPlayerbot.LevelLadder = 0
+# Default: 1 (on). 0 restores the round-robin over the whole pool.
+# AiPlayerbot.LevelLadder = 1
 # AiPlayerbot.LevelLadderBandSize = 5
 # AiPlayerbot.LevelLadderMaxLevelShare = 10
 # AiPlayerbot.LevelLadderLogMinutes = 5
@@ -49,6 +51,7 @@ AiPlayerbot.ExplicitDbStoreSave = 0
 # Login Bots when real players login
 # AiPlayerbot.RandomBotLoginWithPlayer = 0
 
+# Currently has no effect (read but unused).
 # auto-login all player alts as bots on player login
 AiPlayerbot.BotAutologin = 0
 
@@ -150,8 +153,9 @@ AiPlayerbot.RandomBotAutoCreate = 0
 # login via the generic PlayerScript OnLogin hook, only for BotManager records
 # marked random; owned/manual bots unchanged. Pinned bots
 # (sRandomBotFacade.IsPinnedBot) are skipped. Uses core Player::TeleportTo on
-# the world thread; no homebind update. Default 0.
-AiPlayerbot.EnableRandomTeleports = 0
+# the world thread; no homebind update. Default 1, so bots seeded above level
+# 10 start in a zone that fits their level instead of their starting zone.
+AiPlayerbot.EnableRandomTeleports = 1
 
 # Whether random bots are allowed in custom isolated starting zones
 # (Blackstone Island 5536, Thalassian Highlands 5225, Alah'Thalas 2040).
@@ -219,9 +223,8 @@ AiPlayerbot.AhMarketDynamicLevel = 0
 AiPlayerbot.AhMarketLevelRefresh = 600
 AiPlayerbot.AhMarketVariance = 10
 AiPlayerbot.AhMarketBidMin = 75
-AiPlayerbot.AhMarketBidMax = 90
-AiPlayerbot.AhMarketTimeMin = 8
 AiPlayerbot.AhMarketTimeMax = 24
+# Currently has no effect (read but unused).
 AiPlayerbot.AhMarketValueVendor = 1
 
 # Demand-aware WSG/AB/AV queue participation for live Headless RNDBOTs. Default off.
@@ -239,17 +242,19 @@ AiPlayerbot.AhMarketValueVendor = 1
 #AiPlayerbot.RandomBotBgQueueInterval = 30000
 #AiPlayerbot.RandomBotBgMaxQueuePerInterval = 1
 
-# Disable core mangos map/bot optimizations which hinders bot activity
-# Works best together with AiPlayerbot.DisableActivityPriorities = 1
-# (0-1), default 0
+# Currently has NO effect: the key is read but nothing uses it (kept for
+# config compatibility). Bot activity is controlled by
+# AiPlayerbot.DisableActivityPriorities and AiPlayerbot.botActiveAlone below.
 # AiPlayerbot.DisableBotOptimizations = 0
 
-# Disable bot activity priorities, to make all bots ACTUALLY active without player in the zones or server (unless AiPlayerbot.DisableBotOptimizations = 0)
-# This setting is added for the sake of having all bots always active regardless of anything
-# With this enabled, if you get lags - then you need to reduce amount of online bots, rather than relying on optimizations
-# This will ingore the AiPlayerbot.botActiveAlone setting, all bots will be active regardless
-# Works best together with AiPlayerbot.DisableBotOptimizations = 1
-# (0-1), default 0
+# 1 = every bot's AI is always fully active (botActiveAlone is ignored).
+# 0 = activity priorities apply: bots near/visible to a player, in combat, in
+#     an instance, grouped with a player or in a battleground stay active;
+#     "alone" bots (no player nearby / empty map or server) are throttled to
+#     botActiveAlone percent. All bots stay logged in either way; this only
+#     limits how often their AI updates. If you get lag with 1, reduce the
+#     number of online bots.
+# Default 1 (bots always alive); throttling is an opt-in.
 AiPlayerbot.DisableActivityPriorities = 1
 
 # Force bots to become active when a player is nearby
@@ -261,7 +266,9 @@ AiPlayerbot.DisableActivityPriorities = 1
 # Limit combat activity for slight performance boost.
 #AiPlayerbot.LimitCombatActivity = 0
 
-# Percentage of fully active bots. Default is 10, higher numbers may affect performance
+# Percentage (not a count) of "alone" bots kept fully active when
+# DisableActivityPriorities = 0; the active set rotates ~1% per minute.
+# Default is 10, higher numbers may affect performance
 # AiPlayerbot.botActiveAlone = 10
 
 # Sync non-random bot alt levels to master level automatically
@@ -281,8 +288,23 @@ AiPlayerbot.RandomGearMaxLevel = 100
 # Default = 9, means bots level 60 can use items that require (themselves or via quests) level 51 and above
 AiPlayerbot.RandomGearMaxDiff = 9
 
-# Regularly upgrade bots equipment for their level
-AiPlayerbot.RandomGearUpgradeEnabled = 1
+# Owner-rule source-tier cap for seeded/hired bot gear (roadmap #289: higher
+# tiers unlock later). 0 = base only (world drop, vendor, quest, allowed
+# recipe); 1 = + end-game dungeons (Blackrock Spire 229, Scholomance 289,
+# Stratholme 329, Karazhan Crypt 800); 2 = + raids. Computed per item with
+# lowest-tier-source-wins and persisted in ai_playerbot_item_info_cache.
+AiPlayerbot.RandomGearMaxSourceTier = 0
+
+# Allow reputation-gated gear (item/quest/vendor-condition/recipe rep) on seeds.
+AiPlayerbot.RandomGearAllowReputation = 0
+
+# Allow PvP gear (NO_DISENCHANT rewards, honor rank) on seeds.
+AiPlayerbot.RandomGearAllowPvP = 0
+
+# Per-slot chance a fresh seed rolls a rare world-drop epic (loot-attested
+# BoE world epics) instead of the normal green/blue band. Falls back to the
+# normal band when the slot has no attested epic.
+AiPlayerbot.RandomGearSeedEpicChance = 0.02
 
 # Enable random tabards on randomisation
 AiPlayerbot.RandomGearTabards = 0
@@ -293,11 +315,12 @@ AiPlayerbot.RandomGearTabardsChance = 0.1
 # Replace guild tabard with random one
 AiPlayerbot.RandomGearTabardsReplaceGuild = 0
 
+# Currently has no effect (read but unused).
 # Allow use tabards that have no vendors, quests or loot related to it
 AiPlayerbot.RandomGearTabardsUnobtainable = 0
 
-# List of item IDs to exclude from random gear, separated by comma
-AiPlayerbot.RandomGearBlacklist = 0
+# Items listed here are never picked by random gear (seed/hire/upgrade).
+AiPlayerbot.RandomGearBlacklist =
 
 # Roll need on items if slot is empty or broken, even if not appropriate for bot's spec
 # Bots without real player master ignore this config and always roll need in that case
@@ -324,7 +347,7 @@ AiPlayerbot.GenerateItemCaches = 1
 #AiPlayerbot.UsePotionChance = 1.0
 
 # Bots will mount up to catch up when far behind the master while following.
-# AiPlayerbot.BoostFollow = 1
+# AiPlayerbot.BoostFollow = 0
 
 # Bots and npcs turn to eachother during an rpg interaction
 AiPlayerbot.TurnInRpg = 0
@@ -338,6 +361,7 @@ AiPlayerbot.ShowProgressBars = 1
 # Set randombots movement speed to walking anywhere
 AiPlayerbot.RandombotsWalkingRPG = 0
 
+# Currently has no effect (read but unused).
 # Set randombots movement speed to walking only inside buildings
 AiPlayerbot.RandombotsWalkingRPG.InDoors = 0
 
@@ -362,8 +386,7 @@ AiPlayerbot.RandomBotShowCloak = 1
 #      this produces a genuine level curve over a few weeks. On one that
 #      does not, bots stay near their seed level until gameplay advances them.
 #
-# The legacy Randomize() level pipeline is not called, so flipping this on a
-# running realm does not reassign levels.
+# Flipping this on a running realm does not reassign levels.
 AiPlayerbot.DisableRandomLevels = 0
 
 # Set randombots starting level here if "AiPlayerbot.DisableRandomLevels" enabled
@@ -375,17 +398,17 @@ AiPlayerbot.randombotStartingLevel = 1
 # level-bound skills, professions and starter gear are seeded, so a fresh pool
 # starts playable instead of walking up from level 1. Bots level up normally
 # from there. 1/1 keeps the historic behaviour (start at level 1).
-# Default: 1 / 1 (disabled)
+# Default: 1 / 60 (fresh bots spread over every level)
 AiPlayerbot.RandomBotStartLevelMin = 1
-AiPlayerbot.RandomBotStartLevelMax = 1
+AiPlayerbot.RandomBotStartLevelMax = 60
 
 # Set XP rate for bots (default: 1)
 # Server XP Rate * AiPlayerbot.XPRate
 AiPlayerbot.XPRate = 3
 
 # Set minimum level of randombots where gets enchants on items (Maxlevel + 1 to disable)
-# Default: 60
-AiPlayerbot.minEnchantingBotLevel = 60
+# Default: 10
+AiPlayerbot.minEnchantingBotLevel = 10
 
 # Randombots checking players gear score level and deny the group invite if it's too low
 # Default: 0 (disabled)
@@ -482,7 +505,7 @@ AiPlayerbot.BroadcastToGeneralGlobalChance = 3000
 # individual settings
 # setting one of these to 0 will disable the particular broadcast
 # AiPlayerbot.BroadcastChanceLootingItemPoor = 30
-# AiPlayerbot.BroadcastChanceLootingItemNormal = 150
+# AiPlayerbot.BroadcastChanceLootingItemNormal = 300
 # AiPlayerbot.BroadcastChanceLootingItemUncommon = 10000
 # AiPlayerbot.BroadcastChanceLootingItemRare = 20000
 # AiPlayerbot.BroadcastChanceLootingItemEpic = 30000
@@ -543,12 +566,15 @@ AiPlayerbot.ThunderfuryRepliesChance = 40
 # Bots will chat in guild about certain events (int) (0-100)
 AiPlayerbot.GuildRepliesRate = 100         # Reply someone saying something.
 
-# Bots without a master will say things they normally tell their master.
-AiPlayerbot.RandomBotSayWithoutMaster = 1
+# 1 = bots without a master say out loud (/say) everything they would
+# normally whisper to a master, incl. narration of where they go and why.
+# Greetings, broadcasts and normal bot chat do not depend on this. Default 0.
+AiPlayerbot.RandomBotSayWithoutMaster = 0
 
 # Minimum level at which bots will start accepting duels
 # AiPlayerbot.BotAcceptDuelMinimumLevel = 10
 
+# Currently has no effect (read but unused).
 # Speeds up respawn of mobs after being killed by a bot. This only affects the delays after being fully looted.
 # AiPlayerbot.RespawnModNeutral = 10.0    # Each nearby player will decrease the respawn time by 10% for neutral mobs.
 # AiPlayerbot.RespawnModHostile = 5.0     # Each nearby player will decrease the respawn time by 5% for hostile mobs.
@@ -602,7 +628,7 @@ AiPlayerbot.AutoShareConjuredOnTrade = 1
 # unless a core path-filter implementation is available; the pinned Tortoise
 # core currently disables this option and uses direct movement instead.
 # Default: 0 (disabled)
-# AiPlayerbot.GenerateTravelNodes = 1
+# AiPlayerbot.GenerateTravelNodes = 0
 
 # Generate and persist fish-location points when no FISH_LOCATION rows exist.
 # This scans populated grids and writes a potentially large cache to World.
@@ -610,7 +636,7 @@ AiPlayerbot.AutoShareConjuredOnTrade = 1
 # or enable only after the core supplies terrain-area queries; the pinned
 # Tortoise core currently disables this option and uses direct fishing.
 # Default: 0 (disabled)
-# AiPlayerbot.GenerateFishLocations = 1
+# AiPlayerbot.GenerateFishLocations = 0
 
 # Random Bots will also move to destinations when not seen by the player
 # AiPlayerbot.EnableMinimalMove = 1
@@ -1198,7 +1224,7 @@ AiPlayerbot.PremadeSpecLink.11.2.60 = 5002012--5050013355213521
 #AiPlayerbot.CommandPrefix =
 
 # Max AI iterations per tick
-#AiPlayerbot.IterationsPerTick = 10
+#AiPlayerbot.IterationsPerTick = 100
 
 # Bounded failure backoff for autonomous background work (issue #84).
 # Repeated failures wait base, 2x, 4x, 8x, 16x up to the max before the
@@ -1207,11 +1233,11 @@ AiPlayerbot.PremadeSpecLink.11.2.60 = 5002012--5050013355213521
 #AiPlayerbot.FailedActionRetryBase = 250
 #AiPlayerbot.FailedActionRetryMax = 2000
 #AiPlayerbot.FailedActionCacheTtl = 30000
-#AiPlayerbot.FailedActionCacheMaxEntries = 64
-
+# Currently has no effect (read but unused).
 # Allow/deny bots from your guild
 AiPlayerbot.AllowGuildBots = 1
 
+# Currently has no effect (read but unused).
 # Allow/deny bots from other player accounts (must have AiPlayerbot.AllowGuildBots activated and character on same guild)
 AiPlayerbot.AllowMultiAccountAltBots = 1
 
@@ -1219,7 +1245,7 @@ AiPlayerbot.AllowMultiAccountAltBots = 1
 AiPlayerbot.GlobalCooldown = 1500
 
 # Max wait time when moving
-#AiPlayerbot.MaxWaitForMove = 5000
+#AiPlayerbot.MaxWaitForMove = 3000
 
 # Delay between two bot actions (default 100)
 AiPlayerbot.ReactDelay = 100
@@ -1247,6 +1273,7 @@ AiPlayerbot.ShootDistance = 26.0
 #loot distance when bot is a group member (not leader)
 #AiPlayerbot.GroupMemberLootDistance = 15.0
 #loot distance when bot is a group member (not leader) and has active player master (if player is group leader)
+# Currently has no effect (read but unused).
 #AiPlayerbot.GroupMemberLootDistanceWithActiveMaster = 10.0
 #overall gathering distance
 #AiPlayerbot.GatheringDistance = 15.0
@@ -1261,7 +1288,7 @@ AiPlayerbot.ShootDistance = 26.0
 #AiPlayerbot.RaidFollowDistance = 5.0
 #AiPlayerbot.WhisperDistance = 6000.0
 #AiPlayerbot.ContactDistance = 0.5
-#AiPlayerbot.AoeRadius = 10
+#AiPlayerbot.AoeRadius = 5.0
 AiPlayerbot.RpgDistance = 200
 #AiPlayerbot.ProximityDistance = 20.0
 #Distances to limit bots eating/drinking while following a master.
@@ -1270,9 +1297,11 @@ AiPlayerbot.RpgDistance = 200
 #AiPlayerbot.EatDrinkMaxDistance = 1000.0
 
 
+# Currently has no effect (read but unused).
 # Max distance bot allowed to roam freely around master
 #AiPlayerbot.MaxFreeMoveDistance = 150.0
 
+# Currently has no effect (read but unused).
 # Delay (in seconds) after master inactivity after which bots will start roaming freely around master
 # Set to 0 to disable (bots will not be going places on their own when you are idle)
 #AiPlayerbot.FreeMoveDelay = 30.0
@@ -1291,13 +1320,20 @@ AiPlayerbot.FleeingEnabled = 1
 AiPlayerbot.EnableCustomRaidTactics = 1
 
 # Health/Mana levels
-#AiPlayerbot.CriticalHealth = 25
-#AiPlayerbot.LowHealth = 45
-#AiPlayerbot.MediumHealth = 65
-#AiPlayerbot.AlmostFullHealth = 85
+#AiPlayerbot.CriticalHealth = 20
+#AiPlayerbot.LowHealth = 50
+#AiPlayerbot.MediumHealth = 70
+#AiPlayerbot.AlmostFullHealth = 90
 #AiPlayerbot.LowMana = 15
 #AiPlayerbot.MediumMana = 40
 
+# Ordered pull (".bot action pull [seconds]" / ".bot action pullback [seconds]").
+# The DPS join delay runs from the pull landing (pull) or from the tank back at
+# the anchor (pullback); a per-command [seconds] argument (0-60) overrides the
+# default. The return leg is hard-capped by PullBackMaxReturnTime.
+#AiPlayerbot.PullDpsJoinDelay = 10
+#AiPlayerbot.PullBackDpsJoinDelay = 3
+#AiPlayerbot.PullBackMaxReturnTime = 15
 # Random bot default strategies (applied after defaults)
 AiPlayerbot.RandomBotCombatStrategies = +dps,+dps assist,-threat
 AiPlayerbot.RandomBotNonCombatStrategies = +grind,+loot,+custom::say,+tfish,+wander,+rpg craft
@@ -1308,7 +1344,7 @@ AiPlayerbot.RandomBotNonCombatStrategies = +grind,+loot,+custom::say,+tfish,+wan
 # bot's role or autonomous behavior. The C++ fallback for owned bots adds
 # +loot (corpse looting) on top of +return,+delayed roll.
 AiPlayerbot.CombatStrategies = ""
-#AiPlayerbot.NonCombatStrategies = ""
+#AiPlayerbot.NonCombatStrategies = "+return,+delayed roll,+loot"
 #AiPlayerbot.ReactStrategies =
 #AiPlayerbot.DeadStrategies =
 
@@ -1316,7 +1352,7 @@ AiPlayerbot.CombatStrategies = ""
 #AiPlayerbot.EnableOffSpecStrategies = 1
 
 # Quest items to leave (do not destroy)
-#AiPlayerbot.RandomBotQuestItems = 6948,5175,5176,5177,5178,16309,12382,13704,11000
+#AiPlayerbot.RandomBotQuestItems = 6948,5175,5176,5177,5178,16309,12382,13704,11000,22754
 
 # (Alt) bots will never sell or destroy epic or greater quality items.
 # AiPlayerbot.BotsSaveEpics = 1
@@ -1334,10 +1370,10 @@ AiPlayerbot.CombatStrategies = ""
 # Intervals
 AiPlayerbot.RandomBotUpdateInterval = 500
 AiPlayerbot.RandomBotsMaxLoginsPerInterval = 30
-#AiPlayerbot.MinRandomBotInWorldTime = 3600
-#AiPlayerbot.MaxRandomBotInWorldTime = 1209600
-#AiPlayerbot.MinRandomBotRandomizeTime = 7200
-#AiPlayerbot.MaxRandomBotRandomizeTime = 1209600
+#AiPlayerbot.MinRandomBotInWorldTime = 1800
+#AiPlayerbot.MaxRandomBotInWorldTime = 21600
+#AiPlayerbot.MinRandomBotRandomizeTime = 21600
+#AiPlayerbot.MaxRandomBotRandomizeTime = 86400
 #AiPlayerbot.MinRandomBotsPriceChangeInterval = 7200
 #AiPlayerbot.MaxRandomBotsPriceChangeInterval = 172800
 
@@ -1415,6 +1451,7 @@ AiPlayerbot.PerfMonEnabled = 0
 #                                                                                #
 ##################################################################################
 
+# Currently has no effect (read but unused).
 # Instant randomize: Force randombots to randomize on initial login.
 # AiPlayerbot.InstantRandomize = 0
 
@@ -1454,10 +1491,12 @@ AiPlayerbot.AllowedLogFiles = bot_events.csv,deaths.csv
 # Filters certain actions from showing up in 'nc +debug' and 'nc +debug action'
 # AiPlayerbot.DebugFilter = add gathering loot,check values,emote,check mount state,jump
 
+# Currently has no effect (read but unused).
 # Random password: Randombot accounts get created with a randompassword instead of equal to their account name.
 # AiPlayerbot.RandomBotRandomPassword = 1
 
 
+# Currently has no effect (read but unused).
 # Diff with/without player in server. The server will tune bot activity to reach the desired server tick speed (in ms).
 # AiPlayerbot.DiffWithPlayer = 100
 # AiPlayerbot.DiffEmpty = 200
@@ -1470,6 +1509,7 @@ AiPlayerbot.AllowedLogFiles = bot_events.csv,deaths.csv
 # AiPlayerbot.LLMEnabled = 0
 # The api endpoint that should be called for chat generation.
 # AiPlayerbot.LLMApiEndpoint = http://127.0.0.1:5001/api/v1/generate
+# Currently has no effect (read but unused).
 # The api key needed to access the endpoint.
 # AiPlayerbot.LLMApiKey =
 # The default json to send to the endpoint.
@@ -1534,6 +1574,7 @@ AiPlayerbot.LLMDefaultPromptsFile = llm_character_card.txt
 # AiPlayerbot.LLMApiJson = {"model": "gpt-4o-mini", "messages": [{"role": "system", "content": "<pre prompt> <context>"},{"role": "user", "content": "<prompt>"}],"max_tokens": 60}
 # AiPlayerbot.LLMResponseStartPattern = ("content":\s*")
 
+# Currently has no effect (read but unused).
 # Mystery config value. Currently enables async bot pathfinding. Rarely crashes the server.
 # AiPlayerbot.TweakValue = 0
 
