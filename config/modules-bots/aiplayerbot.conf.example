@@ -60,10 +60,35 @@ AiPlayerbot.MinRandomBots = 0
 AiPlayerbot.MaxRandomBots = 0
 AiPlayerbot.RandomBotMaxLevel = 60
 
-# Existing random-bot accounts to discover by prefix. Native service discovers
-# them at startup; with RandomBotAutoCreate=1 it also auto-creates the deficit
-# toward Min/Max via the generic core CharacterCreation seam (core PR #416).
+# Username prefix used when the module NAMES a new pool account, and when the
+# server console previews legacy accounts for explicit adoption. It never
+# authorizes ownership: only accounts listed in the character-database table
+# `tortoise_bots_pool_account` are managed pool accounts. An account that
+# merely looks like a bot account (for example RNDBOTPersonal) is ignored by
+# the pool and is never reset.
 AiPlayerbot.RandomBotAccountPrefix = RNDBOT
+
+# Managed random-bot pool reset (issue #265). One string setting:
+#   off                - normal operation; existing bot progression is kept (default)
+#   once:<token>       - rebuild the pool once, on the next server start, when
+#                        <token> differs from the last completed generation.
+#                        Re-using the same token is a no-op, so the value can
+#                        safely stay in this file after it has been applied.
+#   always             - DEVELOPMENT ONLY. Rebuild the pool on every server
+#                        start; every bot's progression, gear, professions,
+#                        hires, pinned names and all-pool guilds are lost.
+# Anything else is invalid: it is logged and no reset happens.
+#
+# A reset deletes the characters on managed pool accounts (the login accounts
+# themselves are kept) and then regenerates them, so it needs
+# AiPlayerbot.RandomBotAutoCreate = 1; without auto-create the reset is refused
+# instead of leaving an empty pool. The setting is read only during initial
+# world startup: `.reload config` never starts a reset, and there is no live
+# reset command. Existing installations must first enroll their hand-made
+# accounts at the server console with `bot pool adopt preview` and
+# `bot pool adopt confirm <challenge>`; until then those accounts are not
+# managed and are never touched. See docs/guides/living-world.md.
+AiPlayerbot.RandomBotPoolReset = off
 
 # Bounded idempotent RNDBOT population (feature 01). Default OFF.
 # When 1, the service reuses existing RNDBOT% accounts/characters and creates
