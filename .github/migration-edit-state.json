@@ -18,8 +18,8 @@
           "subject": "refactor: finalize manager-owned headless session lifecycle"
         },
         "tortoisebots": {
-          "commit": "3075cff7ce6cd6d4f8ddb7aaf8cfda69a2e15b4e",
-          "subject": "data: retire the two shaman/rogue enchant patches superseded by the full reset"
+          "commit": "72ff14492d1c9f9f3b2ac3a4db6667ec874cd6b8",
+          "subject": "data: recruiter guids from 4000000, keep opposite-gender looks on re-apply"
         }
       },
       "character": {}
