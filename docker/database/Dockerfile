@@ -63,6 +63,8 @@ COPY --chmod=755 ./docker/database/create-db.sh /docker-entrypoint-initdb.d
 COPY --chmod=755 ./docker/database/update-db.sh /always-initdb.d
 COPY --chmod=755 ./docker/database/healthcheck.sh /usr/local/bin/tortoise-healthcheck
 COPY --chmod=755 ./docker/database/tortoise-confirm-changes.sh /usr/local/bin/tortoise-confirm-changes
+# Ubuntu keeps package license information under `/usr/share/doc`.
+COPY ./docker/docker-notice.txt /usr/share/doc/tortoise-deploy/NOTICE
 
 COPY --chmod=755 ./docker/database/docker-entrypoint.sh /entrypoint.sh
 
