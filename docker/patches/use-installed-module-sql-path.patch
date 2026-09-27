@@ -1,0 +1,13 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 2cb9b58..43ac7f4 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -561,7 +561,7 @@ endif()
+ set(DEFINITIONS
+   ${DEFINITIONS}
+   DO_MYSQL
+-  TW_SOURCE_MODULES_DIR="${CMAKE_SOURCE_DIR}/modules"
++  TW_SOURCE_MODULES_DIR="${CMAKE_INSTALL_PREFIX}/modules"
+ )
+ 
+ if(WIN32)

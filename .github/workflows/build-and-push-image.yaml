@@ -28,9 +28,6 @@ on:
       commit_hash:
         type: string
         required: true
-      patch_set:
-        type: string
-        required: false
       migration_edits:
         type: string
         required: false
@@ -57,7 +54,6 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME_SERVER: ${{ format('{0}/tortoise-server', github.repository_owner) }}
   IMAGE_NAME_DATABASE: ${{ format('{0}/tortoise-database', github.repository_owner) }}
-  TORTOISE_PATCHES_REPOSITORY_URL: https://github.com/mserajnik/tortoise-deploy-patches.git
   OCI_ANNOTATION_AUTHORS: ${{ vars.OCI_ANNOTATION_AUTHORS || github.repository_owner }}
   OCI_ANNOTATION_URL: https://github.com/${{ github.repository }}
   OCI_ANNOTATION_DOCUMENTATION: https://github.com/${{ github.repository }}/blob/master/README.md
@@ -102,7 +98,6 @@ jobs:
           UNIT: ${{ inputs.unit }}
           TAG_SET: ${{ inputs.tag_set }}
           COMMIT_HASH: ${{ inputs.commit_hash }}
-          PATCH_SET: ${{ inputs.patch_set }}
           MIGRATION_EDITS: ${{ inputs.migration_edits }}
           MODULES: ${{ inputs.modules }}
           MODULE_CONFIGS: ${{ inputs.module_configs }}

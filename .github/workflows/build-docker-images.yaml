@@ -180,7 +180,6 @@ jobs:
       unit: ${{ matrix.unit }}
       tag_set: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].tag_set }}
       commit_hash: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].commit_hash }}
-      patch_set: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].patch_set }}
       migration_edits: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].migration_edits }}
       modules: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].modules }}
       module_configs: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].module_configs }}
@@ -211,7 +210,6 @@ jobs:
       unit: ${{ matrix.unit }}
       tag_set: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].tag_set }}
       commit_hash: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].commit_hash }}
-      patch_set: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].patch_set }}
       migration_edits: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].migration_edits }}
       alias_units: ${{ fromJSON(needs.setup.outputs.build_metadata)[matrix.unit].database_alias_units }}
 

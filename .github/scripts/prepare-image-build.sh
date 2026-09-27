@@ -6,11 +6,11 @@
 # Produces the per build metadata consumed by the reusable build workflow:
 # Dockerfile path, target architectures, image tags, build arguments, OCI
 # annotations, and labels for the requested image kind and unit. A unit is
-# described by its name (`UNIT`), its moving tags (`TAG_SET`), the commit to
-# build, and the patch set to apply. A bundled-module variant adds the module
-# set to build in, together with the values its build derives from that set.
-# `ALIAS_UNITS` lists further units this same image publishes under, so one
-# database image covers `base` and a variant of it.
+# described by its name (`UNIT`), its moving tags (`TAG_SET`), and the commit
+# to build. A bundled-module variant adds the module set to build in, together
+# with the values its build derives from that set. `ALIAS_UNITS` lists further
+# units this same image publishes under, so one database image covers `base`
+# and a variant of it.
 
 set -euo pipefail
 
@@ -38,12 +38,10 @@ architectures="$(trim "$ARCHITECTURES")"
 oci_annotation_authors="$(trim "$OCI_ANNOTATION_AUTHORS")"
 # shellcheck disable=SC2153
 oci_annotation_vendor="$(trim "$OCI_ANNOTATION_VENDOR")"
-tortoise_patches_repository_url="$(trim "${TORTOISE_PATCHES_REPOSITORY_URL:-}")"
 # shellcheck disable=SC2153
 commit_hash="$(trim "$COMMIT_HASH")"
 # shellcheck disable=SC2153
 unit="$(trim "$UNIT")"
-patch_set="$(trim "${PATCH_SET:-}")"
 modules="$(trim "${MODULES:-}")"
 module_configs="$(trim "${MODULE_CONFIGS:-}")"
 module_build_packages="$(trim "${MODULE_BUILD_PACKAGES:-}")"
@@ -160,12 +158,9 @@ if [[ -n "$alias_units" ]]; then
 fi
 
 if [[ "$IMAGE_KIND" == "server" ]]; then
-  require_env PATCH_SET
   build_args+=(
     "TORTOISE_REVISION=$commit_hash"
-    "TORTOISE_PATCHES_REPOSITORY_URL=$tortoise_patches_repository_url"
     "TORTOISE_FAIL_ON_PATCH_ERROR=1"
-    "TORTOISE_PATCH_SET=$patch_set"
   )
   if [[ -n "$modules" ]]; then
     # The configuration files this variant's modules need an example for. Each

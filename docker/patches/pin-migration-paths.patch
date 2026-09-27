@@ -1,0 +1,34 @@
+diff --git a/src/game/World.cpp b/src/game/World.cpp
+index f62c1ae..5b958df 100644
+--- a/src/game/World.cpp
++++ b/src/game/World.cpp
+@@ -810,8 +810,8 @@ void World::LoadConfigSettingsCommonPart(bool reload)
+ 
+     g_bEnableStatGather = getConfig(CONFIG_BOOL_PERFORMANCE_ENABLE);
+ 
+-    auto pathString = sConfig.GetStringDefault("Database.AutoUpdate.Path", "");
+-    auto worldUpdateFolder = sConfig.GetStringDefault("Database.AutoUpdate.WorldUpdateName", "World");
++    std::string pathString = "/opt/tortoise/sql/database_updates/";
++    std::string worldUpdateFolder = "world";
+     std::filesystem::path folderPath{ pathString };
+     std::filesystem::directory_entry worldUpdatePath{ folderPath / worldUpdateFolder };
+     m_worldUpdatesDirectory = fs::absolute(worldUpdatePath.path()).string();
+diff --git a/src/shared/Database/AutoUpdater.cpp b/src/shared/Database/AutoUpdater.cpp
+index 8a9debc..8177dda 100644
+--- a/src/shared/Database/AutoUpdater.cpp
++++ b/src/shared/Database/AutoUpdater.cpp
+@@ -381,9 +381,9 @@ namespace DBUpdater
+             return true;
+         }
+ 
+-        auto pathString = sConfig.GetStringDefault("Database.AutoUpdate.Path", "");
+-        auto authUpdateFolder = sConfig.GetStringDefault("Database.AutoUpdate.AuthUpdateName", "Logon");
+-        auto charUpdateFolder = sConfig.GetStringDefault("Database.AutoUpdate.CharUpdateName", "Char");
+-        auto worldUpdateFolder = sConfig.GetStringDefault("Database.AutoUpdate.WorldUpdateName", "World");
+-        bool sortByName = sConfig.GetBoolDefault("Database.AutoUpdate.SortByName", false);
++        std::string pathString = "/opt/tortoise/sql/database_updates/";
++        std::string authUpdateFolder = "auth";
++        std::string charUpdateFolder = "character";
++        std::string worldUpdateFolder = "world";
++        bool sortByName = true;
+         path folderPath{ pathString };

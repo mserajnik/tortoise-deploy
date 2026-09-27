@@ -22,3 +22,24 @@ path = [
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Michael Serajnik <https://github.com/mserajnik>"
 SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = "docker/patches/**/*.patch"
+precedence = "aggregate"
+SPDX-FileCopyrightText = [
+  "Tortoise-WoW <https://github.com/tortoise-wow/tortoise-wow>",
+  "2026 Michael Serajnik <https://github.com/mserajnik>",
+]
+SPDX-License-Identifier = "GPL-2.0-or-later"
+
+[[annotations]]
+path = [
+  "docker/patches/pin-migration-paths.patch",
+  "docker/patches/use-installed-module-sql-path.patch",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = [
+  "Tortoise-WoW <https://github.com/tortoise-wow/tortoise-wow>",
+  "2026 Michael Serajnik <https://github.com/mserajnik>",
+]
+SPDX-License-Identifier = "AGPL-3.0-only AND GPL-2.0-or-later"

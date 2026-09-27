@@ -378,19 +378,17 @@ add_metadata() {
     --arg unit "$1" \
     --arg tag_set "$2" \
     --arg commit_hash "$3" \
-    --arg patch_set "$4" \
-    --arg migration_edits "$5" \
-    --arg modules "$6" \
-    --arg module_configs "$7" \
-    --arg module_licenses "$8" \
-    --arg module_build_packages "$9" \
-    --arg module_sql_modules "${10}" \
-    --arg database_alias_units "${11}" \
+    --arg migration_edits "$4" \
+    --arg modules "$5" \
+    --arg module_configs "$6" \
+    --arg module_licenses "$7" \
+    --arg module_build_packages "$8" \
+    --arg module_sql_modules "$9" \
+    --arg database_alias_units "${10}" \
     '{
        ($unit): {
          tag_set: $tag_set,
          commit_hash: $commit_hash,
-         patch_set: $patch_set,
          migration_edits: $migration_edits,
          modules: $modules,
          module_configs: $module_configs,
@@ -416,22 +414,21 @@ add_base() {
 
   server_units+=("base")
   database_units+=("base")
-  add_metadata "base" "latest,base" "$commit_hash" "base" "$migration_edits" \
+  add_metadata "base" "latest,base" "$commit_hash" "$migration_edits" \
     "" "" "" "" "" "$database_alias_units"
 }
 
 # Records a bundled-module variant that shares the `base` database image. Its
 # `module_sql_modules` is empty. Its build refuses a module with SQL anywhere
 # in its tree, and the databases it needs remain the ones `base` already
-# creates. It takes the `base` patch set, which is the patch set for the core
-# it builds from.
+# creates.
 add_module_variant() {
   local unit="$1"
   local commit_hash="$2"
   local migration_edits="$3"
 
   server_units+=("$unit")
-  add_metadata "$unit" "$unit" "$commit_hash" "base" "$migration_edits" \
+  add_metadata "$unit" "$unit" "$commit_hash" "$migration_edits" \
     "$modules" "$module_configs" "$module_licenses" "" "" ""
 }
 
@@ -444,7 +441,7 @@ add_bots_variant() {
 
   server_units+=("$unit")
   database_units+=("$unit")
-  add_metadata "$unit" "$unit" "$commit_hash" "base" "$migration_edits" \
+  add_metadata "$unit" "$unit" "$commit_hash" "$migration_edits" \
     "$bots_modules" "$bots_module_configs" \
     "$bots_module_licenses" "$bots_build_packages" \
     "$bots_module_sql_modules" ""

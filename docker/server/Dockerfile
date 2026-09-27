@@ -8,9 +8,7 @@ ARG TORTOISE_MODULES=
 ARG TORTOISE_MODULE_CONFIGS=
 ARG TORTOISE_MODULE_SQL_MODULES=
 ARG TORTOISE_MODULE_BUILD_PACKAGES=
-ARG TORTOISE_PATCHES_REPOSITORY_URL
 ARG TORTOISE_FAIL_ON_PATCH_ERROR=0
-ARG TORTOISE_PATCH_SET=base
 ARG TORTOISE_USER_ID=1000
 ARG TORTOISE_GROUP_ID=1000
 ARG TORTOISE_USER_NAME=tortoise
@@ -25,9 +23,9 @@ ARG TORTOISE_MODULES
 ARG TORTOISE_MODULE_CONFIGS
 ARG TORTOISE_MODULE_SQL_MODULES
 ARG TORTOISE_MODULE_BUILD_PACKAGES
-ARG TORTOISE_PATCHES_REPOSITORY_URL
 ARG TORTOISE_FAIL_ON_PATCH_ERROR
-ARG TORTOISE_PATCH_SET
+
+COPY ./docker/patches /build/patches
 
 # The packages below are what the core needs. A module may need more, and a
 # module can leave that requirement undeclared. TortoiseBots includes six Boost
@@ -51,34 +49,21 @@ RUN \
   git clone "$TORTOISE_REPOSITORY_URL" /build/core && \
   cd /build/core && \
   git checkout "$TORTOISE_REVISION" && \
-  if [ -n "$TORTOISE_PATCHES_REPOSITORY_URL" ]; then \
-    echo "Cloning and applying patches from $TORTOISE_PATCHES_REPOSITORY_URL."; \
-    git clone "$TORTOISE_PATCHES_REPOSITORY_URL" /build/patches || exit 1; \
-    patch_count=0; \
-    # Patches in `all` are applied to every image. Patches in the
-    # `TORTOISE_PATCH_SET` directory, which is optional and may not exist, are
-    # applied only to images built with that set. Every patch applies to
-    # `/build/core`.
-    for patch in \
-      /build/patches/all/*.patch \
-      /build/patches/"$TORTOISE_PATCH_SET"/*.patch; \
-    do \
-      if [ -f "$patch" ]; then \
-        echo "Applying patch '$patch'."; \
-        if ! git apply "$patch"; then \
-          echo "Failed to apply patch '$patch'."; \
-          if [ "$TORTOISE_FAIL_ON_PATCH_ERROR" = "1" ]; then \
-            exit 1; \
-          fi; \
+  patch_count=0 && \
+  for patch in /build/patches/*.patch; do \
+    if [ -f "$patch" ]; then \
+      echo "Applying patch '$patch'."; \
+      if ! git apply "$patch"; then \
+        echo "Failed to apply patch '$patch'."; \
+        if [ "$TORTOISE_FAIL_ON_PATCH_ERROR" = "1" ]; then \
+          exit 1; \
         fi; \
-        patch_count=$((patch_count + 1)); \
       fi; \
-    done; \
-    if [ "$patch_count" -eq 0 ]; then \
-      echo "No patches found."; \
+      patch_count=$((patch_count + 1)); \
     fi; \
-  else \
-    echo "No repository to apply patches from provided."; \
+  done && \
+  if [ "$patch_count" -eq 0 ]; then \
+    echo "No patches found."; \
   fi && \
   if [ -n "$TORTOISE_MODULES" ]; then \
     # Bundled modules for a bundled-module variant, as

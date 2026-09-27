@@ -1,0 +1,13 @@
+diff --git a/src/shared/Database/AutoUpdater.cpp b/src/shared/Database/AutoUpdater.cpp
+index 19fc222..d4e291f 100644
+--- a/src/shared/Database/AutoUpdater.cpp
++++ b/src/shared/Database/AutoUpdater.cpp
+@@ -157,8 +157,6 @@ namespace DBUpdater
+             if (!ExecuteUpdate(update, targetDatabase))
+             {
+                 sLog.outError("[DB Auto-Updater] Migration %s with hash %s failed to apply.", update.Name.c_str(), update.Hash.c_str());
+-                std::string line;
+-                std::getline(std::cin, line);
+                 return false;
+            }
+         }

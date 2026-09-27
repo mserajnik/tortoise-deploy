@@ -1,0 +1,46 @@
+diff --git a/src/game/Commands/Commands.cpp b/src/game/Commands/Commands.cpp
+index 20c2d97..2a5e6a8 100644
+--- a/src/game/Commands/Commands.cpp
++++ b/src/game/Commands/Commands.cpp
+@@ -17195,6 +17195,10 @@ bool ChatHandler::HandleNpcTopTarget(char* args)
+ 
+ bool ChatHandler::HandleCharacterDiffItemsCommand(char* args)
+ {
++    SendSysMessage("Command unavailable: this build has no 'character_inventory_copy' table to compare against.");
++    SetSentErrorMessage(true);
++    return false;
++
+     char* nameStr = ExtractLiteralArg(&args);
+     if (!nameStr)
+         return false;
+diff --git a/src/game/HonorMgr.cpp b/src/game/HonorMgr.cpp
+index e5adbe4..c5f02cc 100644
+--- a/src/game/HonorMgr.cpp
++++ b/src/game/HonorMgr.cpp
+@@ -364,9 +364,6 @@ void HonorMaintenancer::DoMaintenance()
+     if (!m_markerToStart)
+         return;
+ 
+-    if (sWorld.getConfig(CONFIG_BOOL_BACKUP_CHARACTER_INVENTORY))
+-        sObjectMgr.BackupCharacterInventory();
+-
+     sLog.outInfo("Beginning character name cleanup...");
+     CharacterDatabaseCleaner::FreeInactiveCharacterNames();
+ 
+diff --git a/src/game/ObjectMgr.cpp b/src/game/ObjectMgr.cpp
+index ddd2fd3..f5af21b 100644
+--- a/src/game/ObjectMgr.cpp
++++ b/src/game/ObjectMgr.cpp
+@@ -9981,11 +9981,7 @@ void ObjectMgr::LoadShellCoinCount()
+ 
+ void ObjectMgr::BackupCharacterInventory()
+ {
+-    sLog.outInfo("Making copy of character_inventory table.");
+-    CharacterDatabase.DirectPExecute("TRUNCATE `character_inventory_copy`");
+-    CharacterDatabase.DirectPExecute("ALTER TABLE `character_inventory_copy` DISABLE KEYS");
+-    CharacterDatabase.DirectPExecute("INSERT INTO `character_inventory_copy` SELECT * FROM `character_inventory`");
+-    CharacterDatabase.DirectPExecute("ALTER TABLE `character_inventory_copy` ENABLE KEYS");
++    sLog.outInfo("Skipping copy of the 'character_inventory' table: the 'character_inventory_copy' table does not exist in this database.");
+ }
+ 
+ void ObjectMgr::LoadChatChannels()

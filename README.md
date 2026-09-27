@@ -78,6 +78,7 @@ a Tortoise-WoW setup:
     - [Restoring a backup](#restoring-a-backup)
   - [Accessing the database](#accessing-the-database)
   - [Database security](#database-security)
+- [Modifications](#modifications)
 - [Maintainer](#maintainer)
 - [Contribute](#contribute)
 - [Licenses](#licenses)
@@ -782,6 +783,23 @@ be provided here.
 > and the user named via the `MARIADB_USER` environment variable) do not have
 > any restrictions in place in regards to which IPs/hosts can connect.
 
+## Modifications
+
+The server images contain [Tortoise-WoW][tortoise-wow] with the patches from
+[`docker/patches/`](docker/patches) applied. The patches are strictly for:
+
+- Correcting problems that break the build or the running server.
+- Adapting the code to how the images are built and run.
+- Changing upstream defaults where another value gives objectively better
+  results.
+
+Once a patch is no longer needed, it is removed, so there may be times when the
+directory contains no patches at all.
+
+The patches are `GPL-2.0-or-later`, like the Tortoise-WoW code from before its
+move to `AGPL-3.0-only` in May 2026, which covers only later contributions. A
+patch that changes later code also carries `AGPL-3.0-only`.
+
 ## Maintainer
 
 [Michael Serajnik][maintainer]
@@ -795,8 +813,10 @@ You are welcome to help out!
 ## Licenses
 
 - [`AGPL-3.0-or-later`][license-agpl-3.0-or-later] (Code)
+- [`AGPL-3.0-only`][license-agpl-3.0-only] (Some patches)
 - [`GPL-2.0-only`][license-gpl-2.0-only] (Database entrypoint script, based on
   MariaDB's)
+- [`GPL-2.0-or-later`][license-gpl-2.0-or-later] (Patches)
 - [`CC-BY-SA-4.0`][license-cc-by-sa-4.0] (Documentation, graphic assets and
   issue templates)
 - [`CC0-1.0`][license-cc0-1.0] (Configuration files)
@@ -838,10 +858,12 @@ non-commercial use only and comes with no warranty.
 [image-tortoise-database-versions]: https://github.com/mserajnik/tortoise-deploy/pkgs/container/tortoise-database/versions?filters%5Bversion_type%5D=tagged
 [image-tortoise-server-versions]: https://github.com/mserajnik/tortoise-deploy/pkgs/container/tortoise-server/versions?filters%5Bversion_type%5D=tagged
 [issues]: https://github.com/mserajnik/tortoise-deploy/issues
+[license-agpl-3.0-only]: LICENSES/AGPL-3.0-only.txt
 [license-agpl-3.0-or-later]: LICENSES/AGPL-3.0-or-later.txt
 [license-cc-by-sa-4.0]: LICENSES/CC-BY-SA-4.0.txt
 [license-cc0-1.0]: LICENSES/CC0-1.0.txt
 [license-gpl-2.0-only]: LICENSES/GPL-2.0-only.txt
+[license-gpl-2.0-or-later]: LICENSES/GPL-2.0-or-later.txt
 [maintainer]: https://github.com/mserajnik
 [mangosd-gm-options]: https://github.com/mserajnik/tortoise-deploy/blob/master/config/mangosd.conf.example#L1575-L1641
 [phpmyadmin]: https://www.phpmyadmin.net/
