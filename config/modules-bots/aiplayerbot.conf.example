@@ -152,7 +152,8 @@ AiPlayerbot.RandomBotAutoCreate = 0
 # terrain/navmesh also retain logout position. Only applied once on headless
 # login via the generic PlayerScript OnLogin hook, only for BotManager records
 # marked random; owned/manual bots unchanged. Pinned bots
-# (sRandomBotFacade.IsPinnedBot) are skipped. Uses core Player::TeleportTo on
+# (sRandomBotFacade.IsPinnedBot) and dead or ghost bots (which stay with
+# their corpse) are skipped. Uses core Player::TeleportTo on
 # the world thread; no homebind update. Default 1, so bots seeded above level
 # 10 start in a zone that fits their level instead of their starting zone.
 AiPlayerbot.EnableRandomTeleports = 1
@@ -161,6 +162,19 @@ AiPlayerbot.EnableRandomTeleports = 1
 # (Blackstone Island 5536, Thalassian Highlands 5225, Alah'Thalas 2040).
 # Default 0 (blocked, normalized to mainland starter zones).
 AiPlayerbot.AllowIsolatedCustomStartingZones = 0
+
+# Where a random bot without a player master comes back after a repop (the
+# evacuation used when it keeps dying or is stuck while dead): 1 = nearest
+# graveyard, like a player at the spirit healer; 0 = its racial starting area
+# (the old behaviour, which drained bots back into the starting zones).
+# Default 1.
+AiPlayerbot.RepopAtGraveyard = 1
+
+# When a random bot without a player master is stuck for a long time it uses its
+# hearthstone. 1 = only if its homebind area is within 10 levels of the bot
+# (otherwise it repops instead); 0 = always hearth (the old behaviour, which
+# parked outgrown bots in their starting zones). Default 1.
+AiPlayerbot.UnstuckHearthLevelFit = 1
 
 # Default-on bounded fill of human-waiting LFT queues with live random Headless bots.
 # Uses core #416 QueuePlayer/LeaveQueue/IsQueued/IsInOffer/AcceptOffer/
@@ -185,7 +199,10 @@ AiPlayerbot.AllowIsolatedCustomStartingZones = 0
 #AiPlayerbot.HireEnabled = 1
 #AiPlayerbot.HireMinAccountSecurity = 0
 #AiPlayerbot.HireMaxBotsPerPlayer = 4
-#AiPlayerbot.HireRequiresResting = 1
+# HireAnywhere: 0 = hire only at a <Mercenary Hire> recruiter (the .bot hire
+# command points players to one); 1 = .bot hire also works anywhere. Fees are
+# the same either way.
+#AiPlayerbot.HireAnywhere = 0
 #AiPlayerbot.HireBaseCostCopper = 15000
 #AiPlayerbot.HirePartyMult2 = 1.66
 #AiPlayerbot.HirePartyMult3 = 2.66
