@@ -135,8 +135,8 @@ jobs:
           TW_MOD_LEECH_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tw_mod_leech_commit_hash }}
           TW_MOD_TORTOISEBOTS_REPOSITORY: ${{ steps.resolve-sources.outputs.tw_mod_tortoisebots_repository }}
           TW_MOD_TORTOISEBOTS_COMMIT_HASH: ${{ steps.resolve-sources.outputs.tw_mod_tortoisebots_commit_hash }}
-          MODULE_LICENSES: MIT
-          BOTS_MODULE_LICENSES: MIT AND LicenseRef-TortoiseBots
+          MODULE_LICENSES: AGPL-3.0-only AND MIT
+          BOTS_MODULE_LICENSES: AGPL-3.0-only AND MIT
           REGISTRY: ghcr.io
           PACKAGE_NAME_SERVER: tortoise-server
           FORCE_REBUILD: ${{ inputs.force_rebuild }}

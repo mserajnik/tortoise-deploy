@@ -29,7 +29,6 @@ require_env OCI_ANNOTATION_URL
 require_env OCI_ANNOTATION_DOCUMENTATION
 require_env OCI_ANNOTATION_SOURCE
 require_env OCI_ANNOTATION_VENDOR
-require_env OCI_ANNOTATION_LICENSES
 
 timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 # shellcheck disable=SC2153
@@ -59,12 +58,6 @@ if [[ -n "$modules" && -z "$module_licenses" ]]; then
   fail "Environment variable 'MODULE_LICENSES' is required."
 fi
 
-# shellcheck disable=SC2153
-oci_annotation_licenses="$OCI_ANNOTATION_LICENSES"
-if [[ -n "$modules" && -n "$module_licenses" ]]; then
-  oci_annotation_licenses="$oci_annotation_licenses AND $module_licenses"
-fi
-
 declare -a tags=()
 declare -a metadata_entries=()
 declare -a label_lines=()
@@ -78,6 +71,7 @@ is_multi_arch="false"
 title=""
 description=""
 base_name=""
+licenses=""
 image_name=""
 dockerfile=""
 
@@ -104,27 +98,43 @@ case "$IMAGE_KIND" in
     require_env OCI_ANNOTATION_SERVER_TITLE
     require_env OCI_ANNOTATION_SERVER_DESCRIPTION
     require_env OCI_ANNOTATION_SERVER_BASE_NAME
+    require_env OCI_ANNOTATION_SERVER_LICENSES
     image_name="$IMAGE_NAME_SERVER"
     dockerfile="./docker/server/Dockerfile"
     title="$(trim "$OCI_ANNOTATION_SERVER_TITLE")"
     description="$(trim "$OCI_ANNOTATION_SERVER_DESCRIPTION")"
     base_name="$(trim "$OCI_ANNOTATION_SERVER_BASE_NAME")"
+    licenses="$(trim "$OCI_ANNOTATION_SERVER_LICENSES")"
     ;;
   database)
     require_env IMAGE_NAME_DATABASE
     require_env OCI_ANNOTATION_DATABASE_TITLE
     require_env OCI_ANNOTATION_DATABASE_DESCRIPTION
     require_env OCI_ANNOTATION_DATABASE_BASE_NAME
+    require_env OCI_ANNOTATION_DATABASE_LICENSES
     image_name="$IMAGE_NAME_DATABASE"
     dockerfile="./docker/database/Dockerfile"
     title="$(trim "$OCI_ANNOTATION_DATABASE_TITLE")"
     description="$(trim "$OCI_ANNOTATION_DATABASE_DESCRIPTION")"
     base_name="$(trim "$OCI_ANNOTATION_DATABASE_BASE_NAME")"
+    licenses="$(trim "$OCI_ANNOTATION_DATABASE_LICENSES")"
     ;;
   *)
     fail "Unsupported image kind '$IMAGE_KIND'."
     ;;
 esac
+
+# A variant adds its modules' licenses to the image's own. The annotation names
+# each license once, sorted by byte value, so the result does not depend on the
+# order either value lists them in. Both values are plain `AND` lists, the only
+# form this merge handles.
+if [[ -n "$modules" ]]; then
+  combined_licenses="$licenses AND $module_licenses"
+  licenses=""
+  while IFS= read -r license; do
+    licenses+="${licenses:+ AND }$license"
+  done < <(LC_ALL=C sort -u <<<"${combined_licenses// AND /$'\n'}")
+fi
 
 image="$REGISTRY/$image_name"
 
@@ -232,7 +242,7 @@ metadata_entries=(
   "version=$commit_hash"
   "revision=$commit_hash"
   "vendor=$oci_annotation_vendor"
-  "licenses=$oci_annotation_licenses"
+  "licenses=$licenses"
   "ref.name=$ref_name"
   "title=$title"
   "description=$description"

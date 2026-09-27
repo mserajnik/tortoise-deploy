@@ -267,8 +267,7 @@ if [[ -n "$modules" ]]; then
   echo "Bundled module set: $modules"
 fi
 if [[ "$bots_modules" != "$modules" ]]; then
-  # `modules-bots` has a license the curated set lacks. It needs its own value
-  # for the same reason.
+  # `modules-bots` needs its own value for the same reason.
   bots_module_licenses="$(trim "${BOTS_MODULE_LICENSES:-}")"
   if [[ -z "$bots_module_licenses" ]]; then
     fail "Environment variable 'BOTS_MODULE_LICENSES' is required."

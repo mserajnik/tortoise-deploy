@@ -59,13 +59,14 @@ env:
   OCI_ANNOTATION_DOCUMENTATION: https://github.com/${{ github.repository }}/blob/master/README.md
   OCI_ANNOTATION_SOURCE: https://github.com/${{ github.repository }}
   OCI_ANNOTATION_VENDOR: ${{ vars.OCI_ANNOTATION_VENDOR || github.repository_owner }}
-  OCI_ANNOTATION_LICENSES: AGPL-3.0-or-later AND GPL-2.0-or-later
   OCI_ANNOTATION_SERVER_TITLE: tortoise-deploy - Tortoise-WoW server image
   OCI_ANNOTATION_SERVER_DESCRIPTION: Tortoise-WoW is an open-source restoration of Turtle WoW 1.18.1.7272.
   OCI_ANNOTATION_SERVER_BASE_NAME: ubuntu:26.04
+  OCI_ANNOTATION_SERVER_LICENSES: AGPL-3.0-only AND AGPL-3.0-or-later AND GPL-2.0-or-later
   OCI_ANNOTATION_DATABASE_TITLE: tortoise-deploy - Tortoise-WoW database image
   OCI_ANNOTATION_DATABASE_DESCRIPTION: Database for the Tortoise-WoW server.
   OCI_ANNOTATION_DATABASE_BASE_NAME: mariadb:12.3
+  OCI_ANNOTATION_DATABASE_LICENSES: AGPL-3.0-only AND AGPL-3.0-or-later AND GPL-2.0-only AND GPL-2.0-or-later
 
 jobs:
   prepare:
