@@ -169,12 +169,41 @@ AiPlayerbot.AllowIsolatedCustomStartingZones = 0
 # (the old behaviour, which drained bots back into the starting zones).
 # Default 1.
 AiPlayerbot.RepopAtGraveyard = 1
+# Level at which random bots learn the Swift Riding Turtle (quest 40302
+# "Torta's Egg" -> item 23720 -> spell 30174), as if they did the quest.
+# Applies on seed/refresh at TurtleMountAtLevel..39 and on level-up for the
+# masterless random pool; level 40+ behaviour is unchanged (normal mount +
+# riding, epic at 60). 0 disables. Default 18.
+AiPlayerbot.TurtleMountAtLevel = 18
+# Safety factor on the mount break-even distance: bots mount for travel/RPG
+# trips only when the remaining distance exceeds
+# 7 y/s * mount cast time / (best mount speed % / 100) * this. 0 disables
+# the threshold (mount for any trip).
+# Turtle 9% (~3 s cast) -> ~350 y; 60% -> ~50 y; 100% -> ~30 y. Default 1.5.
+AiPlayerbot.MountBreakEvenFactor = 1.5
+
+
+# Whether a random bot without a player master avoids hostile towns: 1 = travel
+# destinations and grind targets guarded by town guards hostile to its team are
+# refused (guards kill bots ~13 levels above them); 0 = the old behaviour, which
+# walked bots into enemy settlements. Default 1.
+AiPlayerbot.AvoidHostileTowns = 1
 
 # When a random bot without a player master is stuck for a long time it uses its
 # hearthstone. 1 = only if its homebind area is within 10 levels of the bot
 # (otherwise it repops instead); 0 = always hearth (the old behaviour, which
 # parked outgrown bots in their starting zones). Default 1.
 AiPlayerbot.UnstuckHearthLevelFit = 1
+
+# Quest-log upkeep for random bots without a player master: drop finished
+# quests that can no longer be rewarded (except transient money blockers),
+# drop grey incomplete deliver quests whose items are gone, refuse grey
+# quests unless the reward is an equip upgrade, clean a nearly-full log only
+# when something is droppable, and stay in turn-in travel once 2 quests are
+# finished until none remain. Owned and alt bots are never affected. 0
+# restores the old accept-all / clean-only-grey / hand-in-at-5 behaviour.
+# Default 1.
+AiPlayerbot.BotQuestLogUpkeep = 1
 
 # Default-on bounded fill of human-waiting LFT queues with live random Headless bots.
 # Uses core #416 QueuePlayer/LeaveQueue/IsQueued/IsInOffer/AcceptOffer/
