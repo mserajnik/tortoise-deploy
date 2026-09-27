@@ -18,6 +18,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source-path=SCRIPTDIR
 source "$script_dir/helpers.sh"
 
+require_env GITHUB_SHA
 require_env REGISTRY
 require_env IMAGE_KIND
 require_env ARCHITECTURES
@@ -31,6 +32,7 @@ require_env OCI_ANNOTATION_SOURCE
 require_env OCI_ANNOTATION_VENDOR
 
 timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+repository_commit_hash="$(trim "$GITHUB_SHA")"
 # shellcheck disable=SC2153
 architectures="$(trim "$ARCHITECTURES")"
 # shellcheck disable=SC2153
@@ -261,22 +263,36 @@ for entry in "${metadata_entries[@]}"; do
   fi
 done
 
-# The bundled module set, one pair per module, so an image can be asked which
-# revision of a module it carries. Labels only, and only the modules: the
-# core's revision is already carried by `org.opencontainers.image.revision`,
-# which leaves the modules as the one part of a variant's provenance with no
-# home of its own.
+extra_entries=(
+  "io.github.mserajnik.tortoise-deploy.revision=$repository_commit_hash"
+)
+
+# Each bundled module gets a repository key and a revision key, which record
+# where the module comes from and which revision of it the image contains. The
+# core needs no such keys, because `org.opencontainers.image.revision` already
+# records its revision. `prepare-build-matrix.sh` reads the module revision
+# labels back to decide whether a variant needs a rebuild and where the
+# TortoiseBots migration scan starts.
 if [[ -n "$modules" ]]; then
   IFS='|' read -r -a module_entries <<<"$modules"
   for module_entry in "${module_entries[@]}"; do
     module_directory="${module_entry%%=*}"
     module_source="${module_entry#*=}"
-    label_lines+=(
+    extra_entries+=(
       "io.github.mserajnik.tortoise-deploy.modules.$module_directory.repository=${module_source%@*}"
       "io.github.mserajnik.tortoise-deploy.modules.$module_directory.revision=${module_source##*@}"
     )
   done
 fi
+
+for entry in "${extra_entries[@]}"; do
+  label_lines+=("$entry")
+  manifest_annotation_lines+=("manifest:$entry")
+
+  if [[ "$is_multi_arch" == "true" ]]; then
+    index_annotation_lines+=("index:$entry")
+  fi
+done
 
 printf -v tags_output '%s,' "${tags[@]}"
 tags_output="${tags_output%,}"
