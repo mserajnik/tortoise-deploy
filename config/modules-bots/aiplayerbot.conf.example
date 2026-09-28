@@ -204,6 +204,15 @@ AiPlayerbot.UnstuckHearthLevelFit = 1
 # restores the old accept-all / clean-only-grey / hand-in-at-5 behaviour.
 # Default 1.
 AiPlayerbot.BotQuestLogUpkeep = 1
+# AI-side outgrown-zone rule (no teleports: bots walk/fly/boat via the travel
+# graph). 1 = a random masterless bot at level 10+ in a non-capital zone it
+# outlevels by 5+ — or idling in a capital with no pending trainer/mount/AH/
+# Vendor/Repair need — requests a level-band Grind travel target (above AH/
+# Vendor/Repair relevance), refuses services and inn homebinds in zones 10+
+# below its level (capitals excepted); 0 = the old behaviour, which let bots
+# sit in outgrown zones and bind there. Unknown area levels fail closed.
+# Default 1.
+AiPlayerbot.LeaveOutgrownZones = 1
 
 # Default-on bounded fill of human-waiting LFT queues with live random Headless bots.
 # Uses core #416 QueuePlayer/LeaveQueue/IsQueued/IsInOffer/AcceptOffer/
