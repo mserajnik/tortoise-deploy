@@ -18,8 +18,8 @@
           "subject": "refactor: finalize manager-owned headless session lifecycle"
         },
         "tortoisebots": {
-          "commit": "72ff14492d1c9f9f3b2ac3a4db6667ec874cd6b8",
-          "subject": "data: recruiter guids from 4000000, keep opposite-gender looks on re-apply"
+          "commit": "8a73e4eeed6b3a36ea4c21bb4363bdb27ffd0afe",
+          "subject": "data: restore applied recruiter migration, move explicit guids to a new one (#327)"
         }
       },
       "character": {}
