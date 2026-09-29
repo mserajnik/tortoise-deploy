@@ -850,9 +850,9 @@ non-commercial use only and comes with no warranty.
 [compose-automatic-world-db-corrections]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L34-L48
 [compose-custom-sql]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L62-L75
 [compose-custom-sql-bind-mount]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L16
-[compose-database-backups]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L185-L222
+[compose-database-backups]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L181-L218
 [compose-halt-on-edits]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L49-L61
-[compose-phpmyadmin]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L224-L244
+[compose-phpmyadmin]: https://github.com/mserajnik/tortoise-deploy/blob/master/compose.yaml.example#L220-L240
 [docker]: https://docs.docker.com/get-docker/
 [docker-compose]: https://docs.docker.com/compose/install/
 [image-tortoise-database-versions]: https://github.com/mserajnik/tortoise-deploy/pkgs/container/tortoise-database/versions?filters%5Bversion_type%5D=tagged
