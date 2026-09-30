@@ -163,6 +163,16 @@ AiPlayerbot.EnableRandomTeleports = 1
 # Default 0 (blocked, normalized to mainland starter zones).
 AiPlayerbot.AllowIsolatedCustomStartingZones = 0
 
+# Spread new random bots evenly across the six racial starting zones instead
+# of piling orc/troll/goblin into Valley of Trials, human/high elf into
+# Elwynn and dwarf/gnome into Dun Morogh while Tirisfal, Mulgore and
+# Teldrassil sit empty. Auto-create picks a valid race from the
+# least-populated start zone; isolated-custom-zone normalization sends the
+# bot to the least-populated standard start of its faction (both use the
+# core playercreateinfo spawns). Set 0 for the old behaviour: uniform random
+# race, goblins to Valley of Trials, high elves to Northshire. Default 1.
+AiPlayerbot.RandomBotEvenStartZones = 1
+
 # Where a random bot without a player master comes back after a repop (the
 # evacuation used when it keeps dying or is stuck while dead): 1 = nearest
 # graveyard, like a player at the spirit healer; 0 = its racial starting area
@@ -191,9 +201,17 @@ AiPlayerbot.AvoidHostileTowns = 1
 
 # When a random bot without a player master is stuck for a long time it uses its
 # hearthstone. 1 = only if its homebind area is within 10 levels of the bot
-# (otherwise it repops instead); 0 = always hearth (the old behaviour, which
-# parked outgrown bots in their starting zones). Default 1.
+# (otherwise it repops instead); 0 = skip the level check (the old behaviour, which
+# parked outgrown bots in their starting zones). The distance gate below still
+# applies either way. Default 1.
 AiPlayerbot.UnstuckHearthLevelFit = 1
+
+# How far a "long stuck" bot must be from its own homebind before a hearthstone
+# is worth casting, in yards. Closer than this the hearth only throws the bot back
+# into the same camp (a level 1 starting zone is a few hundred yards wide) while
+# burning its 30-minute cooldown, so the unstuck chain repops to the nearest
+# graveyard instead. 0 disables the gate (always hearth). Default 300.
+AiPlayerbot.UnstuckHearthMinDistance = 300
 
 # Quest-log upkeep for random bots without a player master: drop finished
 # quests that can no longer be rewarded (except transient money blockers),
@@ -213,6 +231,26 @@ AiPlayerbot.BotQuestLogUpkeep = 1
 # sit in outgrown zones and bind there. Unknown area levels fail closed.
 # Default 1.
 AiPlayerbot.LeaveOutgrownZones = 1
+
+# Vendor trip thresholds (#339): when a bot walks to a vendor. Either the sell
+# value of its vendor-usable stock covers the money missing for the next
+# trainable class rank, or the batch below fires: at least VendorBatchMinCount
+# vendor-usable items and bags at least VendorBatchMinBagSpace percent full.
+# The batch half stands on its own — a bot with nothing left to train (a fresh
+# level 1 has no green class rank yet) still sells instead of hoarding loot.
+# Bots below level 5 use the LowLevel* pair instead — a fresh bot carries one
+# or two greys, so 8 items / 60% bags never applied to the starting pool and it
+# stayed broke. Default 8 / 60, low level 3 / 25.
+AiPlayerbot.VendorBatchMinCount = 8
+AiPlayerbot.VendorBatchMinBagSpace = 60
+AiPlayerbot.LowLevelVendorBatchMinCount = 3
+AiPlayerbot.LowLevelVendorBatchMinBagSpace = 25
+# Radius in yards of the vendor trip a random masterless bot below level 5 may
+# make. All RPG travel below level 5 stays blocked (the path to an NPC usually
+# crosses level 5+ mobs); the camp vendor is the exception, and the trip is
+# capped to this radius so the bot never leaves its mob-safe starting pocket.
+# Default 600.
+AiPlayerbot.LowLevelVendorMaxDistance = 600
 
 # Default-on bounded fill of human-waiting LFT queues with live random Headless bots.
 # Uses core #416 QueuePlayer/LeaveQueue/IsQueued/IsInOffer/AcceptOffer/
@@ -420,8 +458,19 @@ AiPlayerbot.RandombotsWalkingRPG = 0
 # Set randombots movement speed to walking only inside buildings
 AiPlayerbot.RandombotsWalkingRPG.InDoors = 0
 
-# Bots greet to the players
+# Bots greet real players passing by (text emote, once per encounter).
+# Bots never greet other bots: the pool is hundreds of them, so greetings only
+# make sense for a real player audience. 0 disables greetings entirely.
 AiPlayerbot.EnableGreet = 1
+
+# Seconds before the same real player is greeted again by the same bot.
+# A player who keeps walking in and out of sight is greeted once per window.
+AiPlayerbot.GreetCooldown = 600
+
+# Masterless pool bots also greet real players (1), or only greet for a live
+# player master (0, default). With hundreds of pool bots in one zone the wave
+# of greetings answers every visitor, so it is opt-in.
+AiPlayerbot.RandomBotGreet = 0
 
 # Show helmet and cloak on randombots (reset required)
 AiPlayerbot.RandomBotShowHelmet = 1
@@ -482,15 +531,18 @@ AiPlayerbot.RandomBotQuestIds = 7848,3802,5505,6502,7761,9378
 # Randombots will invite players to groups/raids/guilds. (This can also be disabled by turning on DnD on your character)
 # AiPlayerbot.RandomBotInvitePlayer = 1
 
-# Randombots will invite nearby bots to groups/raids/guilds
-# AiPlayerbot.RandomBotGroupNearby = 1
+# Randombots will invite nearby bots to groups/raids/guilds. Off by default
+# (mod-playerbots parity): bot-only groups leash members and stall the pool.
+# AiPlayerbot.RandomBotGroupNearby = 0
 # AiPlayerbot.RandomBotRaidNearby = 1
 # AiPlayerbot.RandomBotGuildNearby = 1
 
 # Randombots will form guilds by buying a charter, getting signatures and handing it in.
 # AiPlayerbot.RandomBotFormGuild = 1
 
-# Bots will chat in say/guild when they invite other bots to groups/raids/guilds
+# Bots announce group/raid invites in say or guild chat. Only a real player is
+# announced to; a bot inviting another bot stays silent (the pool invites
+# itself non-stop while it fills up).
 AiPlayerbot.InviteChat = 1
 
 # Enable per-bot action log files (logs/bots/<botname>_acc<id>_<timestamp>.log)
@@ -592,7 +644,10 @@ AiPlayerbot.BroadcastToGeneralGlobalChance = 3000
 # AiPlayerbot.BroadcastChanceSuggestQuest = 10000
 # AiPlayerbot.BroadcastChanceSuggestGrindMaterials = 5000
 # AiPlayerbot.BroadcastChanceSuggestGrindReputation = 5000
-# AiPlayerbot.BroadcastChanceSuggestSell = 300
+# Trade spam ("WTS %category", "I am selling [item]") from masterless pool bots
+# is off by default: with hundreds of bots in one zone it reads as wall-to-wall
+# selling. Set >0 (e.g. 300) to let ungrouped random bots hawk their bags again.
+# AiPlayerbot.BroadcastChanceSuggestSell = 0
 # suggest_something is pure ambient chit-chat (no real event behind it, e.g. "anyone
 # know the lore behind Elwynn Forest") - it fired at 100% chance by default, making it
 # the single biggest source of world/general noise. Cut hard since it carries no info.
