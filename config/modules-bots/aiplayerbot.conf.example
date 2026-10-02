@@ -185,6 +185,11 @@ AiPlayerbot.RepopAtGraveyard = 1
 # masterless random pool; level 40+ behaviour is unchanged (normal mount +
 # riding, epic at 60). 0 disables. Default 18.
 AiPlayerbot.TurtleMountAtLevel = 18
+# Organic level-up mounts: a random pool bot that dings 40 or 60 learns the
+# same mount the seed/hire path grants (slow mount at 40, epic at 60, with
+# the riding skill already level-gated). 1 = on; 0 = off, so a bot levelled
+# from 1 keeps only the turtle until it is re-seeded. Default 1.
+AiPlayerbot.LevelUpMounts = 1
 # Safety factor on the mount break-even distance: bots mount for travel/RPG
 # trips only when the remaining distance exceeds
 # 7 y/s * mount cast time / (best mount speed % / 100) * this. 0 disables
@@ -251,6 +256,17 @@ AiPlayerbot.LowLevelVendorBatchMinBagSpace = 25
 # capped to this radius so the bot never leaves its mob-safe starting pocket.
 # Default 600.
 AiPlayerbot.LowLevelVendorMaxDistance = 600
+
+# Bot-only drop-rate boost for green (uncommon) and blue (rare) items. Masterless
+# random pool bots roll each quality-2/3 entry of a creature's loot template one extra
+# time per kill, at (multiplier - 1) x the entry's DB chance, so the expected number of
+# greens/blues per kill is roughly the multiplier times the normal rate. Quest items,
+# quest starters, unique items already held and entries that never yield quality 2/3
+# are never boosted; players and hired/alt bots keep the server's own rates, and loot
+# shared with a group is never touched. Each hit is logged to bot_events.csv as a
+# "BotLootBonus" row (creature name, "quality:itemId:itemName"). 1.0 = off.
+#AiPlayerbot.BotLootRateUncommon = 1.0
+#AiPlayerbot.BotLootRateRare = 1.0
 
 # Default-on bounded fill of human-waiting LFT queues with live random Headless bots.
 # Uses core #416 QueuePlayer/LeaveQueue/IsQueued/IsInOffer/AcceptOffer/
