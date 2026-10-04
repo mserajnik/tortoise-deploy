@@ -301,6 +301,27 @@ AiPlayerbot.LowLevelVendorMaxDistance = 600
 #AiPlayerbot.HirePartyMult4 = 4.66
 #AiPlayerbot.HireRaidFlatCostCopper = 10000
 #AiPlayerbot.HireDisconnectGracePeriod = 300
+# Issue #473: opt-in quality of life for owned/hired bots only (every part
+# off by default; pool bots always keep progressing organically and are
+# never touched). The values below are the values that actually run.
+#AiPlayerbot.OwnedBotMaintenanceEnabled = 0
+#AiPlayerbot.OwnedBotAutogearEnabled = 0
+# Autogear caps: quality 0 poor .. 5 legendary (default 2 = uncommon/green),
+# ilvl 0 = no cap (clamped to 5 at load).
+#AiPlayerbot.OwnedBotAutogearQualityCap = 2
+#AiPlayerbot.OwnedBotAutogearIlvlCap = 0
+# Summon the joining bot to its inviter on group accept, with the condition
+# knobs below (dead bots are only revived when both the dead-bot and revive
+# knobs are on; repair runs after arrival).
+#AiPlayerbot.OwnedBotSummonWhenGroup = 0
+#AiPlayerbot.OwnedBotSummonAllowInCombat = 0
+#AiPlayerbot.OwnedBotSummonAllowMasterDead = 0
+#AiPlayerbot.OwnedBotSummonAllowBotDead = 0
+#AiPlayerbot.OwnedBotSummonRevive = 0
+#AiPlayerbot.OwnedBotSummonRepair = 0
+# Seconds between summon-on-accept teleports per bot (default 300 = 5
+# minutes). 0 disables the cooldown (not recommended with revive/repair on).
+#AiPlayerbot.OwnedBotSummonCooldown = 300
 
 # Bounded AH market population through the native bot/session auction path. Default off.
 # When enabled, online random Headless bots use real inventory items, pricing, deposits,
@@ -749,6 +770,20 @@ AiPlayerbot.AutoLearnDroppedSpells = 0
 # the trade window when a player opens trade with them.
 # Default: 1 (enabled)
 AiPlayerbot.AutoShareConjuredOnTrade = 1
+
+# Pool-bot trading (issue #469, mod-playerbots EnableRandomBotTrading parity):
+# 0 off (no stranger trades), 1 trusted (master, group, hire master only),
+# 2 buy-only (bot takes, never gives), 3 sell-only (bot gives, never takes),
+# 4 on (unrestricted). Owned/hired bots always trade with their master.
+# Out-of-range values fail closed to 0.
+# Default: 0 (off)
+AiPlayerbot.PoolBotTradeMode = 0
+
+# Trade-chat lines starting with one of these comma-separated prefixes never
+# drive the trade action (donor TradeActionExcludedPrefixes parity): addon
+# chatter such as Questie/DBM/RPLL lines cannot open a trade window.
+# Default: "RPLL_H_,DBMv4"
+AiPlayerbot.TradeActionExcludedPrefixes = "RPLL_H_,DBMv4"
 
 # Generate and persist the full TravelNode/navmesh cache at AI startup.
 # This can load every map and perform a large database rebuild. Leave disabled
