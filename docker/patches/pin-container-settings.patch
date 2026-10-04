@@ -1,0 +1,76 @@
+diff --git a/src/shared/Config/Config.cpp b/src/shared/Config/Config.cpp
+index eb13357..eeea4f6 100644
+--- a/src/shared/Config/Config.cpp
++++ b/src/shared/Config/Config.cpp
+@@ -23,6 +23,9 @@
+ 
+ #include "Log.h"
+ #include "Policies/SingletonImp.h"
++#include <cstdlib>
++#include <map>
++#include <string>
+ #include <vector>
+ 
+ INSTANTIATE_SINGLETON_2(Config, Config::Lock);
+@@ -79,8 +82,61 @@ std::string Config::GetConfigDirectory() const
+ }
+ 
++// tortoise-deploy: the container setup depends on these options, so the image
++// sets them whatever the configuration file says. The database connections
++// take their user and password from the environment.
++static bool GetPinnedValue(const char* name, ACE_TString &result)
++{
++    static const std::map<std::string, std::string> pinnedValues = {
++        {"BindIP", "0.0.0.0"},
++        {"DataDir", "/opt/tortoise/storage/data"},
++        {"Database.AutoUpdate.AllowedModules", "all"},
++        {"Database.AutoUpdate.AuthUpdateName", "auth"},
++        {"Database.AutoUpdate.CharUpdateName", "character"},
++        {"Database.AutoUpdate.Enabled", "1"},
++        {"Database.AutoUpdate.Path", "/opt/tortoise/sql/database_updates/"},
++        {"Database.AutoUpdate.SortByName", "1"},
++        {"Database.AutoUpdate.WorldUpdateName", "world"},
++        {"HonorDir", "/opt/tortoise/storage/honor"},
++        {"LogsDir", "/opt/tortoise/storage/logs"},
++        {"PDumpDir", "/opt/tortoise/storage/pdump"},
++        {"RealmServerPort", "3724"},
++        {"SOAP.IP", "0.0.0.0"},
++        {"SOAP.Port", "7878"},
++        {"WorldServerPort", "8085"},
++    };
++    static const std::map<std::string, std::string> databaseNames = {
++        {"CharacterDatabase.Info", "tw_char"},
++        {"LoginDatabase.Info", "tw_logon"},
++        {"LoginDatabaseInfo", "tw_logon"},
++        {"LogsDatabase.Info", "tw_logs"},
++        {"WorldDatabase.Info", "tw_world"},
++    };
++
++    if (auto it = pinnedValues.find(name); it != pinnedValues.end())
++    {
++        result = ACE_TString(it->second.c_str());
++        return true;
++    }
++
++    if (auto it = databaseNames.find(name); it != databaseNames.end())
++    {
++        const char* user = std::getenv("TORTOISE_DATABASE_USER");
++        const char* password = std::getenv("TORTOISE_DATABASE_PASSWORD");
++        std::string info = std::string("database;3306;") + (user ? user : "") + ";" +
++                           (password ? password : "") + ";" + it->second;
++        result = ACE_TString(info.c_str());
++        return true;
++    }
++
++    return false;
++}
++
+ // Defined here as it must not be exposed to end-users.
+ bool Config::GetValueHelper(const char* name, ACE_TString &result)
+ {
++    if (GetPinnedValue(name, result))
++        return true;
++
+     GuardType guard(m_configLock);
+ 
+     if (!mConf)

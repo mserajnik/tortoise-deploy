@@ -1,0 +1,152 @@
+# The build of every image, which the build workflow passes to
+# docker-deploy-workflows. See its `docs/deploy-yaml.md` for the keys.
+
+primary-source: core
+
+# A `pin` is the commit at which the watched files were last reviewed. After
+# updating the local copies, set it to the commit a failing check suggests.
+sources:
+  core:
+    repository: tortoise-wow/tortoise-wow
+    branch: main
+    pin: 57abad6f33bffbeb0019b17101d605125a45a40b
+    cutoff: 7efe82e09c2dfa7d00b96dd20eb12e0496f4ab61
+  autoscale:
+    repository: Penqle/tw-mod-autoscale
+    branch: main
+    pin: 8675af22569674d906479aec0d7883d13d9212bb
+  leech:
+    repository: Penqle/tw-mod-leech
+    branch: master
+    pin: a3667c2c672b885fddc5afd76e48471dafa4eccc
+  tortoisebots:
+    repository: Sagiroth/TortoiseBots
+    branch: main
+    pin: 1bfadef54949d1694434f72491b5efd66a0e1bb5
+    cutoff: 8c4fbc9f7d3713bb7a58ce4890efbddaadfc892e
+
+# The server build checks the module configuration files and the module SQL it
+# installs against the `module-configs` and `module-sql-modules` vars of each
+# variant.
+variants:
+  base:
+    sources: [core]
+    moving-tags: [latest]
+  modules:
+    sources: [core, autoscale, leech]
+    vars:
+      modules: "tw-mod-autoscale={url:autoscale}@{commit:autoscale}|tw-mod-leech={url:leech}@{commit:leech}"
+      module-configs: modules/tw-mod-autoscale.conf,modules/tw-mod-leech.conf
+      server-licenses: AGPL-3.0-only AND AGPL-3.0-or-later AND GPL-2.0-or-later AND MIT
+  modules-bots:
+    sources: [core, autoscale, leech, tortoisebots]
+    vars:
+      modules: "tw-mod-autoscale={url:autoscale}@{commit:autoscale}|tw-mod-leech={url:leech}@{commit:leech}|TortoiseBots={url:tortoisebots}@{commit:tortoisebots}"
+      module-configs: aiplayerbot.conf,modules/tortoise_bots.conf,modules/tw-mod-autoscale.conf,modules/tw-mod-leech.conf
+      module-sql-modules: TortoiseBots
+      module-build-packages: libboost-dev libboost-filesystem-dev
+      server-licenses: AGPL-3.0-only AND AGPL-3.0-or-later AND GPL-2.0-or-later AND MIT
+
+vars:
+  modules: ""
+  module-configs: ""
+  module-sql-modules: ""
+  module-build-packages: ""
+  server-licenses: AGPL-3.0-only AND AGPL-3.0-or-later AND GPL-2.0-or-later
+
+drift:
+  upstreams:
+    # Bump the commit in `docker/database/Dockerfile` and in the header of
+    # `docker/database/docker-entrypoint.sh` along with this pin.
+    mariadb:
+      repository: MariaDB/mariadb-docker
+      branch: master
+      pin: 063eb10da092170beea08d2c629b6eb79d28cceb
+  # A change upstream that breaks a patch already fails the build.
+  checks:
+    # - A new `find_package(...)` in `CMakeLists.txt` can add a package the
+    #   server image has to install.
+    # - `sql/base/tw_world_migrations.sql` contains only migration bookkeeping,
+    #   which the migration edit scan excludes.
+    # - `extract_world_schema` in `db-functions.sh` depends on the format of
+    #   `sql/create_databases.sql`.
+    # - The configuration templates are the sources of the `*.conf.example`
+    #   files under `config/`.
+    # - The server image parses its DBC hash manifest from
+    #   `tools/dbc_verification/dbc_verifier.py`.
+    - source: core
+      files: [CMakeLists.txt, sql/base/tw_world_migrations.sql, sql/create_databases.sql, src/mangosd/mangosd.conf.dist.in, src/realmd/realmd.conf.dist.in, tools/dbc_verification/dbc_verifier.py]
+    # The module configuration templates are the sources of the
+    # `*.conf.example` files under `config/`.
+    - {source: autoscale, files: [conf/tw-mod-autoscale.conf.dist]}
+    - {source: leech, files: [conf/tw-mod-leech.conf.dist]}
+    - {source: tortoisebots, files: [ai/playerbot/aiplayerbot.conf.dist.in, conf/tortoise_bots.conf.dist]}
+    # `docker/database/docker-entrypoint.sh` builds on this entrypoint.
+    - {source: mariadb, files: [12.3/docker-entrypoint.sh]}
+
+# A rule has to watch or exclude every file that a `claim` matches, or the run
+# fails.
+migration-edits:
+  targets:
+    world:
+      remedy: recreate
+      sources:
+        # Only the world database gets base dumps. The server applies the
+        # migrations under `<folder>/cn/` only with the `NiHao` option turned
+        # on, which this deployment never sets.
+        core:
+          migrations: [sql/database_updates/*.sql, sql/database_updates/world/*.sql]
+          base: [sql/base/tw_world_*.sql]
+          exclude: [sql/base/tw_world_migrations.sql, sql/database_updates/*/cn/*.sql]
+          claim: [sql/base/**/*.sql, sql/database_updates/**/*.sql]
+        # The module has migrations only, which create its tables, so a
+        # database created before one of them existed still gets all of them.
+        tortoisebots:
+          migrations: [data/sql/world/*.sql]
+          claim: [data/sql/**/*.sql]
+    character:
+      remedy: manual
+      sources:
+        core: {migrations: [sql/database_updates/character/*.sql]}
+        # The module calls this directory `char` and installs it as
+        # `character`.
+        tortoisebots: {migrations: [data/sql/char/*.sql]}
+
+images:
+  - name: server
+    package: tortoise-server
+    dockerfile: docker/server/Dockerfile
+    tags: ["{variant}-{commit:core}", "{variant}"]
+    build-args:
+      TORTOISE_REVISION: "{commit:core}"
+      TORTOISE_FAIL_ON_PATCH_ERROR: "1"
+      TORTOISE_MODULES: "{var:modules}"
+      TORTOISE_MODULE_CONFIGS: "{var:module-configs}"
+      TORTOISE_MODULE_SQL_MODULES: "{var:module-sql-modules}"
+      TORTOISE_MODULE_BUILD_PACKAGES: "{var:module-build-packages}"
+    oci:
+      title: tortoise-deploy - Tortoise-WoW server image
+      description: Tortoise-WoW is an open-source restoration of Turtle WoW 1.18.1.7272.
+      base-name: ubuntu:26.04
+      licenses: "{var:server-licenses}"
+      version: "{commit:core}"
+  # `base` and `modules` run the same database, so `modules` gets the `base`
+  # image under its own tags.
+  - name: database
+    package: tortoise-database
+    dockerfile: docker/database/Dockerfile
+    tags: ["{variant}-{commit:core}", "{variant}"]
+    share: {base: [modules]}
+    build-args:
+      TORTOISE_REVISION: "{commit:core}"
+      TORTOISE_MIGRATION_EDITS: "{migration-edits}"
+    oci:
+      title: tortoise-deploy - Tortoise-WoW database image
+      description: Database for the Tortoise-WoW server.
+      base-name: mariadb:12.3
+      licenses: AGPL-3.0-only AND AGPL-3.0-or-later AND GPL-2.0-only AND GPL-2.0-or-later
+      version: "{commit:core}"
+
+badges:
+  - {file: build-badge.json, variant: base, label: Latest Tortoise-WoW build, message: "{short-commit:core}", color: blue}
+  - {file: date-badge.json, label: Latest build date, message: "{timestamp}", color: orange}

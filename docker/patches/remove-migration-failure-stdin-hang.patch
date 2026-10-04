@@ -1,0 +1,16 @@
+diff --git a/src/shared/Database/AutoUpdater.cpp b/src/shared/Database/AutoUpdater.cpp
+index 6d5350e..fe22b9b 100644
+--- a/src/shared/Database/AutoUpdater.cpp
++++ b/src/shared/Database/AutoUpdater.cpp
+@@ -234,8 +234,9 @@ namespace DBUpdater
+             if (!ExecuteUpdate(update, targetDatabase))
+             {
+                 sLog.outError("[DB Auto-Updater] Migration %s with hash %s failed to apply.", update.Name.c_str(), update.Hash.c_str());
+-                std::string line;
+-                std::getline(std::cin, line);
++                // tortoise-deploy: return at once. Waiting for input would
++                // hang the start, because a detached container has no input to
++                // read.
+                 return false;
+            }
+         }

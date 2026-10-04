@@ -1,0 +1,51 @@
+diff --git a/src/game/Commands/Commands.cpp b/src/game/Commands/Commands.cpp
+index f21ef82..020371d 100644
+--- a/src/game/Commands/Commands.cpp
++++ b/src/game/Commands/Commands.cpp
+@@ -17216,6 +17216,12 @@ bool ChatHandler::HandleNpcTopTarget(char* args)
+ 
+ bool ChatHandler::HandleCharacterDiffItemsCommand(char* args)
+ {
++    // tortoise-deploy: the databases have no `character_inventory_copy` table,
++    // so the command is unavailable.
++    SendSysMessage("Command unavailable: this build has no 'character_inventory_copy' table to compare against.");
++    SetSentErrorMessage(true);
++    return false;
++
+     char* nameStr = ExtractLiteralArg(&args);
+     if (!nameStr)
+         return false;
+diff --git a/src/game/HonorMgr.cpp b/src/game/HonorMgr.cpp
+index a3927c5..277e45a 100644
+--- a/src/game/HonorMgr.cpp
++++ b/src/game/HonorMgr.cpp
+@@ -278,8 +278,8 @@ void HonorMaintenancer::DoMaintenance()
+     if (!m_markerToStart)
+         return;
+ 
+-    if (sWorld.getConfig(CONFIG_BOOL_BACKUP_CHARACTER_INVENTORY))
+-        sObjectMgr.BackupCharacterInventory();
++    // tortoise-deploy: no inventory backup, because the databases have no
++    // `character_inventory_copy` table.
+ 
+     sLog.outInfo("Beginning character name cleanup...");
+     CharacterDatabaseCleaner::FreeInactiveCharacterNames();
+diff --git a/src/game/ObjectMgr.cpp b/src/game/ObjectMgr.cpp
+index 2832261..8665943 100644
+--- a/src/game/ObjectMgr.cpp
++++ b/src/game/ObjectMgr.cpp
+@@ -10122,11 +10122,9 @@ void ObjectMgr::LoadShellCoinCount()
+ 
+ void ObjectMgr::BackupCharacterInventory()
+ {
+-    sLog.outInfo("Making copy of character_inventory table.");
+-    CharacterDatabase.DirectPExecute("TRUNCATE `character_inventory_copy`");
+-    CharacterDatabase.DirectPExecute("ALTER TABLE `character_inventory_copy` DISABLE KEYS");
+-    CharacterDatabase.DirectPExecute("INSERT INTO `character_inventory_copy` SELECT * FROM `character_inventory`");
+-    CharacterDatabase.DirectPExecute("ALTER TABLE `character_inventory_copy` ENABLE KEYS");
++    // tortoise-deploy: the databases have no `character_inventory_copy` table
++    // to copy into.
++    sLog.outInfo("Skipping copy of the 'character_inventory' table: the 'character_inventory_copy' table does not exist in this database.");
+ }
+ 
+ void ObjectMgr::LoadChatChannels()

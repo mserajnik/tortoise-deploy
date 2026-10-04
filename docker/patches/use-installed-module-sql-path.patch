@@ -1,0 +1,15 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index d5a1f77..9a7a515 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -590,7 +590,9 @@ endif()
+ set(DEFINITIONS
+   ${DEFINITIONS}
+   DO_MYSQL
+-  TW_SOURCE_MODULES_DIR="${CMAKE_SOURCE_DIR}/modules"
++  # tortoise-deploy: the image keeps the module SQL under the install prefix,
++  # because the source tree is not part of it.
++  TW_SOURCE_MODULES_DIR="${CMAKE_INSTALL_PREFIX}/modules"
+ )
+ 
+ if(WIN32)

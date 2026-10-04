@@ -1,0 +1,53 @@
+# TortoiseBots configuration.
+# Install as tortoise_bots.conf in the module config directory when enabling
+# the native module.
+
+[TortoiseBotsConf]
+
+# Optional lifecycle regression test. The character must already exist and
+# belong to the disposable TBPLAY account or have a TBPLAY-prefixed name. It
+# is one-shot for the process.
+TortoiseBots.AutoTest = 0
+TortoiseBots.AutoTest.AccountId = 0
+TortoiseBots.AutoTest.CharacterGuid = 0
+
+# Fresh packet/event bridge journey. Uses two existing same-account,
+# characters on the disposable TBPLAY account (or TBPLAY-prefixed characters),
+# emits a native group invite/accept, exercises
+# Headless and Network-master outgoing delivery, dispatches native
+# .bot list/stats/follow through a synthetic ChatHandler, then removes both
+# fixtures. Real-client incoming delivery is a separate manual gate.
+TortoiseBots.PacketBridgeTest = 0
+TortoiseBots.PacketBridgeTest.AccountId = 0
+TortoiseBots.PacketBridgeTest.MasterGuid = 0
+TortoiseBots.PacketBridgeTest.BotGuid = 0
+
+# Optional AddBot -> immediate RemoveBot queue regression test. The character
+# must be a disposable TBPLAY-account or TBPLAY-prefixed fixture.
+TortoiseBots.PendingAddRemoveTest = 0
+TortoiseBots.PendingAddRemoveTest.AccountId = 0
+TortoiseBots.PendingAddRemoveTest.CharacterGuid = 0
+
+# Module diagnostics. Controls how much the native module layer (bot
+# lifecycle, random-bot, AH, BG queue and LFT services) writes. Independent
+# of the core's own LogLevel, and re-read on `.reload config`.
+#   0 minimal  errors only
+#   1 basic    one-off startup, shutdown and diagnostic results
+#   2 detail   per-bot state transitions (default)
+#   3 debug    per-tick and per-packet traces
+# Errors are always written regardless of this setting.
+TortoiseBots.LogLevel = 2
+
+# Travel/terrain lookups run inline on the world thread when disabled (safe).
+# Cores whose MMapManager does not support concurrent tile loading (e.g. Penqle /
+# vmangos) MUST keep this at 0 to avoid a worker-thread SIGSEGV; set 1 only on
+# cores with concurrent terrain support.
+# AiPlayerbot.AsyncTravelPartitions = 0
+
+# Observability telemetry UDP emitter (non-blocking emission to tortoise-observability daemon).
+# Default 0 (switched off). Set to 1 to enable.
+# Host defaults to loopback. In Docker, point it at the observability service
+# name (e.g. "observability") or set the OBSERVABILITY_HOST environment variable.
+AiPlayerbot.Observability = 0
+AiPlayerbot.ObservabilityPort = 9195
+AiPlayerbot.ObservabilityHost = 127.0.0.1

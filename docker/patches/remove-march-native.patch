@@ -1,0 +1,15 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index d5a1f77..5eb82e7 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -465,7 +465,9 @@ if(UNIX)
+     #set(BUILD_ADDITIONAL_FLAGS "${BUILD_ADDITIONAL_FLAGS} -fsanitize=unsigned-integer-overflow")
+   endif()
+ 
+-  set(BUILD_ADDITIONAL_FLAGS "${BUILD_ADDITIONAL_FLAGS} --no-warnings -fexceptions -fnon-call-exceptions -march=native -O3 -pipe ")
++  # tortoise-deploy: no `-march=native`, because the image runs on other CPUs
++  # than the one that builds it.
++  set(BUILD_ADDITIONAL_FLAGS "${BUILD_ADDITIONAL_FLAGS} --no-warnings -fexceptions -fnon-call-exceptions -O3 -pipe ")
+   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+     if(PROFILE_GENERATE)
+       set(BUILD_ADDITIONAL_FLAGS "${BUILD_ADDITIONAL_FLAGS} -fprofile-generate")

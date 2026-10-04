@@ -1,0 +1,2 @@
+*.conf.example linguist-language=INI
+compose*.yaml.example linguist-language=YAML
