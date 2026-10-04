@@ -11,6 +11,14 @@
 
 > A Docker setup for Tortoise-WoW
 
+> [!CAUTION]
+> This branch preserves the project as it was before its relaunch on 2026-10-04
+> and is no longer maintained. Its instructions do not work with the current
+> images. The current instructions are in the README on the
+> [`master` branch][master-readme].
+
+---
+
 > [!TIP]
 > Also check out my similar Docker setups:
 >
@@ -866,6 +874,7 @@ non-commercial use only and comes with no warranty.
 [license-gpl-2.0-or-later]: LICENSES/GPL-2.0-or-later.txt
 [maintainer]: https://github.com/mserajnik
 [mangosd-gm-options]: https://github.com/mserajnik/tortoise-deploy/blob/master/config/mangosd.conf.example#L1575-L1641
+[master-readme]: https://github.com/mserajnik/tortoise-deploy/blob/master/README.md
 [phpmyadmin]: https://www.phpmyadmin.net/
 [pull-requests]: https://github.com/mserajnik/tortoise-deploy/pulls
 [reuse-spec]: https://reuse.software/spec/
