@@ -52,11 +52,11 @@ services:
       - ./storage/realmd/logs:/opt/tortoise/storage/logs
     environment:
       - TORTOISE_DEPLOY_VERSION=1 # See `docs/breaking-changes.md`.
+      - TZ=Etc/UTC # The time zone, usually your host's.
       - TORTOISE_UID=1000 # On Linux, the owner of the writable bind mounts. Do not change it once the server has run.
       - TORTOISE_GID=1000 # On Linux, the group of the writable bind mounts. Do not change it once the server has run.
       - TORTOISE_DATABASE_USER=mangos # Must match `MARIADB_USER` of the `database` service.
       - TORTOISE_DATABASE_PASSWORD=mangos # Must match `MARIADB_PASSWORD` of the `database` service.
-      - TZ=Etc/UTC # The time zone, usually your host's.
 
   mangosd:
     # The `&mangosd-image` anchor is used by `check-deploy-version`,
@@ -96,11 +96,11 @@ services:
     # `extract-client-data`, and `verify-client-data` and has to stay.
     environment: &mangosd-environment
       - TORTOISE_DEPLOY_VERSION=1 # See `docs/breaking-changes.md`.
+      - TZ=Etc/UTC # The time zone, usually your host's.
       - TORTOISE_UID=1000 # On Linux, the owner of the writable bind mounts. Do not change it once the server has run.
       - TORTOISE_GID=1000 # On Linux, the group of the writable bind mounts. Do not change it once the server has run.
       - TORTOISE_DATABASE_USER=mangos # Must match `MARIADB_USER` of the `database` service.
       - TORTOISE_DATABASE_PASSWORD=mangos # Must match `MARIADB_PASSWORD` of the `database` service.
-      - TZ=Etc/UTC # The time zone, usually your host's.
 
   # These run only on demand. See `docs/usage.md`.
   check-deploy-version:
