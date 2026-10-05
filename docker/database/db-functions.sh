@@ -277,8 +277,8 @@ acknowledge_correction() {
 }
 
 # The `tw_world` part of `create_databases.sql`, with the dump's preamble. The
-# base data fills some of its tables, and `mangosd` fills the rest, as on a
-# fresh install.
+# base data fills some of its tables, and `mangosd` fills the rest, as on a new
+# installation.
 extract_world_schema() {
   awk '
     BEGIN { preamble = 1 }

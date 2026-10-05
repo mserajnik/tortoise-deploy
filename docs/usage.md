@@ -44,29 +44,31 @@ options, which work as they are, and `aiplayerbot.conf` holds the bot behavior.
 do and how to set it up. tortoise-deploy leaves out the optional TortoiseBots
 tools, such as the observability dashboard.
 
-A missing module configuration file stops `mangosd` during startup with the
-file's name, and Docker restarts it into the same failure. When a variant gains
-a module, you have to copy one more file, and the
-[breaking changes documentation](breaking-changes.md) lists every such
-addition.
+If a module's configuration file is missing, `mangosd` stops during startup,
+tells you which one, and explains how to fix it. An update can add modules to
+your variant, each with one or more configuration files, or a configuration
+file to a module you already run. In such cases, the
+[breaking changes documentation](breaking-changes.md) lists every new
+configuration file.
 
 > [!WARNING]
-> Switching an existing setup to another variant is untested and unsupported,
-> and it may stop working at any time. If you try it anyway: `base` and
-> `modules` use the same database today, so a switch between them should work
-> in both directions. A switch from `base` or `modules` to `modules-bots`
-> should work as well. `modules-bots` adds its own migrations to the databases,
-> so the way back needs manual database edits, if it works at all.
+> Switching an existing installation to another variant is untested and
+> unsupported, and it may stop working at any time. If you try it anyway:
+> `base` and `modules` use the same database today, so a switch between them
+> should work in both directions. A switch from `base` or `modules` to
+> `modules-bots` should work as well. `modules-bots` adds its own migrations to
+> the databases, so a switch from `modules-bots` back to `base` or `modules`
+> needs manual database edits, if it works at all.
 
 ### Pinning a specific Tortoise-WoW commit
 
 Each image also has a tag with its variant and the full Tortoise-WoW commit it
 contains, such as
 `ghcr.io/mserajnik/tortoise-server:base-5fafe43b576116c3aecde435c41c87a47864f943`.
-Use such a tag to pin your setup to a specific commit. You have to give the
-server and the database image the same commit, so the code and the data match.
-The databases apply new migrations on start, so an image older than the ones
-you ran before cannot work with them.
+Use such a tag to pin your installation to a specific commit. You have to give
+the server and the database image the same commit, so the code and the data
+match. The databases apply new migrations on start, so an image older than the
+ones you ran before cannot work with them.
 
 Since the Docker images are generally built only once a day, there is likely no
 build for every single Tortoise-WoW commit. Older images are deleted
@@ -76,19 +78,17 @@ Tortoise-WoW commit, you can build them yourself. The registry lists the
 current [server images][image-tortoise-server-versions] and
 [database images][image-tortoise-database-versions].
 
-## Client data
+## Extracting the client data
 
 The server needs data extracted from the game client for handling movement and
 line of sight.
 
 > [!WARNING]
-> Tortoise-WoW supports exactly one client: an unmodified copy of the final
-> Turtle WoW client `1.18.1.7272` with the 2026-04-12 hotfixes. Data from
-> another version causes gameplay problems that look like Tortoise-WoW bugs.
-> tortoise-deploy stops an extraction from another client version, and the
-> server refuses to start with such data.
-
-### Extracting the client data
+> Tortoise-WoW targets an unmodified copy of the final Turtle WoW client
+> `1.18.1.7272` with the 2026-04-12 hotfixes. Data extracted from any other
+> version causes gameplay problems that look like Tortoise-WoW bugs.
+> tortoise-deploy stops the extraction when it detects another client version,
+> and refuses to start the server with such data in place.
 
 Copy the contents of your client directory into `storage/mangosd/client-data/`.
 Then, to extract the data, run:
@@ -100,37 +100,36 @@ docker compose run --rm extract-client-data
 The command runs the image of the `mangosd` service as its user (see the
 [`extract-client-data` section](compose.md#extract-client-data)).
 
-The extraction can take many hours, and it prints some notices and errors while
-it runs that are normal as long as the command does not end with an error. It
-checks the client version within the first minutes, before the long steps, and
-stops for an unsupported client without touching
-`storage/mangosd/extracted-data/`. The data ends up in
-`storage/mangosd/extracted-data/`.
+The extraction writes the data into `storage/mangosd/extracted-data/` and can
+take many hours. It prints some notices and errors while it runs that are
+normal as long as the command does not end with an error. If the data does not
+match the supported client version, it stops within the first minutes.
 
 If you already have extracted data from another source, put it into
 `storage/mangosd/extracted-data/` and verify it, as the
 [verifying extracted data section](#verifying-extracted-data) describes. You
 can then skip the extraction.
 
-To extract again later, for example after Tortoise-WoW improves the movement
-data, run the same command. It asks before it overwrites the old data. To skip
-the question, add `--force` at the end of the command.
+You may want to extract again when Tortoise-WoW improves the extractors in some
+way. To do so, run the same command. It asks before it overwrites the old data.
+To skip the question, add `--force` at the end of the command.
 
 ### Verifying extracted data
 
-An extraction that completed checks its own data. For data you extracted
-earlier or got elsewhere, run:
+An extraction checks the data it produces on its own. To check data you
+extracted earlier or got from another source, run:
 
 ```sh
 docker compose run --rm verify-client-data
 ```
 
-### Warden and anticheat
+## Anticheat and Warden
 
-The images contain no anticheat. Warden depends on module files that
-Tortoise-WoW does not distribute and that are not maintained for its client, so
-it cannot work reliably. The movement checks may come to a later image, once an
-upstream problem that affects them is fixed.
+The images are built without anticheat support. Warden in particular is not
+available: it needs module files that Tortoise-WoW does not distribute and that
+are not maintained for its client, so it cannot be enabled reliably. The other,
+movement-based checks may be enabled in a future image, once an upstream issue
+that affects them is resolved.
 
 ## Running Tortoise-WoW
 
@@ -232,8 +231,8 @@ containers:
 docker compose up -d
 ```
 
-If you pinned your setup to a specific commit, the update only takes effect
-once you set newer tags.
+If you pinned your installation to a specific commit, the update only takes
+effect once you set newer tags.
 
 On the first start after an update, `mangosd` applies the new migrations to the
 databases.
@@ -326,11 +325,11 @@ uncomment it (see the
 
 > [!NOTE]
 > The Compose file leaves the world and logs databases out of the
-> `database-backup` service, because most personal setups likely do not care
-> enough about their contents to accept much larger backups. Apart from changes
-> you make to it yourself, the image can re-create the world database. The logs
-> database stores what the servers log to it. To back up either, add `tw_world`
-> or `tw_logs` to `DB_DUMP_INCLUDE`.
+> `database-backup` service, because most personal installations likely do not
+> care enough about their contents to accept much larger backups. Apart from
+> changes you make to it yourself, the image can re-create the world database.
+> The logs database stores what the servers log to it. To back up either, add
+> `tw_world` or `tw_logs` to `DB_DUMP_INCLUDE`.
 
 To create a backup right away, run:
 

@@ -50,9 +50,9 @@ tortoise-deploy is a Docker-based solution for running
 
 ## Quick start
 
-The steps below get a local setup running quickly, for playing on the same
-machine. You need [Docker][docker] with [Docker Compose][docker-compose]. The
-steps set up the `base` variant. For `modules` or `modules-bots`, which the
+The steps below get a local installation running quickly, for playing on the
+same machine. You need [Docker][docker] with [Docker Compose][docker-compose].
+The steps set up the `base` variant. For `modules` or `modules-bots`, which the
 [variants section](docs/usage.md#variants) describes, follow the notes in steps
 1 and 2.
 
@@ -95,8 +95,8 @@ steps set up the `base` variant. For `modules` or `modules-bots`, which the
    ```
 
    Extracting can take many hours, and the
-   [client data section](docs/usage.md#client-data) names the supported client
-   and describes the details.
+   [extracting the client data section](docs/usage.md#extracting-the-client-data)
+   names the supported client and describes the details.
 
 5. Start Tortoise-WoW and follow its output:
 

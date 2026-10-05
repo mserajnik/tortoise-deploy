@@ -210,8 +210,8 @@ RUN \
     /build/core/tools/mmap/offmesh.txt \
     /opt/tortoise/bin/ && \
   # Turn Tortoise-WoW's DBC hash table into a `sha256sum -c` manifest, which
-  # spares the image a Python install. The parse accepts either quote and hash
-  # case, and lowercases the extension to the name the extractors write.
+  # spares the image a Python installation. The parse accepts either quote and
+  # hash case, and lowercases the extension to the name the extractors write.
   sed -n \
     -e "s/\\.[Dd][Bb][Cc]\\(['\"][[:space:]]*:\\)/.dbc\\1/" \
     -e "s/^[[:space:]]*['\"]\\([^'\"]*\\.dbc\\)['\"][[:space:]]*:[[:space:]]*['\"]\\([0-9a-fA-F]\\{64\\}\\)['\"][^'\"]*\$/\\2  \\1/p" \
