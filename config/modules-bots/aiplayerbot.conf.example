@@ -301,6 +301,30 @@ AiPlayerbot.LowLevelVendorMaxDistance = 600
 #AiPlayerbot.HirePartyMult4 = 4.66
 #AiPlayerbot.HireRaidFlatCostCopper = 10000
 #AiPlayerbot.HireDisconnectGracePeriod = 300
+# Issue #492: world buffs at the six capital <Mercenary Hire> recruiters
+# (Stormwind, Ironforge, Darnassus, Orgrimmar, Undercity, Thunder Bluff).
+# Level 60+ players get a "World buffs" branch next to "Hire bots"; the
+# branch lists buy options (price = base + per-person x head count, head
+# count = buyer + grouped members within 40 yd of the NPC) and the unlock
+# quests. Unlock fees are paid when an unlock quest is turned in:
+# WorldBuffsUnlockFeeRaidCopper for Rallying Cry, Warchief's Blessing and
+# Spirit of Zandalar (200g), WorldBuffsUnlockFeeCopper for the rest (100g).
+# The server writes them into the quests at startup, so a changed fee is
+# live after the NEXT restart (restart twice). The values below are the
+# values that actually run.
+#AiPlayerbot.WorldBuffsEnabled = 1
+#AiPlayerbot.WorldBuffsKeepInRaids = 0
+#AiPlayerbot.WorldBuffsMinLevel = 60
+#AiPlayerbot.WorldBuffsPriceBaseCopper = 100000
+#AiPlayerbot.WorldBuffsPricePerPersonCopper = 20000
+#AiPlayerbot.WorldBuffsSaygePriceBaseCopper = 60000
+#AiPlayerbot.WorldBuffsSaygePricePerPersonCopper = 10000
+#AiPlayerbot.WorldBuffsSongflowerPriceBaseCopper = 40000
+#AiPlayerbot.WorldBuffsSongflowerPricePerPersonCopper = 10000
+#AiPlayerbot.WorldBuffsSilithystPriceBaseCopper = 20000
+#AiPlayerbot.WorldBuffsSilithystPricePerPersonCopper = 4000
+#AiPlayerbot.WorldBuffsUnlockFeeRaidCopper = 2000000
+#AiPlayerbot.WorldBuffsUnlockFeeCopper = 1000000
 # Issue #473: opt-in quality of life for owned/hired bots only (every part
 # off by default; pool bots always keep progressing organically and are
 # never touched). The values below are the values that actually run.
@@ -1551,6 +1575,9 @@ AiPlayerbot.RandomBotUpdateInterval = 500
 AiPlayerbot.RandomBotsMaxLoginsPerInterval = 30
 #AiPlayerbot.MinRandomBotInWorldTime = 1800
 #AiPlayerbot.MaxRandomBotInWorldTime = 21600
+# A pool bot below level 60 that earns no XP for this many minutes is
+# relogged (a relog clears whatever left it idle). 0 = off.
+#AiPlayerbot.RandomBotStallRelogMinutes = 45
 #AiPlayerbot.MinRandomBotRandomizeTime = 21600
 #AiPlayerbot.MaxRandomBotRandomizeTime = 86400
 #AiPlayerbot.MinRandomBotsPriceChangeInterval = 7200
