@@ -18,15 +18,6 @@
 
 ---
 
-> [!TIP]
-> Also check out my similar Docker setups:
->
-> - [vmangos-deploy][vmangos-deploy] for [VMaNGOS][vmangos], a progressive
->   Vanilla server emulator that aims to eventually support all versions from
->   `1.2.4.4222` to `1.12.1.5875`.
-> - [cmangos-deploy][cmangos-deploy] for [CMaNGOS][cmangos], a server emulator
->   that supports Vanilla (which CMaNGOS calls Classic), TBC, and WotLK.
-
 tortoise-deploy is a Docker-based solution for running
 [Tortoise-WoW][tortoise-wow]. It offers:
 
@@ -200,6 +191,16 @@ The patches are `GPL-2.0-or-later`, like the Tortoise-WoW code from before its
 move to `AGPL-3.0-only` in May 2026, which covers only the later contributions.
 A patch that changes later code is also under `AGPL-3.0-only`.
 
+## Similar Docker setups
+
+- [vmangos-deploy][vmangos-deploy] for [VMaNGOS][vmangos], a progressive
+  Vanilla WoW server emulator that aims to eventually support all versions from
+  `1.2.4.4222` to `1.12.1.5875`.
+- [cmangos-deploy][cmangos-deploy] for [CMaNGOS][cmangos], a WoW server
+  emulator that supports Vanilla (which CMaNGOS calls Classic), TBC, and WotLK.
+- [lost-city-rs-deploy][lost-city-rs-deploy] for [Lost City RS][lost-city-rs],
+  an RS2 server emulator that aims to re-create the original game accurately.
+
 ## Maintainer
 
 [Michael Serajnik][maintainer]
@@ -256,6 +257,8 @@ non-commercial use only and comes with no warranty.
 [license-cc0-1.0]: LICENSES/CC0-1.0.txt
 [license-gpl-2.0-only]: LICENSES/GPL-2.0-only.txt
 [license-gpl-2.0-or-later]: LICENSES/GPL-2.0-or-later.txt
+[lost-city-rs]: https://github.com/LostCityRS
+[lost-city-rs-deploy]: https://github.com/mserajnik/lost-city-rs-deploy
 [maintainer]: https://github.com/mserajnik
 [pull-requests]: https://github.com/mserajnik/tortoise-deploy/pulls
 [reuse-spec]: https://reuse.software/spec/
