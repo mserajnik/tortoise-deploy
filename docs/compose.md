@@ -5,9 +5,13 @@ chosen variant: [`compose.yaml.example`](../compose.yaml.example) for `base`,
 [`compose-modules.yaml.example`](../compose-modules.yaml.example) for
 `modules`, or
 [`compose-modules-bots.yaml.example`](../compose-modules-bots.yaml.example) for
-`modules-bots`. It configures every service of the setup, and the tables below
-describe each of its settings. The example files differ only in their Docker
-image tags and in the module configuration mounts of the `mangosd` service.
+`modules-bots`. The example files differ only in their Docker image tags and in
+the module configuration mounts of the `mangosd` service.
+
+For each service, the [services section](#services) below has a table of its
+keys, such as `image` and `volumes`, and, if it has any, a table of its
+environment variables with their default values. The sections after it explain
+some settings in more detail.
 
 > [!WARNING]
 > Where a setting needs a specific value for the setup to work, its description
