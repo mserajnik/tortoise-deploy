@@ -9,8 +9,6 @@
 [![Latest Tortoise-WoW build][badge-latest-tortoise-build]][badge-latest-tortoise-build-url]
 [![Latest build date][badge-latest-build-date]][badge-latest-build-date-url]
 
-> A Docker setup for Tortoise-WoW
-
 ---
 
 > [!WARNING]
