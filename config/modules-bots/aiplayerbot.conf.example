@@ -1424,10 +1424,13 @@ AiPlayerbot.PremadeSpecLink.11.2.60 = 5002012--5050013355213521
 #   PoolBudgetWhenTickOverMs: the budget only engages while the previous world
 #       tick ran longer than this, so a healthy server (small pool) keeps the
 #       unchanged full pass. 0 = budget on every tick.
+#   CombatTickBudgetUs: microseconds of module work per tick for Pass 2 (combat bots).
+#       0 = no budget at all. Default is 15000 (15 ms).
 # The pass cost and whether the budget cut a pass are reported by the
 # "TortoiseBots: BOTPERF ..." log line every ~30 s (LogLevel 1 or higher).
 AiPlayerbot.PoolTickBudgetUs = 10000
 AiPlayerbot.PoolBudgetWhenTickOverMs = 150
+AiPlayerbot.CombatTickBudgetUs = 15000
 
 # Bounded failure backoff for autonomous background work (issue #84).
 # Repeated failures wait base, 2x, 4x, 8x, 16x up to the max before the
