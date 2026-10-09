@@ -25,7 +25,7 @@ sources:
     repository: Sagiroth/TortoiseBots
     branch: main
     pin: e046c555bc51331476a03cf324ff0435c484ea4f
-    cutoff: 8c4fbc9f7d3713bb7a58ce4890efbddaadfc892e
+    cutoff: 7fbbf910eeec1cf8eca2ded08d172150c03a3b88
 
 # The server build checks the module configuration files and the module SQL it
 # installs against the `module-configs` and `module-sql-modules` vars of each
@@ -110,9 +110,7 @@ migration-edits:
       remedy: manual
       sources:
         core: {migrations: [sql/database_updates/character/*.sql]}
-        # The module calls this directory `char` and installs it as
-        # `character`.
-        tortoisebots: {migrations: [data/sql/char/*.sql]}
+        tortoisebots: {migrations: [data/sql/character/*.sql]}
 
 images:
   - name: server

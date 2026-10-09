@@ -162,10 +162,10 @@ RUN \
         fi; \
         while IFS= read -r shipped_path; do \
           case "$shipped_path" in \
-            data/sql/char/*/*|data/sql/world/*/*) \
+            data/sql/character/*/*|data/sql/world/*/*) \
               echo "Module '$module_directory' ships the SQL file '$shipped_path' in a subdirectory. The applier does not descend, so the file would never be applied."; \
               exit 1 ;; \
-            data/sql/char/*) target=character ;; \
+            data/sql/character/*) target=character ;; \
             data/sql/world/*) target=world ;; \
             *) \
               echo "Module '$module_directory' ships the SQL file '$shipped_path', which this image maps to no database."; \
