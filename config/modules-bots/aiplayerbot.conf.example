@@ -16,10 +16,10 @@ AiPlayerbot.Observability = 0
 AiPlayerbot.ObservabilityPort = 9195
 
 # Enable random bot system
-# Single-bot manual-add (`.bot add <name>`) is the
-# recommended starting point. Random bots auto-spawn dozens of characters and
-# need DB schema + tuned class probabilities — defer this.
-AiPlayerbot.RandomBotAutologin = 0
+# On by default: a fresh install brings up a living world of random bots
+# (see MinRandomBots/MaxRandomBots, RandomBotAutoCreate). 0 turns the pool off
+# and leaves only manually added bots (`.bot add <name>`).
+AiPlayerbot.RandomBotAutologin = 1
 
 # Log on all random bots on start
 AiPlayerbot.RandomBotLoginAtStartup = 0
@@ -58,9 +58,10 @@ AiPlayerbot.BotAutologin = 0
 # Mark many quests <= Bot level as complete (slows down bot creation)
 AiPlayerbot.PreQuests = 0
 
-# Random bot count
-AiPlayerbot.MinRandomBots = 0
-AiPlayerbot.MaxRandomBots = 0
+# Random bot count. Default 500 is sized for an average PC or a Steam Deck
+# (with the self-tuning tick budget below); a bigger machine can raise both.
+AiPlayerbot.MinRandomBots = 500
+AiPlayerbot.MaxRandomBots = 500
 AiPlayerbot.RandomBotMaxLevel = 60
 
 # Username prefix used when the module NAMES a new pool account, and when the
@@ -127,7 +128,7 @@ AiPlayerbot.RandomBotPoolReset = off
 # to the normal Headless login (AddRandomBot -> LoginPlayer) and post-login
 # PlayerbotFactory gear enrichment (already in RandomBotService.Update) handle
 # them. No raw INSERT, no DB worker, no AddAsyncTask.
-AiPlayerbot.RandomBotAutoCreate = 0
+AiPlayerbot.RandomBotAutoCreate = 1
 
 # Optional pinned RNDBOT names that remain online when possible. Comma-separated
 # character names matched using the database's stored `characters.name` collation
@@ -256,6 +257,13 @@ AiPlayerbot.LowLevelVendorBatchMinBagSpace = 25
 # capped to this radius so the bot never leaves its mob-safe starting pocket.
 # Default 600.
 AiPlayerbot.LowLevelVendorMaxDistance = 600
+
+# Microseconds a travel-destination pick may spend scanning candidates per bot
+# visit before yielding to the next visit (the pick resumes where it stopped,
+# accepting the same target, just spread across visits). Bounds the worst-case
+# single-bot update so one 11 s pick no longer lands whole in a world tick.
+# 0 = no slicing (the whole pick runs in one visit). Default 4000 (4 ms).
+AiPlayerbot.TravelPickBudgetUs = 4000
 
 # Bot-only drop-rate boost for green (uncommon) and blue (rare) items. Masterless
 # random pool bots roll each quality-2/3 entry of a creature's loot template one extra
@@ -395,6 +403,16 @@ AiPlayerbot.AhMarketValueVendor = 1
 #AiPlayerbot.RandomBotBgEnabled = 1
 #AiPlayerbot.RandomBotBgQueueInterval = 30000
 #AiPlayerbot.RandomBotBgMaxQueuePerInterval = 1
+# Autonomous bot-only Warsong Gulch (default on). When no human waits in any
+# BG queue, seeds one 10v10 WSG in the most populated level bracket so pool
+# bots have matches of their own. Top-up batches accumulate until both sides
+# fill; a still-forming match keeps absorbing queued seeds, so only a full
+# instance stops new seeds. Capped at 1 concurrent full instance for an
+# average PC (20 bots on one map); clamped 0-2, raise to 2 only on a strong host.
+#AiPlayerbot.RandomBotBgAutonomous = 1
+#AiPlayerbot.RandomBotBgAutonomousMaxInstances = 1
+# Note: the seeder runs inside the backfill tick, so it also requires
+# AiPlayerbot.RandomBotBgEnabled = 1 (Autonomous=1 + BgEnabled=0 seeds nothing).
 
 # Currently has NO effect: the key is read but nothing uses it (kept for
 # config compatibility). Bot activity is controlled by
@@ -612,6 +630,13 @@ AiPlayerbot.InviteChat = 1
 # reads a thread-local "last phase" tag set by SC_PHASE when this is on.
 # AiPlayerbot.EnableActionLog = 0
 
+# Aggregate counter of executed bot actions for live measurement on large
+# realms: every 5 minutes a cumulative snapshot (utc_time,class,action,
+# ok_count,fail_count) is appended to logs/action_counts.csv. Off in
+# production; turn on for a measurement window, then diff two snapshots with
+# tools/action_counts_report.py to see the top actions per class.
+AiPlayerbot.ActionCountsLog = 0
+
 # Redirect all bot subsystem log output to a dedicated file so the main
 # server.log stays clean. Path is relative to the server's LogsDir setting.
 #
@@ -763,6 +788,9 @@ AiPlayerbot.AutoPickReward = yes
 # Bots equip upgrades (Bots will equip any item obtained from looting or a quest if they are upgrades)
 # Default: 0 (disabled)
 AiPlayerbot.AutoEquipUpgradeLoot = 1
+
+# An upgrade must beat the old item's stat weight by this factor to count (mod-playerbots parity, default 1.1: a +10% win swaps, an epsilon gain does not). 1.0 restores any-gain swaps.
+AiPlayerbot.EquipUpgradeThreshold = 1.1
 
 # Sync quests with player (Bots will complete quests the moment you hand them in. Bots will ignore looting quest items.)
 # Default: 0 (disabled)
@@ -1415,22 +1443,40 @@ AiPlayerbot.PremadeSpecLink.11.2.60 = 5002012--5050013355213521
 # Per-tick AI pass scheduling for a large random pool (party-bot latency).
 # Bots owned by a real player — module-owned records and every bot bound to a
 # master — are always updated first, every tick, with no budget. The random
-# pool runs after them in a round-robin order that resumes where the previous
-# tick stopped, so a bot that misses a pass is served on a later one, never
-# dropped.
-#   PoolTickBudgetUs: microseconds of module work per tick for the pool pass.
-#       0 = no budget at all (the pool always gets the full pass).
+# pool runs after them as one turn queue: after each turn a bot is due again
+# when its AI asked to think next, never later than its situation allows
+# (combat 400 ms, dead or battleground 1 s, teleport 100 ms, else 3 s), and a
+# change of situation makes it due at once. Due bots run most overdue first
+# relative to that cap until the budget is spent, so nobody is dropped.
+#   PoolTickBudgetUs: microseconds of module work per tick for the pool turn
+#       queue, added to CombatTickBudgetUs (the two make one budget).
+#       0 = no budget at all (every due bot runs).
 #       Values below 1000 are raised to 1000; 100000 is the ceiling.
 #   PoolBudgetWhenTickOverMs: the budget only engages while the previous world
-#       tick ran longer than this, so a healthy server (small pool) keeps the
-#       unchanged full pass. 0 = budget on every tick.
-#   CombatTickBudgetUs: microseconds of module work per tick for Pass 2 (bots in combat or dead).
+#       tick ran longer than this. 0 = budget on every tick (the default: with
+#       the self-tuning budget below, a healthy server reclaims the full
+#       ceiling on its own, so there is no need to gate behind slow ticks).
+#   CombatTickBudgetUs: the second half of the same budget (it once fed a
+#       separate combat pass; kept so existing configs keep their total).
 #       0 = no budget at all. Default is 15000 (15 ms).
+#   TargetWorldTickMs: self-tuning tick budget. Each tick the controller moves
+#       the effective pool/combat budgets from the measured previous world
+#       tick so the tick stays near this target: over it the budgets shrink
+#       fast (x0.7/tick), at or under it they creep back (+1 ms/tick),
+#       shrinking only above target + 10 ms. No hardware detection, just
+#       feedback on tick time — a fast desktop keeps the full configured
+#       ceilings, a weak machine backs off on its own. 0 = off (static
+#       ceilings; also set PoolBudgetWhenTickOverMs=150 to restore the old
+#       gate). Default is 100: player lag stays well under ~200 ms while a
+#       large pool keeps its bots moving. Lower it (e.g. 50) for snappier
+#       ping at the cost of slower bot turns on a busy server. If the server
+#       cannot hold even 100, run fewer bots.
 # The pass cost and whether the budget cut a pass are reported by the
 # "TortoiseBots: BOTPERF ..." log line every ~30 s (LogLevel 1 or higher).
 AiPlayerbot.PoolTickBudgetUs = 10000
-AiPlayerbot.PoolBudgetWhenTickOverMs = 150
+AiPlayerbot.PoolBudgetWhenTickOverMs = 0
 AiPlayerbot.CombatTickBudgetUs = 15000
+AiPlayerbot.TargetWorldTickMs = 100
 
 # Bounded failure backoff for autonomous background work (issue #84).
 # Repeated failures wait base, 2x, 4x, 8x, 16x up to the max before the
@@ -1630,6 +1676,10 @@ AiPlayerbot.JumpHeightLimit = 60
 AiPlayerbot.JumpWithPlayer = 0
 # Add rpg jump strategy in BG
 AiPlayerbot.JumpInBg = 0
+# Hold the ready-check confirm until buffs settle (grace) or a 30 s cap fires,
+# instead of answering ready and buffing through the pull. Off by default;
+# the readiness text report is immediate either way.
+AiPlayerbot.ForceRebuffOnReadyCheck = 0
 
 # Use jump if can not find a proper path to follow, if possible
 AiPlayerbot.JumpFollow = 1
@@ -1695,8 +1745,15 @@ AiPlayerbot.RndBotCheats = repair,breath,item
 
 # Allowed log files. See SPP_MAP for more information
 # https://github.com/mostlikely4r/spp-map
+# On by default so a bug report can carry them: bot_events.csv (bot decisions), deaths.csv (bot deaths and killers).
 # Opt-in diagnostics: travel_route_gate.csv (rejected travel routes), ghost_moves.csv (dead bots walking to their corpse).
+# Leave empty to write no bot log files.
 AiPlayerbot.AllowedLogFiles = bot_events.csv,deaths.csv
+
+# Days of bot logs to keep. The live file is plain text; every hour and at server start it is packed into
+# <name>_<date>_<time>.csv.gz next to it (named after the time it was closed), and packs older than this
+# are deleted. 0 = never delete.
+AiPlayerbot.LogRetentionDays = 3
 
 # Filters certain actions from showing up in 'nc +debug' and 'nc +debug action'
 # AiPlayerbot.DebugFilter = add gathering loot,check values,emote,check mount state,jump
