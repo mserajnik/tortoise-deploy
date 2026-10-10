@@ -74,7 +74,7 @@ for dbc_file in *.dbc; do
 done
 
 if [ "$unexpected_count" -gt 0 ]; then
-  echo "[tortoise-deploy]: ERROR: The extracted DBC data in '$dbc_dir' holds files Tortoise-WoW does not expect. Extract the data again from the supported client version." >&2
+  echo "[tortoise-deploy]: ERROR: The extracted DBC data in '$dbc_dir' contains files Tortoise-WoW does not expect. Extract the data again from the supported client version." >&2
   exit 1
 fi
 

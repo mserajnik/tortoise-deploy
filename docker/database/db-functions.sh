@@ -45,7 +45,7 @@ mark_initialized() {
 }
 
 # A data directory from before the markers counts as set up when its world
-# database holds data.
+# database contains data.
 require_initialized() {
   if [[ -f "$INITIALIZED_MARKER" ]]; then
     return 0
@@ -59,7 +59,7 @@ require_initialized() {
     return 0
   fi
 
-  tortoise_fail "The databases are not set up completely. If this is a new installation, remove the database volume and start again. Otherwise the volume holds your characters: remove it only if you have a backup, and restore the backup after the new start:
+  tortoise_fail "The databases are not set up completely. If this is a new installation, remove the database volume and start again. Otherwise the volume contains your characters: remove it only if you have a backup, and restore the backup after the new start:
 https://github.com/mserajnik/tortoise-deploy/blob/master/docs/usage.md#restoring-a-backup"
 }
 
@@ -304,9 +304,9 @@ import_world_schema() {
 recreate_world_database() {
   local schema use_count world_use_count
 
-  # Check the slice before dropping anything. It has to hold tables, and every
-  # `USE` in it has to select `tw_world`: from a dump without `CREATE DATABASE`
-  # lines, it would contain all four databases.
+  # Check the slice before dropping anything. It has to contain tables, and
+  # every `USE` in it has to select `tw_world`: from a dump without
+  # `CREATE DATABASE` lines, it would contain all four databases.
   schema="$(extract_world_schema)"
   use_count="$(grep -ciE '^[[:space:]]*use([^a-z0-9_$]|$)' <<<"$schema" || true)"
   # shellcheck disable=SC2016
