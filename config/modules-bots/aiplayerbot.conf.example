@@ -173,6 +173,30 @@ AiPlayerbot.AllowIsolatedCustomStartingZones = 0
 # core playercreateinfo spawns). Set 0 for the old behaviour: uniform random
 # race, goblins to Valley of Trials, high elves to Northshire. Default 1.
 AiPlayerbot.RandomBotEvenStartZones = 1
+# % of new random bots that are Alliance (0-100); the rest are Horde.
+# 50 = no bias (today's mix). Faction is rolled first, then the start zone
+# inside that faction (weights below, else RandomBotEvenStartZones). Account
+# faction limits still apply: a roll with no valid race on the account keeps
+# the full account-eligible list, and core creation limits back off as today.
+# Only new bots and the login preference below follow it; existing pool bots
+# are never deleted or moved (use RandomBotPoolReset for a hard restart).
+# Login preference: when the ratio is not 50, the level ladder prefers the
+# faction furthest below its share as bots rotate in; no forced logouts. It
+# applies only while the ladder is filling bands (LevelLadder=1, online below
+# target); full pools and LevelLadder=0 are unaffected.
+# e.g. 90 for a mostly-Alliance pool. Default 50.
+AiPlayerbot.RandomBotFactionRatio = 50
+
+# Optional per-start-zone weights for new random bots, e.g.
+# "Durotar=100,Elwynn=50". Names are region names (Durotar, Mulgore,
+# Tirisfal, Elwynn, Dun Morogh, Teldrassil) or spawn names (Northshire,
+# Coldridge, ...). Empty = today's even spread. A zone with weight 0 gets no
+# new bots through this pick; malformed (or all-zero) text logs an error and
+# keeps the even spread. Applies within the rolled faction above. e.g. all
+# new bots in Durotar: AiPlayerbot.RandomBotStartZoneWeights = Durotar=100.
+# Bots seeded level 10+ still scatter to level-fitting zones at first login,
+# so weighted zones only control where level-1 bots start. Default empty.
+AiPlayerbot.RandomBotStartZoneWeights =
 
 # Where a random bot without a player master comes back after a repop (the
 # evacuation used when it keeps dying or is stuck while dead): 1 = nearest
