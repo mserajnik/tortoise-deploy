@@ -1747,12 +1747,14 @@ AiPlayerbot.RndBotCheats = repair,breath,item
 # https://github.com/mostlikely4r/spp-map
 # On by default so a bug report can carry them: bot_events.csv (bot decisions), deaths.csv (bot deaths and killers).
 # Opt-in diagnostics: travel_route_gate.csv (rejected travel routes), ghost_moves.csv (dead bots walking to their corpse).
-# Leave empty to write no bot log files.
+# To turn the bot CSV logs off, leave this list empty (AiPlayerbot.AllowedLogFiles =). The dashboard does not need
+# these files: it is fed over UDP by the observability emitter, so activity, deaths and kills keep flowing.
 AiPlayerbot.AllowedLogFiles = bot_events.csv,deaths.csv
 
 # Days of bot logs to keep. The live file is plain text; every hour and at server start it is packed into
 # <name>_<date>_<time>.csv.gz next to it (named after the time it was closed), and packs older than this
-# are deleted. 0 = never delete.
+# are deleted. 0 = never delete. Only files listed in AiPlayerbot.AllowedLogFiles above are written, so
+# leaving that list empty stops the log files (and their packs) entirely.
 AiPlayerbot.LogRetentionDays = 3
 
 # Filters certain actions from showing up in 'nc +debug' and 'nc +debug action'
