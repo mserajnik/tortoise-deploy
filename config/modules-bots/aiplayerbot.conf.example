@@ -1505,14 +1505,18 @@ AiPlayerbot.PremadeSpecLink.11.2.60 = 5002012--5050013355213521
 #       the effective pool/combat budgets from the measured previous world
 #       tick so the tick stays near this target: over it the budgets shrink
 #       fast (x0.7/tick), at or under it they creep back (+1 ms/tick),
-#       shrinking only above target + 10 ms. No hardware detection, just
+#       shrinking only above target + 10 ms, and only when cutting the
+#       pool can bring the tick back: if the core (everything outside the
+#       pool turns) alone keeps the tick over, the budgets hold instead of
+#       making bots late for nothing. No hardware detection, just
 #       feedback on tick time — a fast desktop keeps the full configured
 #       ceilings, a weak machine backs off on its own. 0 = off (static
 #       ceilings; also set PoolBudgetWhenTickOverMs=150 to restore the old
 #       gate). Default is 100: player lag stays well under ~200 ms while a
 #       large pool keeps its bots moving. Lower it (e.g. 50) for snappier
-#       ping at the cost of slower bot turns on a busy server. If the server
-#       cannot hold even 100, run fewer bots.
+#       ping at the cost of slower bot turns on a busy server; a target
+#       below what the core alone takes has no effect. If the server cannot
+#       hold even 100, run fewer bots.
 # The pass cost and whether the budget cut a pass are reported by the
 # "TortoiseBots: BOTPERF ..." log line every ~30 s (LogLevel 1 or higher).
 AiPlayerbot.PoolTickBudgetUs = 10000
@@ -1649,6 +1653,8 @@ AiPlayerbot.EnableCustomRaidTactics = 1
 AiPlayerbot.RandomBotCombatStrategies = +dps assist,-threat
 # Inside a dungeon or raid the non-combat list skips +grind, +travel, +tfish, +rpg,
 # +rpg craft and +wander, so a pool bot in a party keeps its follow leash there.
+# Zoning in drops those strategies too; leaving gives back only what was dropped
+# (never +wander next to follow), so a strategy you turned off stays off.
 AiPlayerbot.RandomBotNonCombatStrategies = +grind,+loot,+custom::say,+tfish,+wander,+rpg craft
 #AiPlayerbot.RandomBotReactStrategies =
 #AiPlayerbot.RandomBotDeadStrategies =
