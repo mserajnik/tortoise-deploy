@@ -262,8 +262,10 @@ want in your configuration.
 ## Migration edits
 
 Sometimes, upstream edits a migration that your databases have already applied.
-The server cannot apply such a change again, so tortoise-deploy detects these
-edits and acts on them.
+Tortoise-WoW runs such a migration again in full on its next start, which can
+fail or apply its changes twice if the migration is not written to run more
+than once. tortoise-deploy does not rely on that behavior, which may change, so
+it detects these edits and acts on them.
 
 - For the world database, the `database` service re-creates it from the new
   image. Changes you made directly in the world database are lost, such as your
@@ -271,7 +273,7 @@ edits and acts on them.
   [custom SQL](#custom-sql), which the database runs again after the
   re-creation.
 - A database with player data cannot be re-created. For those, the start halts
-  and asks you to apply the change by hand, as the next section describes.
+  and asks you to prepare the database by hand, as the next section describes.
 
 The [`database` section](compose.md#database) of the Docker Compose reference
 describes the two variables that control this.
@@ -290,22 +292,44 @@ docker compose logs database
 The container waits as long as you need. To resolve the halt:
 
 1. Open each linked commit and read its changes to the SQL files.
-2. Apply the same changes to each affected database, with the name in
-   parentheses in the message. To open a database, run:
+2. Prepare each affected database so that the edited migrations can run again
+   in full, with the name in parentheses in the message. To open a database,
+   run:
 
    ```sh
    docker compose exec database mariadb -u root -p <database>
    ```
 
    The password is `MARIADB_ROOT_PASSWORD` from your `compose.yaml`.
-3. Once you have applied every change, confirm:
+3. Once you have prepared every affected database, confirm:
 
    ```sh
    docker compose exec database tortoise-confirm-changes
    ```
 
-The start then records the commits as applied and continues. To give up on the
-start, run `docker compose down`.
+The `database` service then records the commits as applied, and the start
+continues.
+
+If you would rather cancel the start and handle the edits later, run
+`docker compose down` instead of confirming. The `database` service halts again
+on your next start.
+
+Tortoise-WoW runs an edited migration again in full, so applying only the
+difference by hand can apply it twice. Check whether the whole edited migration
+can run again on your database, and change the database only where it cannot.
+
+In a database with player data, you can ignore an edit to a migration that has
+not been applied to it yet. To check, look up the migration's file name without
+`.sql`:
+
+```sh
+docker compose exec database mariadb -u root -p <database> \
+  -e "SELECT Name FROM migrations WHERE Name = '<file-name>'"
+```
+
+When the query returns no row, the migration has not been applied. For a
+renamed migration, check its old file name. Even when every listed edit can be
+ignored, you still have to confirm, as step 3 above describes.
 
 > [!WARNING]
 > The confirmation marks the listed commits as applied without checking your

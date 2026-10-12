@@ -414,7 +414,7 @@ process_userstate_corrections() {
   done
 }
 
-print_correction_abort_message() {
+print_correction_halt_message() {
   cat >&2 <<'EOF'
 [tortoise-deploy]: ERROR: Migration edits affect your databases.
 tortoise-deploy will not apply these changes for you. Startup is halted.
@@ -444,22 +444,25 @@ EOF
 For each entry above:
 
   1. Open its GitHub link to see what changed.
-  2. Apply the equivalent SQL to the running database yourself, using the name
-     in parentheses above:
+  2. Tortoise-WoW runs an edited migration again in full on its next start.
+     Prepare the running database for that yourself, using the name in
+     parentheses above:
        docker compose exec database mariadb -u root -p <database>
      (mariadb prompts for the password, which matches your
      'MARIADB_ROOT_PASSWORD' setting in your 'compose.yaml'.)
+     You can ignore an edit to a migration that has not been applied to the
+     database yet. The documentation shows how to check:
+     https://github.com/mserajnik/tortoise-deploy/blob/master/docs/usage.md#applying-changes-by-hand
 
-When you have applied the changes to all of them, confirm by running on the
-host:
+When you have done this for all of them, confirm by running on the host:
   docker compose exec database tortoise-confirm-changes
 
-To abort instead, run on the host:
+To cancel the start and handle the edits later instead, run on the host:
   docker compose down
 
 While the container is paused, MariaDB is reachable inside the container via
 the internal socket. TCP access on port 3306 is not available during the pause.
-Tortoise-WoW stays offline until you confirm or abort, so take as long as you
+Tortoise-WoW stays offline until you confirm or cancel, so take as long as you
 need.
 
 Note: When you confirm, tortoise-deploy treats the listed commits as applied

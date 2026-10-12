@@ -139,8 +139,8 @@ RUN \
     # `/opt/tortoise/modules/<module>/data/sql/<target>` and skips anything
     # else without a word, so check where `make install` put each SQL file a
     # module provides. Only the modules in `TORTOISE_MODULE_SQL_MODULES` may
-    # provide SQL. A failed `find` aborts, because two empty lists would
-    # compare equal.
+    # provide SQL. A failed `find` fails the build, because two empty lists
+    # would compare equal.
     ( \
       IFS='|'; \
       for module in $TORTOISE_MODULES; do \
