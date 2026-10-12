@@ -243,6 +243,16 @@ AiPlayerbot.UnstuckHearthLevelFit = 1
 # graveyard instead. 0 disables the gate (always hearth). Default 300.
 AiPlayerbot.UnstuckHearthMinDistance = 300
 
+# Stuck-travel teleport for random bots without a player master (owned and hired
+# bots never teleport). 1 = a trip that fails or makes no progress for six moves
+# in a row (the point where the destination would be dropped) teleports the bot
+# to its destination instead: onto the navmesh next to it, or the nearest route
+# node within 200 yards. Same map only, only when no player is near either end,
+# at most once per 10 minutes per bot. It frees bots stranded swimming at sea,
+# where no walk can reach land. 0 = drop the destination and pick another (the
+# old behaviour). Default 1.
+AiPlayerbot.StuckTravelTeleport = 1
+
 # Quest-log upkeep for random bots without a player master: drop finished
 # quests that can no longer be rewarded (except transient money blockers),
 # drop grey incomplete deliver quests whose items are gone, refuse grey
@@ -259,6 +269,9 @@ AiPlayerbot.BotQuestLogUpkeep = 1
 # Vendor/Repair relevance), refuses services and inn homebinds in zones 10+
 # below its level (capitals excepted); 0 = the old behaviour, which let bots
 # sit in outgrown zones and bind there. Unknown area levels fail closed.
+# A level 10+ pool bot whose travel target has been reset back to back for
+# 2 min also requests that Grind target, for that one trip, whatever needs
+# are pending.
 # Default 1.
 AiPlayerbot.LeaveOutgrownZones = 1
 
@@ -417,8 +430,13 @@ AiPlayerbot.AhMarketValueVendor = 1
 # Uses the native BattleGroundJoinAction/WorldSession handler path and the
 # copy-only BattleGroundMgr queued-participant snapshot from core #416. No
 # human-waiting queue means no bot queueing; otherwise bots match the observed
-# queue type/bracket and underrepresented team. Candidates are in-memory and
-# checked for level, alive/idle/not queued/not in a BG, no deserter/taxi, and no
+# queue type/bracket and fill BOTH sides up to the core's match minimum plus 1
+# (e.g. AV 15 + 1), counting humans and bots already waiting, so a solo human's
+# own side reaches the minimum too and no bot-only second match is left
+# behind. Human demand is checked every 5 s with up to 10 bots per check (5 per
+# side), so a match forms within seconds; the interval/budget below pace only
+# the autonomous seeder (budget 0 still turns both off). Candidates are
+# in-memory and checked for level, alive/idle/not queued/not in a BG, no deserter/taxi, and no
 # active human master. WSG/AB group joins require every member to be a
 # service-owned Headless bot; AV is always queued solo. Cadence is 5s..10m and
 # the per-interval budget is 0..10. No second queue/thread, DB scan, arena,
@@ -1585,8 +1603,17 @@ AiPlayerbot.RpgDistance = 200
 # Bot can flee for enemy
 AiPlayerbot.FleeingEnabled = 1
 
-# Universal raid survival (issue #201): bomb carriers run BombRunoutDistance
-# clear of the raid anchor; spread/flank steps use HazardEvasionDistance.
+# Pool warriors and rogues hold their ground (opt-in). 1 = pool and free bots
+# of these two classes get no generic "flee" combat strategy, so they no longer
+# break off on panic (critical health, no mana gate for rage/energy),
+# outnumbered or critical health: they fight on with their own defensive kit,
+# like mod-playerbots melee. 0 = unchanged flee. Bots with a real player
+# master never get this flee anyway. Takes effect after a server restart.
+#AiPlayerbot.PoolMeleeHoldGround = 0
+
+# Universal raid survival (issue #201): bomb carriers run away from the
+# raid's centre until no group member is within BombRunoutDistance, then
+# stop; spread/flank steps use HazardEvasionDistance.
 #AiPlayerbot.BombRunoutDistance = 30.0
 #AiPlayerbot.HazardEvasionDistance = 12.0
 
@@ -1611,7 +1638,17 @@ AiPlayerbot.EnableCustomRaidTactics = 1
 #AiPlayerbot.PullBackDpsJoinDelay = 5
 #AiPlayerbot.PullBackMaxReturnTime = 15
 # Random bot default strategies (applied after defaults)
-AiPlayerbot.RandomBotCombatStrategies = +dps,+dps assist,-threat
+# Note: non-tank bots grouped with a real-player master (outside BGs) get `threat` added back
+# after this list, so `-threat` here only affects masterless pool bots.
+# No "+dps" here: for a priest "dps" is the Shadow spec strategy, and adding it
+# swaps a Holy or Discipline pool priest onto the Shadow rotation in combat
+# (no Mind Flay or Shadowform talents, so it fills with Smite). The spec
+# defaults already give pool healers off-spec damage through "offdps".
+# A bot whose spec defaults chose "tank assist" (Protection warrior/paladin,
+# bear) keeps it: "+dps assist" here no longer swaps a tank's sibling out.
+AiPlayerbot.RandomBotCombatStrategies = +dps assist,-threat
+# Inside a dungeon or raid the non-combat list skips +grind, +travel, +tfish, +rpg,
+# +rpg craft and +wander, so a pool bot in a party keeps its follow leash there.
 AiPlayerbot.RandomBotNonCombatStrategies = +grind,+loot,+custom::say,+tfish,+wander,+rpg craft
 #AiPlayerbot.RandomBotReactStrategies =
 #AiPlayerbot.RandomBotDeadStrategies =
@@ -1714,6 +1751,7 @@ AiPlayerbot.JumpChase = 1
 AiPlayerbot.UseKnockback = 1
 
 # Set 'wander' as a default following strategy instead of 'follow' (Bots have freedom to move around while near master)
+# Applies to bots without a real-player master; a bot whose master is a real player always rebuilds with 'follow'
 #AiPlayerbot.UseWanderAsDefaultFollowStrategy = 1
 
 # Default bot formation

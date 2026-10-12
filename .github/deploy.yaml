@@ -24,7 +24,7 @@ sources:
   tortoisebots:
     repository: Sagiroth/TortoiseBots
     branch: main
-    pin: b34a7f8d6d4cfbff8a4f591565a85b05f476b1aa
+    pin: 64219af4f6c26b4dfdc34410c465518896018e23
     cutoff: 7fbbf910eeec1cf8eca2ded08d172150c03a3b88
 
 # The server build checks the module configuration files and the module SQL it
