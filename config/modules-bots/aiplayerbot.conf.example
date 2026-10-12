@@ -563,6 +563,29 @@ AiPlayerbot.GenerateItemCaches = 1
 # Bots will mount up to catch up when far behind the master while following.
 # AiPlayerbot.BoostFollow = 0
 
+# Dungeon follow: hold before a pack (audit fix 127).
+# Inside a dungeon or raid, with nobody in combat, a bot whose leader is more
+# than 30 yd ahead walks the route to the leader itself and stops just outside
+# the aggro range of the first unpulled hostile creature on that route, instead
+# of walking past or through it. It whispers its master once per pack ("pack in
+# the way") and stands there; it does not eat or drink while it holds (it rests
+# through the normal out-of-combat flow once the hold ends). It walks on when
+# the pack is dead or gone or the route no longer passes it; when the leader
+# comes back within 25 yd the normal follow takes over. Off by default.
+# 0 - core follow, no pack check (Default)
+# 1 - hold before packs in dungeons and raids
+AiPlayerbot.DungeonFollowHoldBeforePacks = 0
+
+# Two taxi paths in the 1.18.1 client data have missing nodes, and a bot that
+# flies one crashes the world server: 355 (Shimmerstar Lake -> Valormok) and
+# 274 (an unused dev path). Bots never take them unless this is on.
+# Turn it on ONLY with a core that repairs them at startup (drops 274, rebuilds
+# 355 from its reverse path 356); the server log then shows "Taxi path 355 ...
+# rebuilt from reverse path 356". On a core without that repair it crashes.
+# 0 - bots skip the broken taxi paths (Default)
+# 1 - bots may fly the repaired paths (needs the core repair)
+AiPlayerbot.AllowRepairedTaxiPaths = 0
+
 # Bots and npcs turn to eachother during an rpg interaction
 AiPlayerbot.TurnInRpg = 0
 
