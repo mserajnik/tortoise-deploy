@@ -74,10 +74,14 @@ drift:
     #   `sql/create_databases.sql`.
     # - The configuration templates are the sources of the `*.conf.example`
     #   files under `config/`.
+    # - The client data extraction runs with the options of
+    #   `tools/BuildEverything.bat`, which
+    #   `docker/server/docker-cmd-extract-client-data.sh` links. Update the
+    #   commit in that link along with the pin.
     # - The server image parses its DBC hash manifest from
     #   `tools/dbc_verification/dbc_verifier.py`.
     - source: core
-      files: [CMakeLists.txt, sql/base/tw_world_migrations.sql, sql/create_databases.sql, src/mangosd/mangosd.conf.dist.in, src/realmd/realmd.conf.dist.in, tools/dbc_verification/dbc_verifier.py]
+      files: [CMakeLists.txt, sql/base/tw_world_migrations.sql, sql/create_databases.sql, src/mangosd/mangosd.conf.dist.in, src/realmd/realmd.conf.dist.in, tools/BuildEverything.bat, tools/dbc_verification/dbc_verifier.py]
     # The module configuration templates are the sources of the
     # `*.conf.example` files under `config/`.
     - {source: autoscale, files: [conf/tw-mod-autoscale.conf.dist]}
