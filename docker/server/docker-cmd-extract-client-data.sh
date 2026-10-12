@@ -3,8 +3,13 @@
 # SPDX-FileCopyrightText: 2026 Michael Serajnik <https://github.com/mserajnik>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Runs the client data extractors. `--force` skips the prompt about existing
-# data.
+# Runs the client data extractors with the options of Tortoise-WoW's own
+# extraction script:
+# https://github.com/tortoise-wow/tortoise-wow/blob/10393426efe4bbe1de3a31fd071ca36fae358bb6/tools/BuildEverything.bat
+# This likely matches what Turtle WoW ran. Besides, `vmapextractor -l` breaks
+# the MMaps in places, and `mapextractor -f 0` makes terrain heights barely
+# more precise, so both options are omitted. `--force` skips the prompt about
+# existing data.
 
 set -eu
 
@@ -67,9 +72,7 @@ fi
 # Remove the output of an earlier run.
 rm -rf ./Buildings ./dbc ./maps ./mmaps ./vmaps
 
-# `-f 0` keeps terrain heights as full floats; Tortoise-WoW's `mapextractor`
-# otherwise quantizes them to integers.
-"$extractors_dir/mapextractor" -f 0 || extraction_failed
+"$extractors_dir/mapextractor" || extraction_failed
 # `mapextractor` also returns 0 when it cannot write into the working
 # directory.
 if [ ! -d ./dbc ]; then
@@ -79,14 +82,14 @@ fi
 # Stop on data from an unsupported client before the slow VMap and MMap steps.
 verify-client-data "$client_data_dir/dbc"
 
-# `-l` extracts the full WMO geometry, which makes the VMaps more precise.
-"$extractors_dir/vmapextractor" -l || extraction_failed
+"$extractors_dir/vmapextractor" || extraction_failed
 "$extractors_dir/vmap_assembler" || extraction_failed
 # `--silent` keeps `MoveMapGen` from waiting for input. In that mode it returns
 # 1 on success, so only a higher status is a failure.
 movemap_status=0
 "$extractors_dir/MoveMapGen" \
   --silent \
+  --doNotFilterDeepWater \
   --offMeshInput "$extractors_dir/offmesh.txt" \
   --settingsInput "$extractors_dir/mmapSettings.txt" || movemap_status=$?
 if [ "$movemap_status" -gt 1 ]; then
