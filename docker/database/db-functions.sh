@@ -419,7 +419,7 @@ print_correction_halt_message() {
 [tortoise-deploy]: ERROR: Migration edits affect your databases.
 tortoise-deploy will not apply these changes for you. Startup is halted.
 
-Affected databases, one entry per edit:
+The edits, each with the name of the database it affects:
 EOF
 
   local i=0
@@ -434,30 +434,39 @@ EOF
     commit_hash="${PENDING_DB_COMMIT_HASHES[$i]}"
     repository="$(correction_source_repository "$source_name")"
     database_name="$(correction_database_name "$name")"
-    printf '  - %s (%s)\n' "$name" "$database_name" >&2
+    printf '  - %s\n' "$database_name" >&2
     printf '    https://github.com/%s/commit/%s\n' "$repository" "$commit_hash" >&2
     i=$((i + 1))
   done
 
   cat >&2 <<'EOF'
 
-For each entry above:
+For each edit above:
 
   1. Open its GitHub link to see what changed.
-  2. Tortoise-WoW runs an edited migration again in full on its next start.
-     Prepare the running database for that yourself, using the name in
-     parentheses above:
+  2. Tortoise-WoW runs the edited migration again in full on its next start.
+     Check what that does to the affected database. It can fail, apply a change
+     twice, or skip a change. If the database would then have exactly the
+     changes of the edited migration, there is nothing to do. Otherwise, make
+     changes in the database yourself before the next start, so that the re-run
+     gives that result. To open the database, run on the host:
+
        docker compose exec database mariadb -u root -p <database>
-     (mariadb prompts for the password, which matches your
-     'MARIADB_ROOT_PASSWORD' setting in your 'compose.yaml'.)
+
+     (The MariaDB client prompts for the password, which matches your
+     'MARIADB_ROOT_PASSWORD' setting in your 'compose.yaml'. To leave the
+     client, run 'exit'.)
+
      You can ignore an edit to a migration that has not been applied to the
      database yet. The documentation shows how to check:
      https://github.com/mserajnik/tortoise-deploy/blob/master/docs/usage.md#applying-changes-by-hand
 
-When you have done this for all of them, confirm by running on the host:
+When you have handled every edit above, confirm by running on the host:
+
   docker compose exec database tortoise-confirm-changes
 
 To cancel the start and handle the edits later instead, run on the host:
+
   docker compose down
 
 While the container is paused, MariaDB is reachable inside the container via
@@ -470,7 +479,7 @@ and continues. It does not check your database to verify that the changes you
 made match what the commits describe. If your manual fix is incorrect or
 incomplete, the database will be in an inconsistent state and Tortoise-WoW may
 fail to start. The responsibility for matching what the commits do is yours,
-and tortoise-deploy provides no further support for resolving these issues.
+and tortoise-deploy provides no further support for individual cases.
 EOF
 }
 
