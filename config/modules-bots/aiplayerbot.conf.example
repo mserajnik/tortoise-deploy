@@ -346,6 +346,28 @@ AiPlayerbot.TravelPickBudgetUs = 4000
 #AiPlayerbot.HirePartyMult4 = 4.66
 #AiPlayerbot.HireRaidFlatCostCopper = 10000
 #AiPlayerbot.HireDisconnectGracePeriod = 300
+# Issue #490: static best-in-slot sets for level-60 hires (tiers 1-7 from
+# the tortoise_bots_hire_gear table). 0 = today's random hire gear only.
+# HireGearStartTier (0..7) is the tier every player has. Higher tiers are
+# unlocked by seven quests at the six capital recruiters (one per tier:
+# kill the tier's bosses, bring materials, pay a fee). The recruiter's
+# "Choose equipment" step and `.bot hire <tier>` pick any tier from 0 up to
+# the player's highest; the default is tier 0.
+# HireGearUnlockAccountWide = 1: an unlock on any character of the account
+# counts. HireGearAllQuestsAvailable = 1: all seven quests are offered at
+# once instead of as a chain (written into the quests at startup, live
+# after the NEXT restart). HireGearOptionalMaps: comma-separated map ids
+# whose bosses are credited automatically when the quest is taken, e.g.
+# 819 (Timbermaw Hold) or all Turtle content 800,532,819,807,814; their
+# loot stays in the gear pool. HireGearTierCostMultipliers: hire fee
+# multiplier for tiers 0..7 (exactly 8 numbers, else the defaults are used).
+# The values below are the values that actually run.
+#AiPlayerbot.HireGearTiersEnabled = 1
+#AiPlayerbot.HireGearStartTier = 0
+#AiPlayerbot.HireGearUnlockAccountWide = 0
+#AiPlayerbot.HireGearAllQuestsAvailable = 0
+#AiPlayerbot.HireGearOptionalMaps =
+#AiPlayerbot.HireGearTierCostMultipliers = 1,1.5,2,3,4,5,6,6
 # Issue #492: world buffs at the six capital <Mercenary Hire> recruiters
 # (Stormwind, Ironforge, Darnassus, Orgrimmar, Undercity, Thunder Bluff).
 # Level 60+ players get a "World buffs" branch next to "Hire bots"; the
@@ -575,6 +597,92 @@ AiPlayerbot.GenerateItemCaches = 1
 # 0 - core follow, no pack check (Default)
 # 1 - hold before packs in dungeons and raids
 AiPlayerbot.DungeonFollowHoldBeforePacks = 0
+
+# Warlock pet by spec.
+# In PvE (open world and dungeons, not raids or PvP) a warlock summons the demon
+# that fits its talent tree instead of always the Voidwalker (mod-playerbots
+# parity, adapted to 1.12 which has no Felguard): Affliction and Demonology
+# use the Felhunter, falling back to the Succubus, Voidwalker and Imp by what
+# the warlock has learned; Destruction uses the Imp. A warlock whose group has
+# no tank keeps the Voidwalker. The pet is chosen when the warlock has none;
+# pool bots also swap a default demon they already have (needs a Soul Shard).
+# A pet a player ordered (a "pet <demon>" strategy, or a demon a player's own
+# bot already has) is never replaced. On by default.
+# 0 - Voidwalker whenever learned, Imp before that
+# 1 - pet that fits the spec (Default)
+AiPlayerbot.WarlockPetBySpec = 1
+
+# Rogue threat drops in dungeons.
+# In a grouped 5-man dungeon with a living tank in the fight, a rogue uses
+# Feint when its threat on the current target is medium (60 percent of the
+# tank's or more) and, if that is not enough, Vanish at critical threat (80
+# percent and climbing) so it does not pull the mob off the tank. Vanish is
+# only used while the mob is on the tank or the rogue; it is never used solo,
+# without a tank, or in the open world. Raid rogues already do this (Feint at
+# medium, Vanish at high) and are unchanged. The thresholds are the bots'
+# existing medium and high threat levels. On by default.
+# 0 - dungeon rogues do not shed threat
+# 1 - Feint on medium threat, Vanish on critical threat in 5-man dungeons (Default)
+AiPlayerbot.RogueDungeonThreatDrops = 1
+
+# Hunter Aspect of the Viper on low mana.
+# A hunter that has learned Aspect of the Viper (Turtle 1.18.1 spell 45651,
+# trainer level 56) switches to it in combat when its mana drops below 20
+# percent (fixed, not tied to AiPlayerbot.LowMana), and goes back to Aspect of
+# the Hawk once mana is at 60 percent or more (the 60 percent exit follows
+# mod-playerbots); between the two it keeps the aspect it has, so it does not
+# flip. An "aspect <name>" strategy a player set (hawk, monkey,
+# cheetah, pack, beast, wild) is never overridden, and a hunter running in
+# Cheetah or Pack is left alone. On by default; with 0 Viper stays a manual
+# action and the hunter keeps Hawk.
+# 0 - never switch to the Viper by itself
+# 1 - Viper on low mana, Hawk again at 60 percent mana (Default)
+AiPlayerbot.HunterViperOnLowMana = 1
+
+# Paladin Judgement upkeep.
+# In a group, paladin bots keep Judgement of Wisdom / Judgement of Light up on a
+# boss or elite (or, inside a dungeon or raid, on the mob the tank is fighting),
+# the way mod-playerbots does. A Retribution paladin owns
+# Wisdom, a Holy paladin owns Light; with two paladins of the same kind the
+# second one takes the other debuff, so two paladins never judge the same one,
+# and a third paladin owns none. A paladin in the tank role (Protection) never
+# owns a judgement; it keeps its own Seal. The owner swaps to the matching Seal and
+# judges when the debuff has 4 seconds left or is gone (a Seal and a Judgement
+# cost mana and a global each). A healing paladin only does this above 50% mana
+# and never while someone in the party needs healing; everyone needs at least
+# AiPlayerbot.MediumMana. Never solo, never on a target below 25% health. A
+# debuff another paladin (a player) keeps up is left alone. On by default.
+# 0 - paladins judge on their own rotation, no group debuff upkeep
+# 1 - keep Judgement of Wisdom / Light up on the boss (Default)
+AiPlayerbot.PaladinJudgementUpkeep = 1
+
+# Onyxia whelps and eggs.
+# In Onyxia's Lair, while Onyxia is airborne (phase 2), bots that are
+# AoE-capable ranged DPS (mage, warlock, hunter, and ranged shaman and druid
+# specs; never tanks or healers) take the nearest Onyxian Whelp as their target
+# and keep it until it dies, then return to the boss. Every bot in the fight
+# also steps back out of the egg caves west of the arena when it stands within
+# 12 yd of an unbroken Onyxia Egg (the egg trap circle is 10 yd and hatches
+# whelps). mod-playerbots parity, adapted to Turtle 1.18.1 entries. Only active
+# on map 249 and only once the Onyxia fight strategy is on. An explicit target
+# order from a player always wins. On by default.
+# 0 - generic target choice and no egg avoidance
+# 1 - whelp duty and egg avoidance (Default)
+AiPlayerbot.OnyxiaWhelpsAndEggs = 1
+
+# Keep out of creature auras.
+# Some creatures carry a permanent damaging aura that pulses around them even
+# while they are idle. With this on, every bot (tank and melee included) steps
+# out when it is within 8 yd of a listed creature (from its centre), its chase
+# and other moves keep 9 yd away, and a follower stops just outside that circle
+# while its leader stands in it; the ranged kill it. The creature the player
+# ordered the bot to attack is never avoided by that bot, and a party with no
+# ranged damage needs that order to kill one. Listed today:
+# Maraudon's Creeping Sludge (12222, aura 22638 Poison Shock, 5 yd every 2 s).
+# On by default.
+# 0 - no keep-out; bots melee and walk past these creatures as before
+# 1 - stay out of listed creature auras (Default)
+AiPlayerbot.AvoidCreatureAuras = 1
 
 # Two taxi paths in the 1.18.1 client data have missing nodes, and a bot that
 # flies one crashes the world server: 355 (Shimmerstar Lake -> Valormok) and
@@ -1546,6 +1654,20 @@ AiPlayerbot.PoolTickBudgetUs = 10000
 AiPlayerbot.PoolBudgetWhenTickOverMs = 0
 AiPlayerbot.CombatTickBudgetUs = 15000
 AiPlayerbot.TargetWorldTickMs = 100
+
+# Value cache refresh (performance experiment, off by default).
+# A cached AI value with a check interval of N seconds has always refreshed
+# every N/2 seconds (whole seconds, rounded down), so it recalculates about
+# twice as often as its interval says. 1 = refresh after the full interval
+# instead. Values with interval 0 or 1 (health, mana, auras, targets,
+# inventory, ...) still recalculate on every read, and the values that sense
+# the fight (attackers and their counts, aggro, possible targets, traps and
+# void zones, boss target, AoE heal, enemy players), the free-move values
+# (free move center/range, can free move: followers restart when the master
+# runs off) and grind target keep the old rule.
+# Everything else (travel, quest, vendor, group, ...) may react
+# up to twice as late. Off until an A/B run shows the gain is worth it.
+AiPlayerbot.ValueRefreshAtInterval = 0
 
 # Bounded failure backoff for autonomous background work (issue #84).
 # Repeated failures wait base, 2x, 4x, 8x, 16x up to the max before the
