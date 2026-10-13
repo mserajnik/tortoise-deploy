@@ -52,7 +52,7 @@ if [[ "${#PENDING_DB_NAMES[@]}" -gt 0 ]]; then
     i=$((i + 1))
   done
 
-  tortoise_log "Migration edits confirmed. Continuing the start."
+  tortoise_log "The migration edits are confirmed. The start continues."
 fi
 
 if [[ "${TORTOISE_PROCESS_CUSTOM_SQL:-0}" = "1" ]]; then

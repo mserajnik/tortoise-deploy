@@ -168,8 +168,8 @@ The prompt that works best depends on the agent and the model.
 
 - [Usage](docs/usage.md): choosing images, the client data, running and
   updating Tortoise-WoW, backups, and database access.
-- [Docker Compose reference](docs/compose.md): every setting in the Compose
-  files.
+- [Docker Compose reference](docs/compose.md): every setting in your
+  `compose.yaml`.
 - [Breaking changes](docs/breaking-changes.md): the changes you have to act on
   when you update.
 
@@ -187,9 +187,10 @@ Every patch adds a comment to the code it changes, which explains what the
 change does and why. A patch is removed once it is no longer needed, so the
 directory can be empty at times.
 
-The patches are `GPL-2.0-or-later`, like the Tortoise-WoW code from before its
-move to `AGPL-3.0-only` in May 2026, which covers only the later contributions.
-A patch that changes later code is also under `AGPL-3.0-only`.
+The patches are `GPL-2.0-or-later`, like the Tortoise-WoW code from before
+May 2026. Tortoise-WoW then moved to `AGPL-3.0-only`, which covers only the
+contributions after the move. A patch that changes such code is also under
+`AGPL-3.0-only`.
 
 ## Similar Docker setups
 

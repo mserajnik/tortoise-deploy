@@ -30,7 +30,7 @@ while IFS= read -r config_name; do
   config_file="$config_dir/$config_name"
 
   if [ ! -f "$config_file" ] || [ ! -r "$config_file" ]; then
-    echo "[tortoise-deploy]: ERROR: The configuration file '$config_file' is missing or not readable. Your 'compose.yaml' has to mount it from a file on the host, as the 'compose*.yaml.example' files show. If that file did not exist when the container started, Docker created an empty directory in its place. Stop the containers with 'docker compose down', delete that directory on the host, copy the file, and start them again with 'docker compose up -d'." >&2
+    echo "[tortoise-deploy]: ERROR: The configuration file '$config_file' is missing or not readable. Your 'compose.yaml' has to mount it from a file on the host, as the example Compose file shows. If that file did not exist when the container started, Docker created an empty directory in its place. Stop the containers with 'docker compose down', delete that directory on the host, copy the matching '.conf.example' file in its place, and start them again with 'docker compose up -d'." >&2
     exit 1
   fi
 done <<EOF

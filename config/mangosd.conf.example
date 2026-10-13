@@ -1,5 +1,5 @@
-# tortoise-deploy: this file differs from upstream's `mangosd.conf.dist.in` as
-# follows.
+# tortoise-deploy: this file differs from the `mangosd.conf.dist.in` of
+# Tortoise-WoW as follows.
 #
 # Changed:
 # - `LogFilter_SQLText = 1` keeps every SQL query the server runs out of the
@@ -7,11 +7,11 @@
 #
 # Removed, because the image sets them and ignores them in this file:
 # - `DataDir`, `LogsDir`, `HonorDir`, and `PDumpDir`: the directories under
-#   `/opt/tortoise/storage/` that the Compose file mounts.
+#   `/opt/tortoise/storage/` that your `compose.yaml` mounts.
 # - `LoginDatabase.Info`, `WorldDatabase.Info`, `CharacterDatabase.Info`, and
 #   `LogsDatabase.Info`: the server connects to the `database` service, with
 #   the user and password from `TORTOISE_DATABASE_USER` and
-#   `TORTOISE_DATABASE_PASSWORD` in the Compose file.
+#   `TORTOISE_DATABASE_PASSWORD` in your `compose.yaml`.
 # - `Database.AutoUpdate.Enabled`, `.Path`, `.AllowedModules`,
 #   `.AuthUpdateName`, `.CharUpdateName`, `.WorldUpdateName`, and
 #   `.SortByName`: the server applies the migrations the image contains.

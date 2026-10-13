@@ -59,7 +59,7 @@ require_initialized() {
     return 0
   fi
 
-  tortoise_fail "The databases are not set up completely. If this is a new installation, remove the database volume and start again. Otherwise the volume contains your characters: remove it only if you have a backup, and restore the backup after the new start:
+  tortoise_fail "The databases are not set up completely. If this is a new installation, remove the database volume and start again. Otherwise, the volume contains your characters: remove it only if you have a backup, and restore the backup after the new start:
 https://github.com/mserajnik/tortoise-deploy/blob/master/docs/usage.md#restoring-a-backup"
 }
 
@@ -68,11 +68,13 @@ create_database() {
   local silent="${2:-false}"
 
   if [[ "$silent" = false ]]; then
-    tortoise_log "Creating database '$db_name'..."
+    tortoise_log "Creating the '$db_name' database..."
   fi
 
-  mariadb -u root -p"$MARIADB_ROOT_PASSWORD" -e \
-    "CREATE DATABASE IF NOT EXISTS \`$db_name\` DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_general_ci;"
+  if ! mariadb -u root -p"$MARIADB_ROOT_PASSWORD" -e \
+    "CREATE DATABASE IF NOT EXISTS \`$db_name\` DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_general_ci;"; then
+    tortoise_fail "Failed to create the '$db_name' database. See the error above."
+  fi
 }
 
 drop_database() {
@@ -80,11 +82,13 @@ drop_database() {
   local silent="${2:-false}"
 
   if [[ "$silent" = false ]]; then
-    tortoise_log "Dropping database '$db_name'..."
+    tortoise_log "Dropping the '$db_name' database..."
   fi
 
-  mariadb -u root -p"$MARIADB_ROOT_PASSWORD" -e \
-    "DROP DATABASE IF EXISTS \`$db_name\`;"
+  if ! mariadb -u root -p"$MARIADB_ROOT_PASSWORD" -e \
+    "DROP DATABASE IF EXISTS \`$db_name\`;"; then
+    tortoise_fail "Failed to drop the '$db_name' database. See the error above."
+  fi
 }
 
 grant_permissions() {
@@ -94,16 +98,18 @@ grant_permissions() {
   local password
 
   if [[ "$silent" = false ]]; then
-    tortoise_log "Granting permissions to database user '$MARIADB_USER' for database '$db_name'..."
+    tortoise_log "Granting the '$MARIADB_USER' user access to the '$db_name' database..."
   fi
 
   user="$(sql_escape "$MARIADB_USER")"
   password="$(sql_escape "$MARIADB_PASSWORD")"
 
-  mariadb -u root -p"$MARIADB_ROOT_PASSWORD" -e \
+  if ! mariadb -u root -p"$MARIADB_ROOT_PASSWORD" -e \
     "CREATE USER IF NOT EXISTS '$user'@'%' IDENTIFIED BY '$password'; \
     GRANT ALL ON \`$db_name\`.* TO '$user'@'%'; \
-    FLUSH PRIVILEGES;"
+    FLUSH PRIVILEGES;"; then
+    tortoise_fail "Failed to grant the '$MARIADB_USER' user access to the '$db_name' database. See the error above."
+  fi
 }
 
 import_data() {
@@ -118,9 +124,11 @@ import_data() {
 import_schema() {
   local file="$1"
 
-  tortoise_log "Importing database schema from '$file'..."
+  tortoise_log "Importing the database schema from '$file'..."
 
-  mariadb -u root -p"$MARIADB_ROOT_PASSWORD" <"$file"
+  if ! mariadb -u root -p"$MARIADB_ROOT_PASSWORD" <"$file"; then
+    tortoise_fail "Failed to import the database schema from '$file'. See the error above."
+  fi
 }
 
 import_base_data() {
@@ -131,12 +139,16 @@ import_base_data() {
   local files=("$file_directory"/*.sql)
   shopt -u nullglob
 
-  tortoise_log "Importing ${#files[@]} base data file(s) into database '$db_name'..."
+  case "${#files[@]}" in
+    0) tortoise_log "Found no base data files to import into the world database." ;;
+    1) tortoise_log "Importing 1 base data file into the world database..." ;;
+    *) tortoise_log "Importing ${#files[@]} base data files into the world database..." ;;
+  esac
 
   local sql_file
   for sql_file in "${files[@]}"; do
     if ! import_data "$db_name" "$sql_file"; then
-      tortoise_fail "Failed to import base data file '$(basename "$sql_file")'."
+      tortoise_fail "Failed to import the base data file '$(basename "$sql_file")' into the world database. See the error above."
     fi
   done
 }
@@ -155,9 +167,9 @@ configure_realm() {
   realm_icon="$(sql_escape "$TORTOISE_REALMLIST_ICON")"
   realm_timezone="$(sql_escape "$TORTOISE_REALMLIST_TIMEZONE")"
   realm_allowed_security_level="$(sql_escape "$TORTOISE_REALMLIST_ALLOWED_SECURITY_LEVEL")"
-  tortoise_log "Configuring realm '$TORTOISE_REALMLIST_NAME'..."
+  tortoise_log "Configuring the '$TORTOISE_REALMLIST_NAME' realm..."
 
-  mariadb -u root -p"$MARIADB_ROOT_PASSWORD" "tw_logon" -e \
+  if ! mariadb -u root -p"$MARIADB_ROOT_PASSWORD" "tw_logon" -e \
     "INSERT INTO \`realmlist\` \
        (\`id\`, \`name\`, \`address\`, \`port\`, \`icon\`, \`timezone\`, \`allowedSecurityLevel\`) \
      VALUES \
@@ -168,20 +180,24 @@ configure_realm() {
        \`port\` = VALUES(\`port\`), \
        \`icon\` = VALUES(\`icon\`), \
        \`timezone\` = VALUES(\`timezone\`), \
-       \`allowedSecurityLevel\` = VALUES(\`allowedSecurityLevel\`);"
+       \`allowedSecurityLevel\` = VALUES(\`allowedSecurityLevel\`);"; then
+    tortoise_fail "Failed to configure the '$TORTOISE_REALMLIST_NAME' realm. See the error above."
+  fi
 }
 
 ensure_maintenance_db_exists() {
   create_database "maintenance" true
   grant_permissions "maintenance" true
 
-  mariadb -u root -p"$MARIADB_ROOT_PASSWORD" "maintenance" -e \
+  if ! mariadb -u root -p"$MARIADB_ROOT_PASSWORD" "maintenance" -e \
     "CREATE TABLE IF NOT EXISTS \`migration_corrections\` ( \
       \`db_name\` VARCHAR(64) NOT NULL, \
       \`commit_hash\` CHAR(40) NOT NULL, \
       \`acknowledged_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, \
       PRIMARY KEY (\`db_name\`, \`commit_hash\`) \
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"; then
+    tortoise_fail "Failed to set up the record of confirmed migration edits in the 'maintenance' database. See the error above."
+  fi
 }
 
 # The GitHub repository of a migration edit source.
@@ -261,7 +277,7 @@ correction_acknowledged() {
   # Callers use this as a condition, where `set -e` does not apply, so check
   # the query status by hand.
   if [[ $status -ne 0 ]]; then
-    tortoise_fail "Failed to read which migration edits the databases have applied. See the error above."
+    tortoise_fail "Failed to read the record of confirmed migration edits in the 'maintenance' database. See the error above."
   fi
 
   [[ "$count" -gt 0 ]]
@@ -271,9 +287,11 @@ acknowledge_correction() {
   local db_name="$1"
   local commit_hash="$2"
 
-  mariadb -u root -p"$MARIADB_ROOT_PASSWORD" "maintenance" -e \
+  if ! mariadb -u root -p"$MARIADB_ROOT_PASSWORD" "maintenance" -e \
     "INSERT IGNORE INTO \`migration_corrections\` (\`db_name\`, \`commit_hash\`) \
-    VALUES ('$(sql_escape "$db_name")', '$(sql_escape "$commit_hash")');"
+    VALUES ('$(sql_escape "$db_name")', '$(sql_escape "$commit_hash")');"; then
+    tortoise_fail "Failed to update the record of confirmed migration edits in the 'maintenance' database. See the error above."
+  fi
 }
 
 # The `tw_world` part of `create_databases.sql`, with the dump's preamble. The
@@ -296,7 +314,9 @@ import_world_schema() {
 
   tortoise_log "Re-creating the world database table structure..."
 
-  mariadb -u root -p"$MARIADB_ROOT_PASSWORD" "tw_world" <<<"$schema"
+  if ! mariadb -u root -p"$MARIADB_ROOT_PASSWORD" "tw_world" <<<"$schema"; then
+    tortoise_fail "Failed to re-create the world database table structure. See the error above."
+  fi
 }
 
 # Re-creates the world database from the image's SQL, which already contains
@@ -369,7 +389,7 @@ process_world_corrections() {
   local repository
   for i in "${pending[@]}"; do
     repository="$(correction_source_repository "${MIGRATION_EDIT_SOURCES[i]}")"
-    tortoise_log "WARNING: The world database has a migration edit ($repository@${MIGRATION_EDIT_COMMITS[i]:0:7}), but both 'TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS' and 'TORTOISE_HALT_ON_MIGRATION_EDITS' are disabled. The start continues, and the world database stays out of step with this image. The server may misbehave or fail to start." >&2
+    tortoise_log "WARNING: The world database has a migration edit ($repository@${MIGRATION_EDIT_COMMITS[i]:0:7}), but both 'TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS' and 'TORTOISE_HALT_ON_MIGRATION_EDITS' are disabled. The start continues, and Tortoise-WoW runs the edited migration again, which can leave the world database in an inconsistent state. The server may misbehave or fail to start." >&2
   done
 }
 
@@ -385,7 +405,7 @@ https://github.com/mserajnik/tortoise-deploy/issues" ;;
   esac
 }
 
-# A database with user state cannot be re-created. The user applies its edits
+# A database with user state cannot be re-created. The user handles its edits
 # by hand and confirms.
 process_userstate_corrections() {
   local i db_name source_name commit_hash repository database_name
@@ -410,14 +430,14 @@ process_userstate_corrections() {
     # Leave the edit unacknowledged. The warning then repeats on every start.
     repository="$(correction_source_repository "$source_name")"
     database_name="$(correction_database_name "$db_name")"
-    tortoise_log "WARNING: The '$database_name' database has a migration edit ($repository@${commit_hash:0:7}), but 'TORTOISE_HALT_ON_MIGRATION_EDITS' is disabled. The start continues, and the database stays out of step with this image." >&2
+    tortoise_log "WARNING: The '$database_name' database has a migration edit ($repository@${commit_hash:0:7}), but 'TORTOISE_HALT_ON_MIGRATION_EDITS' is disabled. The start continues, and Tortoise-WoW runs the edited migration again, which can leave the database in an inconsistent state." >&2
   done
 }
 
 print_correction_halt_message() {
   cat >&2 <<'EOF'
 [tortoise-deploy]: ERROR: Migration edits affect your databases.
-tortoise-deploy will not apply these changes for you. Startup is halted.
+tortoise-deploy does not handle these edits for you. The start is halted.
 
 The edits, each with the name of the database it affects:
 EOF
@@ -448,7 +468,7 @@ For each edit above:
      Check what that does to the affected database. It can fail, apply a change
      twice, or skip a change. If the database would then have exactly the
      changes of the edited migration, there is nothing to do. Otherwise, make
-     changes in the database yourself before the next start, so that the re-run
+     changes in the database yourself before you confirm, so that the re-run
      gives that result. To open the database, run on the host:
 
        docker compose exec database mariadb -u root -p <database>
@@ -469,15 +489,14 @@ To cancel the start and handle the edits later instead, run on the host:
 
   docker compose down
 
-While the container is paused, MariaDB is reachable inside the container via
-the internal socket. TCP access on port 3306 is not available during the pause.
-Tortoise-WoW stays offline until you confirm or cancel, so take as long as you
-need.
+While the start is halted, MariaDB is reachable only inside the container,
+through its socket, and not on port 3306. Tortoise-WoW stays offline until you
+confirm, so take as long as you need.
 
 Note: When you confirm, tortoise-deploy treats the listed commits as applied
-and continues. It does not check your database to verify that the changes you
-made match what the commits describe. If your manual fix is incorrect or
-incomplete, the database will be in an inconsistent state and Tortoise-WoW may
+and continues. It does not check your databases to verify that the re-run gives
+the result the commits describe. If your manual fix is incorrect or incomplete,
+the affected database is left in an inconsistent state and Tortoise-WoW may
 fail to start. The responsibility for matching what the commits do is yours,
 and tortoise-deploy provides no further support for individual cases.
 EOF
@@ -505,12 +524,12 @@ process_custom_sql() {
   local status
 
   if [[ ! -d "$file_directory" ]]; then
-    tortoise_log "WARNING: The custom SQL file directory '$file_directory' does not exist." >&2
+    tortoise_log "WARNING: The custom SQL file directory '$file_directory' does not exist. Mount your custom SQL directory there in your 'compose.yaml', as the example Compose file shows, or set 'TORTOISE_PROCESS_CUSTOM_SQL' to '0'." >&2
     return 0
   fi
 
   if [[ ! -r "$file_directory" ]] || [[ ! -x "$file_directory" ]]; then
-    tortoise_fail "The custom SQL file directory '$file_directory' is not readable by the database user (UID $(id -u)). This is a permission problem on the host: the bind-mounted directory must be readable by that user. Adjust the permissions, then restart."
+    tortoise_fail "The custom SQL file directory '$file_directory' is not readable by the 'mysql' user (UID $(id -u)). This is a permission problem on the host: the bind-mounted directory must be readable by that user. Adjust the permissions, then restart."
   fi
 
   # Check `find` on its own, so a failure says which step failed. The names are
@@ -523,7 +542,7 @@ process_custom_sql() {
 
   if [[ $status -ne 0 ]]; then
     rm -f "$sql_files_raw"
-    tortoise_fail "Failed to list custom SQL files in '$file_directory'."
+    tortoise_fail "Failed to list the custom SQL files in '$file_directory'. See the error above."
   fi
 
   set +e
@@ -533,19 +552,23 @@ process_custom_sql() {
 
   if [[ $status -ne 0 ]]; then
     rm -f "$sql_files_raw"
-    tortoise_fail "Failed to sort the custom SQL file listing in '$file_directory'."
+    tortoise_fail "Failed to sort the custom SQL file listing in '$file_directory'. See the error above."
   fi
 
   mapfile -d '' -t sql_files <"$sql_files_raw"
   rm -f "$sql_files_raw"
 
-  tortoise_log "Found ${#sql_files[@]} custom SQL file(s) to process."
+  case "${#sql_files[@]}" in
+    0) tortoise_log "Found no custom SQL files to process." ;;
+    1) tortoise_log "Found 1 custom SQL file to process." ;;
+    *) tortoise_log "Found ${#sql_files[@]} custom SQL files to process." ;;
+  esac
 
   for sql_file in "${sql_files[@]}"; do
-    tortoise_log "Processing custom SQL file '$(basename "$sql_file")'..."
+    tortoise_log "Processing the custom SQL file '$(basename "$sql_file")'..."
 
     if ! import_data "tw_world" "$sql_file"; then
-      tortoise_log "ERROR: Failed to process custom SQL file '$(basename "$sql_file")'." >&2
+      tortoise_log "ERROR: Failed to process the custom SQL file '$(basename "$sql_file")'. See the error above." >&2
     fi
   done
 }

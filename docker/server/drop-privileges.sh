@@ -23,6 +23,6 @@ if [ "$(id -u)" = "0" ]; then
   export HOME=/home/tortoise TORTOISE_PRIVILEGES_DROPPED=1
   exec setpriv --reuid="$uid" --regid="$gid" --clear-groups --inh-caps=-all "$0" "$@"
 elif [ -z "${TORTOISE_PRIVILEGES_DROPPED:-}" ]; then
-  echo "[tortoise-deploy]: ERROR: The container has to start as root. Replace 'user' with 'TORTOISE_UID' and 'TORTOISE_GID' in its service in your 'compose.yaml', as 'compose.yaml.example' shows." >&2
+  echo "[tortoise-deploy]: ERROR: The container has to start as root. Replace 'user' with 'TORTOISE_UID' and 'TORTOISE_GID' in its service in your 'compose.yaml', as the example Compose file shows." >&2
   exit 1
 fi

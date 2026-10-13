@@ -44,9 +44,9 @@ RUN \
   patch_count=0 && \
   for patch in /build/patches/*.patch; do \
     if [ -f "$patch" ]; then \
-      echo "Applying patch '$patch'."; \
+      echo "Applying the patch '$patch'..."; \
       if ! git apply "$patch"; then \
-        echo "Failed to apply patch '$patch'."; \
+        echo "Failed to apply the patch '$patch'."; \
         if [ "$TORTOISE_FAIL_ON_PATCH_ERROR" = "1" ]; then \
           exit 1; \
         fi; \
@@ -55,7 +55,7 @@ RUN \
     fi; \
   done && \
   if [ "$patch_count" -eq 0 ]; then \
-    echo "No patches found."; \
+    echo "Found no patches to apply."; \
   fi && \
   if [ -n "$TORTOISE_MODULES" ]; then \
     # `<directory>=<url>@<revision>` entries separated by `|`. The generated
@@ -71,18 +71,18 @@ RUN \
         module_url="${module_source%@*}"; \
         module_revision="${module_source##*@}"; \
         module_path="/build/core/modules/$module_directory"; \
-        echo "Cloning module '$module_directory' from $module_url at $module_revision."; \
+        echo "Cloning the '$module_directory' module from $module_url at $module_revision..."; \
         git clone "$module_url" "$module_path" || exit 1; \
         git -C "$module_path" checkout "$module_revision" || exit 1; \
         # Upstream compiles a module in only when it has a `src/` directory.
         if [ ! -d "$module_path/src" ]; then \
-          echo "Module '$module_directory' has no 'src/' directory and would not be compiled in."; \
+          echo "The '$module_directory' module has no 'src/' directory and would not be compiled in."; \
           exit 1; \
         fi; \
       done; \
     ); \
   else \
-    echo "No modules requested."; \
+    echo "The build includes no modules."; \
   fi && \
   mkdir -p \
     /opt/tortoise/config \
@@ -156,19 +156,19 @@ RUN \
           case ",$TORTOISE_MODULE_SQL_MODULES," in \
             *",$module_directory,"*) ;; \
             *) \
-              echo "Module '$module_directory' ships SQL, which this variant does not apply. Only the modules listed in 'TORTOISE_MODULE_SQL_MODULES' may carry SQL."; \
+              echo "The '$module_directory' module ships SQL, which this variant does not apply. Only the modules listed in 'TORTOISE_MODULE_SQL_MODULES' may ship SQL."; \
               exit 1 ;; \
           esac; \
         fi; \
         while IFS= read -r shipped_path; do \
           case "$shipped_path" in \
             data/sql/character/*/*|data/sql/world/*/*) \
-              echo "Module '$module_directory' ships the SQL file '$shipped_path' in a subdirectory. The applier does not descend, so the file would never be applied."; \
+              echo "The '$module_directory' module ships the SQL file '$shipped_path' in a subdirectory. 'mangosd' applies no SQL files from subdirectories, so the file would never be applied."; \
               exit 1 ;; \
             data/sql/character/*) target=character ;; \
             data/sql/world/*) target=world ;; \
             *) \
-              echo "Module '$module_directory' ships the SQL file '$shipped_path', which this image maps to no database."; \
+              echo "The '$module_directory' module ships the SQL file '$shipped_path', which this image maps to no database."; \
               exit 1 ;; \
           esac; \
           printf '%s/%s\n' "$target" "${shipped_path##*/}" \
@@ -187,7 +187,7 @@ RUN \
         if ! cmp -s /build/module-sql-expected /build/module-sql-installed; then \
           expected_list="$(tr '\n' ',' </build/module-sql-expected)"; \
           installed_list="$(tr '\n' ',' </build/module-sql-installed)"; \
-          echo "Module '$module_directory' has to install the SQL files '${expected_list%,}' under '$installed_sql', but installed '${installed_list%,}'."; \
+          echo "The '$module_directory' module has to install the SQL files '${expected_list%,}' under '$installed_sql', but installed '${installed_list%,}'."; \
           exit 1; \
         fi; \
       done; \
@@ -220,7 +220,7 @@ RUN \
   dbc_hash_count="$(grep -cE '^[0-9a-fA-F]{64}  ' /opt/tortoise/dbc-hashes || true)" && \
   dbc_hash_count="${dbc_hash_count:-0}" && \
   if [ "$dbc_hash_count" -lt 100 ]; then \
-    echo "Parsed $dbc_hash_count DBC hashes from 'tools/dbc_verification/dbc_verifier.py', which is too few for a complete manifest."; \
+    echo "Parsed too few DBC hashes from 'tools/dbc_verification/dbc_verifier.py' for a complete manifest."; \
     exit 1; \
   fi && \
   # An image with a partial manifest would refuse every client.

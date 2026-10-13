@@ -17,9 +17,9 @@ services:
     environment:
       - TORTOISE_DEPLOY_VERSION=1 # See `docs/breaking-changes.md`.
       - TZ=Etc/UTC # The time zone, usually your host's.
-      - MARIADB_USER=mangos # Takes effect on the first start only.
-      - MARIADB_PASSWORD=mangos # Takes effect on the first start only.
-      - MARIADB_ROOT_PASSWORD=password # Takes effect on the first start only.
+      - MARIADB_USER=mangos # To change this after the first start, change it in MariaDB first, then here.
+      - MARIADB_PASSWORD=mangos # To change this after the first start, change it in MariaDB first, then here.
+      - MARIADB_ROOT_PASSWORD=password # To change this after the first start, change it in MariaDB first, then here.
       - TORTOISE_REALMLIST_NAME=Tortoise-WoW
       - TORTOISE_REALMLIST_ADDRESS=127.0.0.1 # The LAN or WAN address or the domain name that clients connect to.
       - TORTOISE_REALMLIST_PORT=8085 # The host port of the `mangosd` service.
@@ -27,7 +27,7 @@ services:
       - TORTOISE_REALMLIST_TIMEZONE=0 # 2 = United States, 3 = Oceanic, 4 = Latin America, 8 = English, 9 = German, 10 = French, 11 = Spanish, 12 = Russian.
       - TORTOISE_REALMLIST_ALLOWED_SECURITY_LEVEL=0 # 0 admits regular players.
       - TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS=1 # Re-creates the world database to apply a migration edit.
-      - TORTOISE_HALT_ON_MIGRATION_EDITS=1 # Halts the start until you apply a migration edit to a database with player data.
+      - TORTOISE_HALT_ON_MIGRATION_EDITS=1 # Halts the start until you handle a migration edit to a database with player data.
       - TORTOISE_PROCESS_CUSTOM_SQL=1 # Runs your custom SQL files on every start.
 
   realmd:
@@ -53,14 +53,14 @@ services:
     environment:
       - TORTOISE_DEPLOY_VERSION=1 # See `docs/breaking-changes.md`.
       - TZ=Etc/UTC # The time zone, usually your host's.
-      - TORTOISE_UID=1000 # On Linux, the owner of the writable bind mounts. Do not change it once the server has run.
-      - TORTOISE_GID=1000 # On Linux, the group of the writable bind mounts. Do not change it once the server has run.
+      - TORTOISE_UID=1000 # On Linux, the owner of the writable bind mounts. To change this after the first start, change their owner on the host as well.
+      - TORTOISE_GID=1000 # On Linux, the group of the writable bind mounts. To change this after the first start, change their group on the host as well.
       - TORTOISE_DATABASE_USER=mangos # Must match `MARIADB_USER` of the `database` service.
       - TORTOISE_DATABASE_PASSWORD=mangos # Must match `MARIADB_PASSWORD` of the `database` service.
 
   mangosd:
-    # The `&mangosd-image` anchor is used by `check-deploy-version`,
-    # `extract-client-data`, and `verify-client-data` and has to stay.
+    # The `&mangosd-image` anchor is used by the `check-deploy-version`,
+    # `extract-client-data`, and `verify-client-data` services and has to stay.
     image: &mangosd-image ghcr.io/mserajnik/tortoise-server:base
     command: mangosd
     tty: true
@@ -87,13 +87,13 @@ services:
       - ./storage/mangosd/logs:/opt/tortoise/storage/logs
       - ./storage/mangosd/honor:/opt/tortoise/storage/honor
       - ./storage/mangosd/pdump:/opt/tortoise/storage/pdump
-    # The `&mangosd-environment` anchor is used by `check-deploy-version`,
-    # `extract-client-data`, and `verify-client-data` and has to stay.
+    # The `&mangosd-environment` anchor is used by the `check-deploy-version`,
+    # `extract-client-data`, and `verify-client-data` services and has to stay.
     environment: &mangosd-environment
       - TORTOISE_DEPLOY_VERSION=1 # See `docs/breaking-changes.md`.
       - TZ=Etc/UTC # The time zone, usually your host's.
-      - TORTOISE_UID=1000 # On Linux, the owner of the writable bind mounts. Do not change it once the server has run.
-      - TORTOISE_GID=1000 # On Linux, the group of the writable bind mounts. Do not change it once the server has run.
+      - TORTOISE_UID=1000 # On Linux, the owner of the writable bind mounts. To change this after the first start, change their owner on the host as well.
+      - TORTOISE_GID=1000 # On Linux, the group of the writable bind mounts. To change this after the first start, change their group on the host as well.
       - TORTOISE_DATABASE_USER=mangos # Must match `MARIADB_USER` of the `database` service.
       - TORTOISE_DATABASE_PASSWORD=mangos # Must match `MARIADB_PASSWORD` of the `database` service.
 

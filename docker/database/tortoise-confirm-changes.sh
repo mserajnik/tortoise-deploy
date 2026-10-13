@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2026 Michael Serajnik <https://github.com/mserajnik>
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Confirms the migration edits the user applied. A halted start then continues.
+# Confirms the migration edits the user handled. A halted start then continues.
 
 set -eu
 
@@ -15,14 +15,14 @@ if [[ ! -f /tmp/tortoise-changes-pending ]] ||
   exit 1
 fi
 
-# `docker compose exec` runs as root, but the start runs as the database user,
+# `docker compose exec` runs as root, but the start runs as the `mysql` user,
 # which has to rename the file in sticky `/tmp`. Move the file into place only
 # once it has that owner.
 acknowledged="$(mktemp /tmp/tortoise-changes-acknowledged.XXXXXX)"
 trap 'rm -f "$acknowledged"' EXIT
 
 if ! chown --reference=/tmp/tortoise-changes-pending "$acknowledged"; then
-  echo "[tortoise-deploy]: ERROR: Failed to hand the confirmation to the database user. Run this command as root or as the database user." >&2
+  echo "[tortoise-deploy]: ERROR: Failed to hand the confirmation to the 'mysql' user. Run this command as root or as the 'mysql' user. See the error above." >&2
   exit 1
 fi
 
@@ -38,8 +38,8 @@ done
 
 if [[ ! -f /tmp/tortoise-changes-consumed ]]; then
   rm -f /tmp/tortoise-changes-acknowledged
-  echo "[tortoise-deploy]: ERROR: The confirmation was not picked up within 30 seconds. Check the container logs, then run this command again." >&2
+  echo "[tortoise-deploy]: ERROR: The confirmation was not picked up within 30 seconds. Check the output of 'docker compose logs database', then run this command again." >&2
   exit 1
 fi
 
-echo "[tortoise-deploy]: Confirmation recorded. The start continues."
+echo "[tortoise-deploy]: The confirmation is recorded. The start continues."

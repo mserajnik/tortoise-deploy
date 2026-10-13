@@ -1,19 +1,19 @@
-# tortoise-deploy: this file differs from upstream's `realmd.conf.dist.in` as
-# follows.
+# tortoise-deploy: this file differs from the `realmd.conf.dist.in` of
+# Tortoise-WoW as follows.
 #
 # Changed:
 # - `ForcePinAccountRank = 255` turns off the forced PIN login. Accounts at or
-#   above this rank have to enter a PIN, and upstream's 1 would force it on
-#   every staff account.
-# - `LogFilter_SQLText = 1`, which upstream's file does not list, keeps every
-#   SQL query the server runs out of the console and the log file.
+#   above this rank have to enter a PIN, and the Tortoise-WoW default of `1`
+#   would force it on every staff account.
+# - `LogFilter_SQLText = 1`, which the Tortoise-WoW file does not list, keeps
+#   every SQL query the server runs out of the console and the log file.
 #
 # Removed, because the image sets them and ignores them in this file:
 # - `LoginDatabaseInfo`: the server connects to the `database` service, with
 #   the user and password from `TORTOISE_DATABASE_USER` and
-#   `TORTOISE_DATABASE_PASSWORD` in the Compose file.
-# - `LogsDir`: the directory under `/opt/tortoise/storage/` that the Compose
-#   file mounts.
+#   `TORTOISE_DATABASE_PASSWORD` in your `compose.yaml`.
+# - `LogsDir`: the directory under `/opt/tortoise/storage/` that your
+#   `compose.yaml` mounts.
 # - `RealmServerPort` and `BindIP`: to use another port, change its host side
 #   in your `compose.yaml`.
 #

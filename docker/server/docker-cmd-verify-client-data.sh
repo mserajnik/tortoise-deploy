@@ -17,7 +17,8 @@ dbc_manifest="/opt/tortoise/dbc-hashes"
 dbc_dir="${1:-/opt/tortoise/storage/data/dbc}"
 
 if [ ! -f "$dbc_manifest" ] || [ ! -r "$dbc_manifest" ]; then
-  echo "[tortoise-deploy]: ERROR: The DBC hash manifest '$dbc_manifest' is missing or not readable." >&2
+  echo "[tortoise-deploy]: ERROR: The DBC hash manifest '$dbc_manifest' in this image is missing or not readable. Report it:
+https://github.com/mserajnik/tortoise-deploy/issues" >&2
   exit 1
 fi
 
@@ -27,12 +28,13 @@ expected_count="$(grep -cE '^[0-9a-fA-F]{64}  ' "$dbc_manifest" || true)"
 expected_count="${expected_count:-0}"
 
 if [ "$expected_count" -lt 100 ]; then
-  echo "[tortoise-deploy]: ERROR: The DBC hash manifest '$dbc_manifest' lists only $expected_count entries, which is too few for a complete manifest." >&2
+  echo "[tortoise-deploy]: ERROR: The DBC hash manifest '$dbc_manifest' in this image is incomplete. Report it:
+https://github.com/mserajnik/tortoise-deploy/issues" >&2
   exit 1
 fi
 
 if [ ! -d "$dbc_dir" ] || [ ! -r "$dbc_dir" ]; then
-  echo "[tortoise-deploy]: ERROR: There is no readable extracted client data in '$dbc_dir'. Mount your extracted data directory at '/opt/tortoise/storage/data' in your 'compose.yaml', as 'compose.yaml.example' shows, or extract the client data first:" >&2
+  echo "[tortoise-deploy]: ERROR: There is no readable extracted client data in '$dbc_dir'. Mount your extracted data directory at '/opt/tortoise/storage/data' in your 'compose.yaml', as the example Compose file shows, or extract the client data first:" >&2
   echo "https://github.com/mserajnik/tortoise-deploy/blob/master/docs/usage.md#extracting-the-client-data" >&2
   exit 1
 fi
