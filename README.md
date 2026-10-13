@@ -85,7 +85,7 @@ The steps set up the `base` variant. For `modules` or `modules-bots`, which the
 
    Extracting can take many hours, and the
    [extracting the client data section](docs/usage.md#extracting-the-client-data)
-   names the supported client and describes the details.
+   describes the supported client and the details.
 
 5. Start Tortoise-WoW and follow its output:
 
@@ -180,7 +180,7 @@ The server images contain [Tortoise-WoW][tortoise-wow] with the patches from
 
 - It corrects a problem that breaks the build or the running server.
 - It adapts the code to how the images are built and run.
-- It changes an upstream default to a value that gives objectively better
+- It changes a Tortoise-WoW default to a value that gives objectively better
   results.
 
 Every patch adds a comment to the code it changes, which explains what the

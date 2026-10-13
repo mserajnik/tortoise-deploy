@@ -156,7 +156,7 @@ RUN \
           case ",$TORTOISE_MODULE_SQL_MODULES," in \
             *",$module_directory,"*) ;; \
             *) \
-              echo "Module '$module_directory' ships SQL, which this variant does not apply. Only the modules named in 'TORTOISE_MODULE_SQL_MODULES' may carry SQL."; \
+              echo "Module '$module_directory' ships SQL, which this variant does not apply. Only the modules listed in 'TORTOISE_MODULE_SQL_MODULES' may carry SQL."; \
               exit 1 ;; \
           esac; \
         fi; \
@@ -227,7 +227,7 @@ RUN \
   dbc_key_count="$(grep -cE "^[[:space:]]*['\"][^'\"]*\\.[Dd][Bb][Cc]['\"][[:space:]]*:" \
     /build/core/tools/dbc_verification/dbc_verifier.py)" && \
   if [ "$dbc_hash_count" -ne "$dbc_key_count" ]; then \
-    echo "Parsed $dbc_hash_count DBC hashes from 'tools/dbc_verification/dbc_verifier.py', which names $dbc_key_count DBC files."; \
+    echo "Parsed $dbc_hash_count DBC hashes from 'tools/dbc_verification/dbc_verifier.py', which lists $dbc_key_count DBC files."; \
     exit 1; \
   fi && \
   # A duplicate entry can hide a missing one.

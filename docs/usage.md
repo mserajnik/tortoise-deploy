@@ -132,8 +132,8 @@ docker compose run --rm verify-client-data
 The images are built without anticheat support. Warden in particular is not
 available: it needs module files that Tortoise-WoW does not distribute and that
 are not maintained for its client, so it cannot be enabled reliably. The other,
-movement-based checks may be enabled in a future image, once an upstream issue
-that affects them is resolved.
+movement-based checks may be enabled in a future image, once an issue in
+Tortoise-WoW that affects them is resolved.
 
 ## Running Tortoise-WoW
 
@@ -223,7 +223,7 @@ docker compose run --rm check-deploy-version
 ```
 
 When the new images need configuration adjustments due to a
-[breaking change](breaking-changes.md), the check fails and names the version
+[breaking change](breaking-changes.md), the check fails and shows the version
 they expect. Make those adjustments first. The `check-deploy-version` service
 reads only `TORTOISE_DEPLOY_VERSION` of `mangosd`. The `database`, `realmd`,
 and `mangosd` services also each check their own value when they start, so you
