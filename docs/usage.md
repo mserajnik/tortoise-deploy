@@ -129,11 +129,9 @@ docker compose run --rm verify-client-data
 
 ## Anticheat and Warden
 
-The images are built without anticheat support. Warden in particular is not
-available: it needs module files that Tortoise-WoW does not distribute and that
-are not maintained for its client, so it cannot be enabled reliably. The other,
-movement-based checks may be enabled in a future image, once an issue in
-Tortoise-WoW that affects them is resolved.
+The images are built without anticheat support, which covers Warden and the
+movement-based checks. Whether a future image adds anticheat support is not
+decided.
 
 ## Running Tortoise-WoW
 
