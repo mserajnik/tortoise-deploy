@@ -198,6 +198,23 @@ AiPlayerbot.RandomBotFactionRatio = 50
 # so weighted zones only control where level-1 bots start. Default empty.
 AiPlayerbot.RandomBotStartZoneWeights =
 
+# Names for new bot characters (pool bots and hires), as percentages of three
+# styles: race-flavoured,compound,fun. Race-flavoured names fit the bot's race
+# and gender ("Thorvin" for a dwarf), compound names join two words with a
+# class lean ("Nightrunner"), fun names are puns and nods ("Kidneyshotz",
+# "Gnomebody"). Every name passes the same checks as a player's name. Only new
+# characters follow it; existing bots keep their names. 100,0,0 = serious
+# names only, 0,0,100 = fun names only. Default 55,20,25.
+AiPlayerbot.RandomBotNameStyleWeights = 55,20,25
+
+# Optional text file with more names, added to the built-in ones. Same format
+# as runtime/BotNameData.h: a [key] line, then names separated by spaces or
+# new lines, e.g. "[fun:rogue]" then "Stabbyjoe Sneakypants". Keys: fun,
+# fun:<class>, fun:<race>, rp:<race>:<male|female> (samples for race names),
+# start, start:<class>, end, prefix:<class|race>, suffix, pet:hunter.
+# Read once at the first name pick; restart to reload. Default empty.
+AiPlayerbot.RandomBotNamesFile =
+
 # Where a random bot without a player master comes back after a repop (the
 # evacuation used when it keeps dying or is stuck while dead): 1 = nearest
 # graveyard, like a player at the spirit healer; 0 = its racial starting area
@@ -336,6 +353,16 @@ AiPlayerbot.TravelPickBudgetUs = 4000
 #AiPlayerbot.HireEnabled = 1
 #AiPlayerbot.HireMinAccountSecurity = 0
 #AiPlayerbot.HireMaxBotsPerPlayer = 4
+# Issue #936: `.bot hire <class> ... [level]` (or level=<n>) hires the
+# companion at a chosen level, 1 up to the hirer's level plus this many (0-59,
+# never above 60). 0 = no higher than the hirer; a GM hirer may go to 60. Any
+# level below the hirer is allowed. No level given = the hirer's level, as ever.
+#AiPlayerbot.HireMaxLevelAboveHirer = 0
+# Free hires for staff: accounts with this security level or more hire
+# companions for free (no gold taken; the reply says "free (GM)"). 0 = off,
+# everyone pays. Account levels on this core: 1 observer, 2 moderator,
+# 3 developer, 4 administrator; e.g. 2 = moderators and up hire free. Range 0-6.
+#AiPlayerbot.HireFreeMinSecurity = 0
 # HireAnywhere: 0 = hire only at a <Mercenary Hire> recruiter (the .bot hire
 # command points players to one); 1 = .bot hire also works anywhere. Fees are
 # the same either way.
@@ -392,6 +419,12 @@ AiPlayerbot.TravelPickBudgetUs = 4000
 #AiPlayerbot.WorldBuffsSilithystPricePerPersonCopper = 4000
 #AiPlayerbot.WorldBuffsUnlockFeeRaidCopper = 2000000
 #AiPlayerbot.WorldBuffsUnlockFeeCopper = 1000000
+# Ammo stacks (200 rounds each) a warrior or rogue with a bow, gun or
+# crossbow keeps topped up (maintenance, level-up, ammo refill). Hunters keep
+# 5 + level / 10 stacks as before and are not affected. 1-10, never more than
+# a hunter of the same level gets; a bot with the item cheat keeps 1. The
+# value below is the value that actually runs.
+#AiPlayerbot.AmmoStacksNonHunter = 2
 # Issue #473: opt-in quality of life for owned/hired bots only (every part
 # off by default; pool bots always keep progressing organically and are
 # never touched). The values below are the values that actually run.
@@ -413,6 +446,20 @@ AiPlayerbot.TravelPickBudgetUs = 4000
 # Seconds between summon-on-accept teleports per bot (default 300 = 5
 # minutes). 0 disables the cooldown (not recommended with revive/repair on).
 #AiPlayerbot.OwnedBotSummonCooldown = 300
+
+# Issue #884: remote commander. A GM, or the owner of every bot in it, binds a
+# bot-only group of up to five to themselves with `.bot commander bind
+# <LeadBot> [<Bot>...]` and leads it from anywhere (another zone, outside the
+# instance) with `.bot cmd ...` orders that name their target by GUID or a 3D
+# point. Off by default; with 0 both commands answer that the feature is off.
+#AiPlayerbot.RemoteCommander = 0
+
+# Issue #884, phase 2: while a commander is bound and its feed is on (`.bot
+# commander view on|off`; a new binding starts off), the commander receives
+# one TBM:VIEW frame (the bound bots, the hostiles they see, the top of each
+# engaged hostile's threat list) every this many milliseconds. Built from what
+# the bots already track; no extra world scan. Clamped to 250..60000.
+#AiPlayerbot.RemoteCommanderViewMs = 1000
 
 # Bounded AH market population through the native bot/session auction path. Default off.
 # When enabled, online random Headless bots use real inventory items, pricing, deposits,
@@ -672,13 +719,18 @@ AiPlayerbot.OnyxiaWhelpsAndEggs = 1
 
 # Keep out of creature auras.
 # Some creatures carry a permanent damaging aura that pulses around them even
-# while they are idle. With this on, every bot (tank and melee included) steps
-# out when it is within 8 yd of a listed creature (from its centre), its chase
-# and other moves keep 9 yd away, and a follower stops just outside that circle
-# while its leader stands in it; the ranged kill it. The creature the player
-# ordered the bot to attack is never avoided by that bot, and a party with no
-# ranged damage needs that order to kill one. Listed today:
+# while they are idle. With this on, every bot steps out when it is within 8 yd
+# of a listed creature (from its centre), its chase and other moves keep 9 yd
+# away, and a follower stops just outside that circle while its leader stands
+# in it; the ranged kill it. A melee DPS bot holding outside the circle on its
+# target switches target after 3 s and leaves that target alone for 30 s,
+# also when the tank fights it or it carries the bot's raid mark. Tanks are
+# exempt in combat (they may hold mobs inside). The creature the player
+# ordered the bot to attack is never avoided by that bot. Listed today:
 # Maraudon's Creeping Sludge (12222, aura 22638 Poison Shock, 5 yd every 2 s).
+# With it on, a non-tank bot without an attack order also does not Charge,
+# Intercept or Feral Charge onto a listed creature or onto a mob within 9 yd
+# of one, and its flank, set-behind and unstack moves never end in the ring.
 # On by default.
 # 0 - no keep-out; bots melee and walk past these creatures as before
 # 1 - stay out of listed creature auras (Default)
@@ -1786,6 +1838,19 @@ AiPlayerbot.EnableCustomRaidTactics = 1
 #AiPlayerbot.PullDpsJoinDelay = 10
 #AiPlayerbot.PullBackDpsJoinDelay = 5
 #AiPlayerbot.PullBackMaxReturnTime = 15
+
+# Ranged opening for commanded pulls (".bot action pull|pullback", ".bot cmd
+# pull|pullback"). A plain pull walks the tank in; with RangedPull = 1 the tank
+# shoots instead (gun, bow, crossbow, thrown weapon with its ammo; a hunter or
+# caster uses its pull spell) when the mob is in sight and in shot range and
+# either no path leads to it (a ledge) or it is farther than
+# RangedPullMeleeApproach yards (walking in would meet the next pack). The order
+# word `ranged` (".bot action pull 10 ranged") asks for it on any pull and is
+# honoured whatever this says. A pullback always opens from range. A tank
+# without the weapon or ammo walks in and the answer says why. Commanded pulls
+# only: the tank's own automatic pulls are unchanged.
+#AiPlayerbot.RangedPull = 1
+#AiPlayerbot.RangedPullMeleeApproach = 20
 # Random bot default strategies (applied after defaults)
 # Note: non-tank bots grouped with a real-player master (outside BGs) get `threat` added back
 # after this list, so `-threat` here only affects masterless pool bots.
