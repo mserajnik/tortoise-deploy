@@ -373,6 +373,17 @@ AiPlayerbot.TravelPickBudgetUs = 4000
 #AiPlayerbot.HirePartyMult4 = 4.66
 #AiPlayerbot.HireRaidFlatCostCopper = 10000
 #AiPlayerbot.HireDisconnectGracePeriod = 300
+# Issue #900: `.bot hire raid <preset|composition> [tier]` hires a whole raid
+# through the single-hire path (up to HireMaxBotsPerPlayer minus the
+# companions you already have). A role count like `3t 12h 24d` picks its
+# classes from HireRaidSpread: per role (tank, healer, dps) a comma list of
+# classes handed out round-robin; repeat a class to weight it. Classes your
+# faction cannot field are skipped. HireRaidPresets: `name=composition`
+# entries separated by `;`, run as `.bot hire raid <name> [tier]`; the
+# composition may end in a tier word (a tier typed after the name wins).
+# The values below are the values that actually run.
+#AiPlayerbot.HireRaidSpread = tank=warrior,druid,paladin;healer=priest,priest,paladin,shaman,druid;dps=mage,warlock,rogue,hunter,warrior,mage,warlock,rogue,hunter,shaman
+#AiPlayerbot.HireRaidPresets = zg=2t 4h 13d t2;aq20=2t 4h 13d t5;onyxia=3t 10h 26d t1;mc=3t 10h 26d t3;bwl=3t 10h 26d t4;aq40=3t 10h 26d t5;naxx=3t 10h 26d t6
 # Issue #490: static best-in-slot sets for level-60 hires (tiers 1-7 from
 # the tortoise_bots_hire_gear table). 0 = today's random hire gear only.
 # HireGearStartTier (0..7) is the tier every player has. Higher tiers are
@@ -720,14 +731,18 @@ AiPlayerbot.OnyxiaWhelpsAndEggs = 1
 # Keep out of creature auras.
 # Some creatures carry a permanent damaging aura that pulses around them even
 # while they are idle. With this on, every bot steps out when it is within 8 yd
-# of a listed creature (from its centre), its chase and other moves keep 9 yd
-# away, and a follower stops just outside that circle while its leader stands
+# (10 yd for Living Poison) of a listed creature (from its centre), its chase
+# and other moves keep 9 yd (11 yd) away, and a follower stops just outside that circle while its leader stands
 # in it; the ranged kill it. A melee DPS bot holding outside the circle on its
 # target switches target after 3 s and leaves that target alone for 30 s,
 # also when the tank fights it or it carries the bot's raid mark. Tanks are
-# exempt in combat (they may hold mobs inside). The creature the player
+# exempt in combat from the sludge (they may hold mobs inside), not from
+# Living Poison. The creature the player
 # ordered the bot to attack is never avoided by that bot. Listed today:
-# Maraudon's Creeping Sludge (12222, aura 22638 Poison Shock, 5 yd every 2 s).
+# Maraudon's Creeping Sludge (12222, aura 22638 Poison Shock, 5 yd every 2 s)
+# and Naxxramas' Living Poison (16027, no aura, not selectable, Explode 28433
+# within 5 yd, about 30k: tanks get no pass; bots keep out to 10 yd, paths to
+# 11 yd).
 # With it on, a non-tank bot without an attack order also does not Charge,
 # Intercept or Feral Charge onto a listed creature or onto a mob within 9 yd
 # of one, and its flank, set-behind and unstack moves never end in the ring.
@@ -854,6 +869,32 @@ AiPlayerbot.InviteChat = 1
 # diagnosing bot lifecycle issues; off in production. The crash handler also
 # reads a thread-local "last phase" tag set by SC_PHASE when this is on.
 # AiPlayerbot.EnableActionLog = 0
+
+# Safeguards for the per-bot action log files (they once filled a disk: about
+# 8 GB a day, up to 176 MB for one bot). They apply only while EnableActionLog
+# is 1, except the cleanup, which also trims files an earlier run left behind.
+#
+# Which bots get a file:
+#   all        every bot, pool bots included (100+ files on a busy realm)
+#   commanded  only bots in a group a commander bound (.bot commander bind)
+#              and hired companions
+#   none       no files
+# A bot's answer is cached and looked up again every 15 seconds, so a bot that
+# was just bound or hired starts logging within that time.
+AiPlayerbot.ActionLogScope = commanded
+
+# Cleanup of logs/bots: at startup and then every hour (and early once the bots
+# wrote a quarter of the size limit since the last one) the oldest files are
+# deleted until both limits hold. Only files named like the ones this log
+# writes (<bot>_acc<id>_<date>-<time>.log) are ever listed or deleted, never a
+# link, a folder or any other file. A file a bot has open is never deleted. One
+# summary line is written to the server log per cleanup. 0 turns a limit off.
+AiPlayerbot.ActionLogMaxAgeDays = 3
+AiPlayerbot.ActionLogMaxTotalMB = 2048
+
+# One bot's file is closed with a note when it would pass this size, and the log
+# goes on in a new file (the cleanup above removes the old ones). 0 = no cap.
+AiPlayerbot.ActionLogMaxFileMB = 100
 
 # Aggregate counter of executed bot actions for live measurement on large
 # realms: every 5 minutes a cumulative snapshot (utc_time,class,action,
@@ -1975,6 +2016,9 @@ AiPlayerbot.UseKnockback = 1
 
 # Debug switches
 #AiPlayerbot.SpellDump = 0
+# Unrelated to ActionLogScope: this keeps the engine's per-action detail lines
+# (server log at detail level, and their copy in the action log) to bots that
+# are in a group. Its value 1 is what runs when the line is left out.
 #AiPlayerbot.LogInGroupOnly = 1
 #AiPlayerbot.LogValuesPerTick = 0
 #AiPlayerbot.RandomChangeMultiplier = 1
