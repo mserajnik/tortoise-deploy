@@ -232,10 +232,11 @@ AiPlayerbot.TurtleMountAtLevel = 18
 # the riding skill already level-gated). 1 = on; 0 = off, so a bot levelled
 # from 1 keeps only the turtle until it is re-seeded. Default 1.
 AiPlayerbot.LevelUpMounts = 1
-# Random pool bots ride only mounts that fit their race and class, i.e. the
-# racial/vendor mounts a player of that race would buy. Shop mounts that any
-# race can use, and mounts that drop from loot (raid/dungeon bosses), are left
-# out. 1 = any mount, including shop and raid-drop mounts (old behaviour).
+# Random pool bots and hired companions ride only mounts that fit their own
+# race, i.e. the strict own-race vendor mounts a player of that race would buy
+# (normal from 40, epic from 60). Cross-race mounts, shop mounts that any race
+# can use, and mounts that drop from loot (raid/dungeon bosses), are left out.
+# 1 = any mount, including shop and raid-drop mounts (old behaviour).
 # Player alts are never gated. Default 0.
 AiPlayerbot.RandomBotShopMounts = 0
 # Safety factor on the mount break-even distance: bots mount for travel/RPG
