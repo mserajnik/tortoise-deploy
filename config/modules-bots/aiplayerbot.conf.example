@@ -232,6 +232,12 @@ AiPlayerbot.TurtleMountAtLevel = 18
 # the riding skill already level-gated). 1 = on; 0 = off, so a bot levelled
 # from 1 keeps only the turtle until it is re-seeded. Default 1.
 AiPlayerbot.LevelUpMounts = 1
+# Random pool bots ride only mounts that fit their race and class, i.e. the
+# racial/vendor mounts a player of that race would buy. Shop mounts that any
+# race can use, and mounts that drop from loot (raid/dungeon bosses), are left
+# out. 1 = any mount, including shop and raid-drop mounts (old behaviour).
+# Player alts are never gated. Default 0.
+AiPlayerbot.RandomBotShopMounts = 0
 # Safety factor on the mount break-even distance: bots mount for travel/RPG
 # trips only when the remaining distance exceeds
 # 7 y/s * mount cast time / (best mount speed % / 100) * this. 0 disables
@@ -1852,6 +1858,18 @@ AiPlayerbot.FleeingEnabled = 1
 # like mod-playerbots melee. 0 = unchanged flee. Bots with a real player
 # master never get this flee anyway. Takes effect after a server restart.
 #AiPlayerbot.PoolMeleeHoldGround = 0
+
+# Alt-bots (issue #872, opt-in). 1 = an alt you brought in with `.bot add`
+# keeps playing on its own when you kick it from your party (or the party
+# breaks up): it quests, grinds and travels like a pool bot, with protections
+# for your gear, gold and talents, and takes one pool bot's slot while it is
+# out. `.bot remove`, `.bot add` again or logging in on the alt ends it.
+# Hardcore characters are refused. 0 = a kicked alt stays your companion.
+#AiPlayerbot.AltBots = 0
+
+# 1 = alt-bots log out when their owner logs out. 0 = they keep playing until
+# `.bot remove` (or a server restart; they do not come back after one).
+#AiPlayerbot.AltBotsLogoutWithOwner = 0
 
 # Universal raid survival (issue #201): bomb carriers run away from the
 # raid's centre until no group member is within BombRunoutDistance, then
