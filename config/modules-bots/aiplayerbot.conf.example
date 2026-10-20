@@ -946,6 +946,15 @@ AiPlayerbot.BotLogFile =
 # Broadcast rates
 #
 # 1 - to enable broadcasts globally, 0 - to disable (default 1)
+#
+# 0 silences what the bots say on their own: the quest/loot/kill/level-up/suggest
+# broadcasts, the /say and /yell chatter, guild and world channel messages, the
+# recruitment and invite lines, the flavour text of an emote and the scripted
+# battleground callouts.
+#
+# Whispers, party and raid chat, the answer to a player who ordered the bot
+# (speak, a reply to the bot's own master) and the TortoiseBotsManager addon
+# protocol are not broadcasts and stay.
 AiPlayerbot.EnableBroadcasts = 1
 #
 # all broadcast chances should be in range 0-30000
