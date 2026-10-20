@@ -91,7 +91,7 @@ AiPlayerbot.RandomBotAccountPrefix = RNDBOT
 # reset command. Existing installations must first enroll their hand-made
 # accounts at the server console with `bot pool adopt preview` and
 # `bot pool adopt confirm <challenge>`; until then those accounts are not
-# managed and are never touched. See docs/guides/living-world.md.
+# managed and are never touched. See docs/server/bot-pool.md.
 AiPlayerbot.RandomBotPoolReset = off
 
 # Bounded idempotent RNDBOT population (feature 01). Default OFF.
