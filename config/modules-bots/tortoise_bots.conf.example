@@ -51,3 +51,5 @@ TortoiseBots.LogLevel = 2
 AiPlayerbot.Observability = 0
 AiPlayerbot.ObservabilityPort = 9195
 AiPlayerbot.ObservabilityHost = 127.0.0.1
+# Mobs, threat and target lines for every dungeon run on the dashboard's Dungeons tab (only acts with Observability = 1).
+AiPlayerbot.ObservabilityDungeonMobs = 1

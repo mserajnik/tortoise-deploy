@@ -14,6 +14,8 @@ AiPlayerbot.Enabled = 0
 # Enable Observability telemetry UDP emitter (default 0, switched off)
 AiPlayerbot.Observability = 0
 AiPlayerbot.ObservabilityPort = 9195
+# Mobs, threat and target lines for every dungeon run on the dashboard's Dungeons tab (only acts with Observability = 1)
+AiPlayerbot.ObservabilityDungeonMobs = 1
 
 # Enable random bot system
 # On by default: a fresh install brings up a living world of random bots
@@ -374,6 +376,10 @@ AiPlayerbot.TravelPickBudgetUs = 4000
 # command points players to one); 1 = .bot hire also works anywhere. Fees are
 # the same either way.
 #AiPlayerbot.HireAnywhere = 0
+# ShamanTankEnabled: 1 = the experimental 7.3 shaman tank build (Enhancement
+# (Tank)) is offered at recruiters and by `.bot hire`, and random pool shamans
+# may roll it. 0 = withheld everywhere. Shamans already on the build keep it.
+#AiPlayerbot.ShamanTankEnabled = 1
 #AiPlayerbot.HireBaseCostCopper = 15000
 #AiPlayerbot.HirePartyMult2 = 1.66
 #AiPlayerbot.HirePartyMult3 = 2.66
@@ -413,6 +419,12 @@ AiPlayerbot.TravelPickBudgetUs = 4000
 #AiPlayerbot.HireGearAllQuestsAvailable = 0
 #AiPlayerbot.HireGearOptionalMaps =
 #AiPlayerbot.HireGearTierCostMultipliers = 1,1.5,2,3,4,5,6,6
+# Standard (tier 0) companion kit: generated item level <= hire level + this
+# value, and never above RandomGearMaxLevel. Default 5 = a little above the
+# pool rule (RandomGearMaxItemLevelAboveLevel, 1) and below the tier-2 curated
+# kit: a level-60 standard hire tops out at item level 65, the tier-1 ceiling.
+# The curated tier 1-7 sets are not affected. 0 keeps RandomGearMaxLevel alone.
+#AiPlayerbot.HireGearMaxItemLevelAboveLevel = 5
 # Issue #492: world buffs at the six capital <Mercenary Hire> recruiters
 # (Stormwind, Ironforge, Darnassus, Orgrimmar, Undercity, Thunder Bluff).
 # Level 60+ players get a "World buffs" branch next to "Hire bots"; the
@@ -584,6 +596,15 @@ AiPlayerbot.RandomGearLoweringChance = 0.15
 # Max iLVL Tier 1 = 66 | Tier 2 = 76 | Tier 2.5 = 81 | Tier 3 = 99
 # Max iLVL Phase 1 = 71(MC, ONY, ZG) | Phase 2(BWL) = 77 | Phase 2.5(AQ) = 88 | Phase 3(NAXX) = 100 (NOT RECOMMENDED SINCE ILVL OVERLAPS BETWEEN TIERS)
 AiPlayerbot.RandomGearMaxLevel = 100
+
+# Owner rule (Oct 2026): generated gear is capped by the bot's own level too,
+# so a wandering pool bot never wears raid loot it could not have earned.
+# Generated item level <= bot level + this value, and never above
+# RandomGearMaxLevel. Default 1: a level-60 pool bot tops out at item level 61.
+# Fresh seeding and every later re-gear of a pool bot use it; gear a bot earns
+# itself (loot, quest rewards, vendor and auction buys) is not capped. 0 keeps
+# RandomGearMaxLevel alone.
+AiPlayerbot.RandomGearMaxItemLevelAboveLevel = 1
 
 # Max difference between bot level and item's required level to be used in randomisation
 # Default = 9, means bots level 60 can use items that require (themselves or via quests) level 51 and above
@@ -1523,6 +1544,19 @@ AiPlayerbot.PremadeSpecLink.7.2.45 = 551331350203212
 AiPlayerbot.PremadeSpecLink.7.2.50 = 5513313502032125
 AiPlayerbot.PremadeSpecLink.7.2.55 = 55133135020321251--4
 AiPlayerbot.PremadeSpecLink.7.2.60 = 55133135020321251--54
+AiPlayerbot.PremadeSpecName.7.3 = tank
+AiPlayerbot.PremadeSpecProb.7.3 = 16
+AiPlayerbot.PremadeSpecLink.7.3.10 = -1
+AiPlayerbot.PremadeSpecLink.7.3.15 = -50001
+AiPlayerbot.PremadeSpecLink.7.3.20 = -50023001
+AiPlayerbot.PremadeSpecLink.7.3.25 = -50033001301
+AiPlayerbot.PremadeSpecLink.7.3.30 = -5015300130201
+AiPlayerbot.PremadeSpecLink.7.3.35 = 2-50153001302031
+AiPlayerbot.PremadeSpecLink.7.3.40 = 5002-50153001302031
+AiPlayerbot.PremadeSpecLink.7.3.45 = 500231-50253001302031
+AiPlayerbot.PremadeSpecLink.7.3.50 = 500231-502530013020315
+AiPlayerbot.PremadeSpecLink.7.3.55 = 500231-502530013520315
+AiPlayerbot.PremadeSpecLink.7.3.60 = 5003313-5025300135203151
 
 
 # --- class 8 ---
