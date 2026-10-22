@@ -223,6 +223,9 @@ AiPlayerbot.RandomBotNamesFile =
 # (the old behaviour, which drained bots back into the starting zones).
 # Default 1.
 AiPlayerbot.RepopAtGraveyard = 1
+# Teleport a dead bot out of a hopeless corpse run (grim clueless solo graveyard
+# with no reachable spirit) to the graveyard it would repop at
+#AiPlayerbot.RelocateHopelessDeaths = 1
 # Level at which random bots learn the Swift Riding Turtle (quest 40302
 # "Torta's Egg" -> item 23720 -> spell 30174), as if they did the quest.
 # Applies on seed/refresh at TurtleMountAtLevel..39 and on level-up for the
@@ -521,7 +524,9 @@ AiPlayerbot.AhMarketDynamicLevel = 0
 AiPlayerbot.AhMarketLevelRefresh = 600
 AiPlayerbot.AhMarketVariance = 10
 AiPlayerbot.AhMarketBidMin = 75
+# AiPlayerbot.AhMarketBidMax = 90
 AiPlayerbot.AhMarketTimeMax = 24
+# AiPlayerbot.AhMarketTimeMin = 8
 # Currently has no effect (read but unused).
 AiPlayerbot.AhMarketValueVendor = 1
 
@@ -610,6 +615,11 @@ AiPlayerbot.RandomGearMaxItemLevelAboveLevel = 1
 # Default = 9, means bots level 60 can use items that require (themselves or via quests) level 51 and above
 AiPlayerbot.RandomGearMaxDiff = 9
 
+# Seed gear progressively by bot level instead of throwing the full band at once
+#AiPlayerbot.RandomGearProgression = 1
+# Upgrade pooled bots' gear as they level (from level 5, bots without a real master)
+#AiPlayerbot.RandomGearUpgradeEnabled = 1
+
 # Owner-rule source-tier cap for seeded/hired bot gear (roadmap #289: higher
 # tiers unlock later). 0 = base only (world drop, vendor, quest, allowed
 # recipe); 1 = + end-game dungeons (Blackrock Spire 229, Scholomance 289,
@@ -643,6 +653,9 @@ AiPlayerbot.RandomGearTabardsUnobtainable = 0
 
 # Items listed here are never picked by random gear (seed/hire/upgrade).
 AiPlayerbot.RandomGearBlacklist =
+
+# Item ids always seeded on random gear regardless of the scoring rules below.
+#AiPlayerbot.RandomGearWhitelist =
 
 # Roll need on items if slot is empty or broken, even if not appropriate for bot's spec
 # Bots without real player master ignore this config and always roll need in that case
@@ -795,7 +808,7 @@ AiPlayerbot.TurnInRpg = 0
 # Bots will make sounds when repairing, selling items ect.
 AiPlayerbot.GlobalSoundEffects = 0
 
-# Show progress bars for random bots (disabled by default)
+# Show progress bars for random bots (enabled by default)
 AiPlayerbot.ShowProgressBars = 1
 
 # Set randombots movement speed to walking anywhere
@@ -818,6 +831,16 @@ AiPlayerbot.GreetCooldown = 600
 # player master (0, default). With hundreds of pool bots in one zone the wave
 # of greetings answers every visitor, so it is opt-in.
 AiPlayerbot.RandomBotGreet = 0
+
+# Currently has no effect (read but unused).
+#AiPlayerbot.BotsSilent = 0
+
+# Chance (0-1) that a bot in combat plays an attack emote
+#AiPlayerbot.AttackEmoteChance = 0.0
+
+# Pool bots share their attack targets with each other instead of each picking
+# their own
+#AiPlayerbot.ShareTargets = 1
 
 # Show helmet and cloak on randombots (reset required)
 AiPlayerbot.RandomBotShowHelmet = 1
@@ -955,6 +978,9 @@ AiPlayerbot.BotLogFile =
 # The in-chat "summon" order teleports the bot straight to a non-GM player; otherwise
 # the bot walks or uses a meeting stone or innkeeper. .bot summon is not affected.
 # AiPlayerbot.NonGmFreeSummon = 0
+
+# Bots may also use the innkeeper "summon me" path when resolving a summon order
+#AiPlayerbot.SummonAtInnkeepersEnabled = 1
 
 # Bots will put their talentspec in guild notes when they change/tell their talents if they have the rights.
 # AiPlayerbot.TalentsInPublicNote = 0
@@ -1098,6 +1124,9 @@ AiPlayerbot.EquipUpgradeThreshold = 1.1
 # Sync quests with player (Bots will complete quests the moment you hand them in. Bots will ignore looting quest items.)
 # Default: 0 (disabled)
 AiPlayerbot.SyncQuestWithPlayer = 0
+
+# Bot completes its own quests the moment the real player hands the shared quest in
+#AiPlayerbot.SyncQuestForPlayer = 0
 
 # Bot automatically trains spells when talking to trainer (yes = train all available spells as long as the bot has the money, free = auto trains with no money cost, no = only list spells)
 AiPlayerbot.AutoTrainSpells = yes
@@ -1753,6 +1782,9 @@ AiPlayerbot.PremadeSpecLink.11.2.60 = 5002012--5050013355213521
 # Prefix for bot chat commands (e.g. follow, stay)
 #AiPlayerbot.CommandPrefix =
 
+# Separator between several bot commands in one chat message
+#AiPlayerbot.CommandSeparator = \\
+
 # Max AI iterations per tick
 #AiPlayerbot.IterationsPerTick = 100
 
@@ -1819,6 +1851,7 @@ AiPlayerbot.ValueRefreshAtInterval = 0
 #AiPlayerbot.FailedActionRetryBase = 250
 #AiPlayerbot.FailedActionRetryMax = 2000
 #AiPlayerbot.FailedActionCacheTtl = 30000
+#AiPlayerbot.FailedActionCacheMaxEntries = 64
 # Currently has no effect (read but unused).
 # Allow/deny bots from your guild
 AiPlayerbot.AllowGuildBots = 1
@@ -1848,11 +1881,26 @@ AiPlayerbot.SitDelay = 20000
 
 AiPlayerbot.LootDelayDelay = 1000
 
-# Distances
+# A queued action basket expires after this many ms
+#AiPlayerbot.ExpireActionTime = 5000
+# Dispel is skipped for auras with less than this many ms left
+#AiPlayerbot.DispelAuraDuration = 2000
+# Currently has no effect (read but unused).
+#AiPlayerbot.ErrorDelay = 5000
+# Delay between flee/return attempts after a failed move home
+#AiPlayerbot.ReturnDelay = 7000
+
+#Distances
 AiPlayerbot.SightDistance = 60.0
 AiPlayerbot.SpellDistance = 26.0
 AiPlayerbot.ShootDistance = 26.0
 #AiPlayerbot.ReactDistance = 150.0
+#AiPlayerbot.FarDistance = 20.0
+#AiPlayerbot.AggroDistance = 22.0
+#AiPlayerbot.WalkDistance = 5.0
+#AiPlayerbot.WanderMinDistance = 5.0
+#AiPlayerbot.WanderMaxDistance = 50.0
+#AiPlayerbot.TargetPosRecalcDistance = 0.1
 #AiPlayerbot.GrindDistance = 75.0
 #overall loot distance
 #AiPlayerbot.LootDistance = 25.0
@@ -1993,8 +2041,9 @@ AiPlayerbot.CombatStrategies = ""
 #AiPlayerbot.PvpProhibitedZoneIds = 2255,656,2361,2362,2363,976,35,2268,3425,392,541,1446,3828,3712,3738,3565,3539,3623,4152,3988,4658,4284,4418,4436,4275,4323
 
 # Spells every random bot will learn on randomize. Keep this list limited to
-# spells present in the Vanilla/Tortoise data set.
-#AiPlayerbot.RandomBotSpellIds = 1
+# spells present in the Vanilla/Tortoise data set. Empty by default (disabled);
+# a value is a comma separated spell id list, e.g. 3273,8386.
+# AiPlayerbot.RandomBotSpellIds =
 
 
 #AiPlayerbot.OpenGoSpell = 6477
@@ -2009,6 +2058,13 @@ AiPlayerbot.RandomBotsMaxLoginsPerInterval = 30
 #AiPlayerbot.RandomBotStallRelogMinutes = 45
 #AiPlayerbot.MinRandomBotRandomizeTime = 21600
 #AiPlayerbot.MaxRandomBotRandomizeTime = 86400
+# Legacy alias read only when AiPlayerbot.MaxRandomBotRandomizeTime is unset.
+#AiPlayerbot.MaxRandomRandomizeTime = 86400
+#AiPlayerbot.MinRandomBotChangeStrategyTime = 1800
+#AiPlayerbot.MaxRandomBotChangeStrategyTime = 7200
+# Currently has no effect (read but unused).
+#AiPlayerbot.MinRandomBotReviveTime = 60
+#AiPlayerbot.MaxRandomReviveTime = 300
 #AiPlayerbot.MinRandomBotsPriceChangeInterval = 7200
 #AiPlayerbot.MaxRandomBotsPriceChangeInterval = 172800
 
@@ -2020,15 +2076,15 @@ AiPlayerbot.RandomBotsMaxLoginsPerInterval = 30
 # Disabled by default for performance concerns, but you REALLY want to enable it for nicer logic
 # AiPlayerbot.ShouldQueryAHListingsOutsideOfAH = 1
 #
-# List of item ids which bot will prefer to put to AH rather than selling to vendor (these are overrides)
-# For example if you want bots to put certain gray/white armor pieces to AH rather than selling to vendor
-# this list has priority over AiPlayerbot.VendorOverAHItemIds
-# AiPlayerbot.AhOverVendorItemIds = 1,2,3
+# List of item ids which bot will prefer to put to AH rather than selling to vendor (these are overrides).
+# This list has priority over AiPlayerbot.VendorOverAHItemIds.
+# Empty by default (disabled); a value is a comma separated item id list.
+# AiPlayerbot.AhOverVendorItemIds =
 #
 # List of item ids which bot will prefer to sell to vendor rather than selling to AH (these are overrides)
-# (Bot will never buy these items from vendor to resell at AH as well)
-# For example if you do not want to see certain items on AH
-# AiPlayerbot.VendorOverAHItemIds = 1,2,3
+# (Bot will never buy these items from vendor to resell at AH as well).
+# Empty by default (disabled); a value is a comma separated item id list.
+# AiPlayerbot.VendorOverAHItemIds =
 #
 # (0-1) Whether bot should check ALL auction house listings when browsing (by default only checks a small amount)
 # AiPlayerbot.BotCheckAllAuctionListings = 0
@@ -2052,6 +2108,10 @@ AiPlayerbot.JumpInPlaceChance = 0.50
 AiPlayerbot.JumpBackwardChance = 0.10
 # Jumping height limit
 AiPlayerbot.JumpHeightLimit = 60
+# Vertical jump speed
+#AiPlayerbot.JumpVSpeed = 7.96
+# Horizontal jump speed
+#AiPlayerbot.JumpHSpeed = 7.0
 # Add rpg jump strategy if bot is with real player
 AiPlayerbot.JumpWithPlayer = 0
 # Add rpg jump strategy in BG
@@ -2093,10 +2153,6 @@ AiPlayerbot.PerfMonEnabled = 0
 #                                 !!EXPERIMENTAL!!                               #
 #                                                                                #
 ##################################################################################
-
-# Currently has no effect (read but unused).
-# Instant randomize: Force randombots to randomize on initial login.
-# AiPlayerbot.InstantRandomize = 0
 
 # Bot cheats. Same as "/w <bot> cheat (+/-/?) <cheatcode>" but only globally for all bots.
 # Values: taxi            (all nodes learned)
@@ -2180,7 +2236,7 @@ AiPlayerbot.LogRetentionDays = 3
 # The prompt part containing the last message from the player the bot is responding to.
 # AiPlayerbot.LLMPrompt = <receiver name>:<initial message>
 # The default prompt to send at the end of each conversation.
-# AiPlayerbot.LLMPostPrompt = <bot name>:
+# AiPlayerbot.LLMPostPrompt = <sender name>:
 
 # The prompt used for rpg chat with npc's
 # AiPlayerbot.LLMRpgPrompt = In Vanilla/Tortoise WoW in <bot zone> <bot subzone> stands <bot type> <bot name> a level <bot level> <bot gender> <bot race> <bot class>. Standing nearby is <unit type> <unit name> <unit subname> a level <unit level> <unit gender> <unit race> <unit faction> <unit class>. Answer as a roleplaying character. Limit responses to 100 characters.
@@ -5952,7 +6008,7 @@ AiPlayerbot.HealDistance = 30
 AiPlayerbot.HealDistanceBg = 25
 
 # Travel/terrain lookups run inline on the world thread when disabled (safe).
-# Cores whose MMapManager does not support concurrent tile loading (e.g. Penqle /
+# Cores whose MMapManager does not support concurrent tile loading (e.g.
 # vmangos) MUST keep this at 0 to avoid a worker-thread SIGSEGV; set 1 only on
 # cores with concurrent terrain support.
 # AiPlayerbot.AsyncTravelPartitions = 0
