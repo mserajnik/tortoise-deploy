@@ -467,6 +467,11 @@ AiPlayerbot.TravelPickBudgetUs = 4000
 # ilvl 0 = no cap (clamped to 5 at load).
 #AiPlayerbot.OwnedBotAutogearQualityCap = 2
 #AiPlayerbot.OwnedBotAutogearIlvlCap = 0
+# `.autogear` on real players: 0 = GM-only (a GM may gear any player), 1 =
+# every player may run .autogear on themselves only. Never affects bots.
+# The value below is the value that actually runs.
+#AiPlayerbot.PlayerAutogearForAll = 0
+
 # Summon the joining bot to its inviter on group accept, with the condition
 # knobs below (dead bots are only revived when both the dead-bot and revive
 # knobs are on; repair runs after arrival).
@@ -2190,6 +2195,10 @@ AiPlayerbot.RndBotCheats = repair,breath,item
 # To turn the bot CSV logs off, leave this list empty (AiPlayerbot.AllowedLogFiles =). The dashboard does not need
 # these files: it is fed over UDP by the observability emitter, so activity, deaths and kills keep flowing.
 AiPlayerbot.AllowedLogFiles = bot_events.csv,deaths.csv
+
+# Opt-in engaged raid boss threat snapshots (2 s) and spell-damage packet observations.
+# Requires bot_events.csv above. Hit health is a sample/estimate, not exact post-hit health.
+AiPlayerbot.RaidBossDiagnostics = 0
 
 # Days of bot logs to keep. The live file is plain text; every hour and at server start it is packed into
 # <name>_<date>_<time>.csv.gz next to it (named after the time it was closed), and packs older than this
