@@ -379,6 +379,10 @@ AiPlayerbot.TravelPickBudgetUs = 4000
 # command points players to one); 1 = .bot hire also works anywhere. Fees are
 # the same either way.
 #AiPlayerbot.HireAnywhere = 0
+# HireAllowPvP: 0 = hired companions are PvE-only (queueing for a battleground
+# warns once, entering dismisses them, hiring is refused while queued or
+# inside). 1 = today's behaviour (hires may go to battlegrounds).
+#AiPlayerbot.HireAllowPvP = 0
 # ShamanTankEnabled: 1 = the experimental 7.3 shaman tank build (Enhancement
 # (Tank)) is offered at recruiters and by `.bot hire`, and random pool shamans
 # may roll it. 0 = withheld everywhere. Shamans already on the build keep it.
@@ -1125,7 +1129,11 @@ AiPlayerbot.RandomBotSayWithoutMaster = 0
 
 # Automation
 
-# Bots pick their quest reward (yes = picks first useful item, no = list all rewards, ask = pick useful item and lists if multiple)
+# How alt bots pick a quest reward when the quest offers a choice (other bots always pick themselves):
+#   yes = always pick the best item themselves
+#   no  = always list every reward and wait for you to choose with: r [item]
+#   ask = take the reward themselves when only one is useful to them; list the useful ones and wait
+#         for r [item] only when more than one is useful. So in one party some bots ask and some don't.
 AiPlayerbot.AutoPickReward = yes
 
 # Bots equip upgrades (Bots will equip any item obtained from looting or a quest if they are upgrades)
