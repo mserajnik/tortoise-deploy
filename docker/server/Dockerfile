@@ -136,10 +136,12 @@ RUN \
       exit 1; \
     fi; \
     # `mangosd` applies a module's SQL only from
-    # `/opt/tortoise/modules/<module>/data/sql/<target>` and skips anything
-    # else without a word, so check where `make install` put each SQL file a
-    # module provides. Only the modules in `TORTOISE_MODULE_SQL_MODULES` may
-    # provide SQL. A failed `find` fails the build, because two empty lists
+    # `/opt/tortoise/modules/<module>/data/sql/<target>` and silently skips
+    # anything else, so check where `make install` put each SQL file a module
+    # provides. Only the modules in `TORTOISE_MODULE_SQL_MODULES` may provide
+    # SQL. A module's `tools/` contains developer tooling that is never
+    # installed, so it is left out. It may contain SQL to apply by hand on a
+    # test server. A failed `find` fails the build, because two empty lists
     # would compare equal.
     ( \
       IFS='|'; \
@@ -150,8 +152,8 @@ RUN \
         : >/build/module-sql-expected; \
         : >/build/module-sql-installed; \
         find -L "$module_path" -xdev -type f -iname '*.sql' \
-          -not -path "$module_path/.git/*" -printf '%P\n' \
-          >/build/module-sql-shipped || exit 1; \
+          -not -path "$module_path/.git/*" -not -path "$module_path/tools/*" \
+          -printf '%P\n' >/build/module-sql-shipped || exit 1; \
         if [ -s /build/module-sql-shipped ]; then \
           case ",$TORTOISE_MODULE_SQL_MODULES," in \
             *",$module_directory,"*) ;; \
