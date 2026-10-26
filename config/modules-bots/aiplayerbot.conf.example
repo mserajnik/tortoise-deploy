@@ -493,7 +493,12 @@ AiPlayerbot.TravelPickBudgetUs = 4000
 # bot-only group of up to five to themselves with `.bot commander bind
 # <LeadBot> [<Bot>...]` and leads it from anywhere (another zone, outside the
 # instance) with `.bot cmd ...` orders that name their target by GUID or a 3D
-# point. Off by default; with 0 both commands answer that the feature is off.
+# point; `.bot commander view` sends the TBM:VIEW feed. This is how an outside
+# program (an AI agent such as turtle-agent) drives a party, so it is off by
+# default: turn it on only if you run such a program. With 0 a player still
+# binds his own party with `inparty` and uses `.bot cmd enter` and `.bot cmd summon`
+# for the run leader (needs AiPlayerbot.DungeonSelfClear = 1); every other
+# commander command answers that the feature is off.
 #AiPlayerbot.RemoteCommander = 0
 
 # Issue #884, phase 2: while a commander is bound and its feed is on (`.bot
@@ -502,6 +507,55 @@ AiPlayerbot.TravelPickBudgetUs = 4000
 # engaged hostile's threat list) every this many milliseconds. Built from what
 # the bots already track; no extra world scan. Clamped to 250..60000.
 #AiPlayerbot.RemoteCommanderViewMs = 1000
+
+# Work in progress. These features are not officially released and not supported yet. Enable them at your own risk.
+# Until the official release, bug reports and feedback about them are not handled through the issue tracker; contact Hypeer directly.
+# Run trace (opt-in, off by default). A GM, or the owner of the bots, runs
+# `.bot trace start <run_id> [party|bot <Name>]` and the server records what the
+# party's bots do - hp/power/position/target/strategy, the hostiles they see and
+# who they hold, every action with its result (OK / FAILED / IMPOSSIBLE / USELESS /
+# PREREQ / VETOED / BACKOFF), deaths, combat enter/leave, loot, facing and movement - as one JSONL
+# file (<run_id>.jsonl) plus <run_id>.summary.json, until `.bot trace stop`.
+# tools/trace_score.py scores the file offline. Schema: docs/server/run-trace.md.
+# Costs nothing while no run is active; a run reads only what the bots already
+# track (no world scan, no database), builds its lines on the world thread and
+# writes them on a separate thread through a bounded queue (lines are dropped and
+# counted if the disk cannot keep up). With 0 `.bot trace start` answers that the
+# feature is off, and a run in progress ends at the next tick.
+#AiPlayerbot.RunTrace.Enabled = 0
+
+# Milliseconds between two frames of a run (clamped to 250..10000).
+#AiPlayerbot.RunTrace.IntervalMs = 500
+
+# Where traces are written; a relative path is under LogsDir.
+#AiPlayerbot.RunTrace.Dir = traces
+
+# Only a GameMaster may start a trace (each takes up to MaxFileMb of disk).
+# With 0 the owner of the bots may start one too.
+#AiPlayerbot.RunTrace.GmOnly = 1
+
+# Size cap of one trace file in MiB (clamped to 1..1024). When it is reached the
+# run ends (end reason size_cap) with its end record intact.
+#AiPlayerbot.RunTrace.MaxFileMb = 64
+
+# Issue #1012: `.bot cmd gossip <npc entry> <bot> <option>` lets a commanded bot
+# talk to an NPC and pick a gossip option (a commander's own order needs AiPlayerbot.RemoteCommander = 1; the run leader's gossip steps need only AiPlayerbot.DungeonSelfClear = 1). A gossip option can do anything its script says (take money,
+# give items, teleport), so a bot talks only to the creature entries listed
+# here, comma-separated, after you have read what their scripts do. Empty = the
+# order is refused for every NPC (the default). Audited entries:
+#   7607 Weegli Blastfuse (Zul'Farrak): after the pyramid event his one option
+#        sends him to blow the End Door open; before it his menu is empty.
+#   7604 Sergeant Bly (Zul'Farrak): after the pyramid event his one option starts
+#        his fight (he and his crew turn hostile and attack the bot that asked).
+# To allow both: AiPlayerbot.BotGossipNpcs = 7607,7604
+# Since fix/plan-gossip-allow (SFK r27 slot7 stopped at step 130/313 when its
+# plan's gossip step was refused Deathstalker Adamant, 3849), a dungeon run did
+# not need this list for its own gossip steps: a bot of a running or paused run
+# was let talk to the NPC entry the run's CURRENT gossip step names (the step's
+# `entry` only), read from the loaded plan, and to no other. A manual
+# order outside a run, another NPC, or a run at any other step still needed the
+# entry listed here.
+#AiPlayerbot.BotGossipNpcs =
 
 # Bounded AH market population through the native bot/session auction path. Default off.
 # When enabled, online random Headless bots use real inventory items, pricing, deposits,
@@ -786,6 +840,199 @@ AiPlayerbot.PaladinJudgementUpkeep = 1
 # 0 - generic target choice and no egg avoidance
 # 1 - whelp duty and egg avoidance (Default)
 AiPlayerbot.OnyxiaWhelpsAndEggs = 1
+
+# Work in progress. These features are not officially released and not supported yet. Enable them at your own risk.
+# Until the official release, bug reports and feedback about them are not handled through the issue tracker; contact Hypeer directly.
+# Dungeon boss tactics.
+# Per-boss rows from the world table ai_boss_tactic (map + boss entry) that bots
+# apply while they fight that boss: interrupt a listed spell, kill a listed add
+# before anything else (in a listed order), stay out of the boss's front during a
+# listed frontal attack. Built from Turtle's own core data; Uldaman up to
+# Ironaya and the Obsidian Sentinel so far (docs/play/boss-tactics.md).
+# This changes how bots play in dungeons, so it is off for everybody by default.
+# Bots of a bound group (a commander's or the run leader's) get the tactics regardless of
+# this key. An explicit target order from a player always wins.
+# 0 - off, except for commander-bound groups (Default)
+# 1 - on for every bot on a map that has rows
+AiPlayerbot.DungeonTactics = 0
+
+# Dungeon self-clear (the run leader).
+# `.bot run start [plan]` lets a bound party clear a dungeon plan (world tables
+# ai_dungeon_plan/leg/step) by itself: it walks the route, pulls the packs, kills
+# the bosses and opens the doors, and pauses on 3 dead, on any player order and
+# at every wait's ceiling. A player starts it for his own party (`.bot commander
+# bind <LeadBot> [<Bot>...] inparty`, then `.bot run start`), and the bot LFG
+# groups (AiPlayerbot.BotLfgGroups) start it for bot-only parties. Leading a
+# party from outside it also needs AiPlayerbot.RemoteCommander = 1
+# (docs/play/dungeon-run-leader.md).
+# `.reload config` reads this key and the AiPlayerbot.DungeonRun* keys below again
+# (only those; every other setting here needs a restart).
+# 0 - `.bot run` is refused
+# 1 - the run leader is on (Default)
+AiPlayerbot.DungeonSelfClear = 1
+
+# Bot LFG dungeon groups: world bots of a dungeon's level band form a group and
+# clear the dungeon with the run leader. So far only the server's own run of a
+# bot-only party exists (a GameMaster starts one with `.bot run system start
+# <plan>`, the lead bot targeted); forming the groups is not built yet.
+# Needs AiPlayerbot.DungeonSelfClear = 1 (with it off the server log says the
+# feature stays dormant). Does not need AiPlayerbot.RemoteCommander.
+# `.reload config` reads this key again.
+# 0 - off (Default)
+# 1 - on
+AiPlayerbot.BotLfgGroups = 0
+
+# The run leader's walk back after a guarded fight. When the tank left its stand
+# to take mobs off the party, the run used to walk the tank and the party back to
+# that stand after every fight, then forward again to the next pack or boss.
+# 0 - once the step's pack is cleared (or on a move step) the run goes on from
+#     where the tank stands; a pack with units left is still pulled from the
+#     stand, so the tank goes back to it first (Default)
+# 1 - walk back to the stand after every guarded fight, as before 2026-10-22
+# Only read while AiPlayerbot.DungeonSelfClear = 1.
+AiPlayerbot.DungeonRunWalkBackAfterWonFight = 0
+
+# The run leader's retreat at two dead. In a fight with two members dead, the lead
+# bot alive and no engaged unit losing hp for 15 s, the living walk back to the
+# run's last stand (at most 40 yd away) once, for at most 20 s, before a third
+# death makes it a wipe. Never in a scripted event or against an event boss.
+# 0 - off: the party fights on as before (Default)
+# 1 - on
+# Only read while AiPlayerbot.DungeonSelfClear = 1.
+AiPlayerbot.DungeonRunRetreatAt2Dead = 0
+
+# The run leader's rescue of a stuck walk back. A walk back whose lead bot is stuck
+# short of its point after its tries, and a placed run's lead bot revived behind
+# the run's start step, are teleported to a safe point on the run's way (out of
+# every live pack's reach), out of combat, once a step.
+# 0 - off: the stuck walk back pauses as before
+# 1 - on (Default)
+# Only read while AiPlayerbot.DungeonSelfClear = 1.
+AiPlayerbot.DungeonRunWalkBackRescue = 1
+
+# The run leader's fight forward. After a won fight, the next pack within 30 yd
+# of the tank is pulled from where the tank stands instead of walking the plan's
+# rows back to its stand, when the navmesh path to it is direct, the tank sees it
+# and no live hostile stands by the way.
+# 0 - off: the plan's rows as before
+# 1 - on (Default)
+# Only read while AiPlayerbot.DungeonSelfClear = 1.
+AiPlayerbot.DungeonRunFightForward = 1
+
+# The run leader's light rest lines. Before a small pull (or with no fight ahead)
+# the party rests only under 60 % health / 35 % healer mana / 25 % mana and to
+# 75 / 60 / 45; before a boss, an event or a big pull the full lines stay.
+# 0 - off: the full lines everywhere, as before
+# 1 - on (Default)
+# Only read while AiPlayerbot.DungeonSelfClear = 1.
+AiPlayerbot.DungeonRunLightRest = 1
+
+# The run leader's time limit, in minutes from `.bot run start` (a pause counts).
+# At the limit the run ends and its status line says "time limit reached (3h)".
+# 0 - no limit
+# 180 - three hours (Default)
+AiPlayerbot.DungeonRunMaxMinutes = 180
+
+# The run leader's pull aggro estimate. Before each pack pull it works out how many
+# other creatures the pull would bring (the pack, creatures in aggro range of the
+# party, one ring of family assistance) and, when that is more than the ceiling
+# below, rests the party to its end lines once before it pulls (status note
+# "N joiners expected"). It adds no movement and never skips a pull.
+# 0 - off, the run leader pulls as before (Default)
+# 1 - on
+AiPlayerbot.DungeonRunAggroEstimate = 0
+
+# Joiners (creatures besides the pulled one) above which the estimate rests the party first.
+# 6 - default; 1 and up. Only read while AiPlayerbot.DungeonRunAggroEstimate = 1.
+AiPlayerbot.DungeonRunAggroCeiling = 6
+
+# The run leader's regroup after a death: how long it waits for a living priest,
+# paladin or shaman (a druid's Rebirth only when none of those lives) to raise the
+# fallen where they lie before `cmd revive party` sends them to the spirit healer.
+# 0 - a fixed 15 s wait when a priest, paladin or shaman is out of combat (Default)
+# 1 - the rez hold: up to 60 s (more for each extra body), a resurrector short of
+#     mana is waited for up to 90 s, bodies over 80 yd away are not waited for
+# Only read while AiPlayerbot.DungeonSelfClear = 1.
+AiPlayerbot.DungeonRunRezHold = 0
+
+# The run leader's pull stand. A `pullback` goes out only when the tank can shoot
+# from where it stands: the target in its sight, within its ranged pull's range
+# less 5 yd, and the tank standing still (it is waited for up to 3 s). Otherwise
+# the party walks to a firing stand on the tank's navmesh path to the target
+# first (at most 2 stands per target and step), then the order goes out; a stand
+# walk that gets stuck gives the stand up, it never pauses the run. Only a pull with
+# a ranged weapon (bow, crossbow, gun, thrown, wand) is covered: a spell pull or a
+# body pull (no ranged weapon, skill or ammo) goes out as before.
+# The status note of each order names the target's guid and how its shot stood.
+# 0 - off, the run leader pulls as before (Default)
+# 1 - on
+# Only read while AiPlayerbot.DungeonSelfClear = 1.
+AiPlayerbot.DungeonRunPullStand = 0
+
+# The run leader's loot step when the corpse's item is another member's under the group's loot
+# rules (round robin / group loot: the loot step is refused with "nothing this bot may loot",
+# e.g. Uldaman, Revelosh's Shaft of Tsol). With 1 the lead bot (it leads the bound group) sets
+# the loot method to free-for-all, the carrier loots the item, and the method goes back to
+# what it was; it also goes back when the run pauses or stops in between. Once per step. If the
+# lead bot does not lead the group or the order is refused, the step goes on as before (the
+# next bot is tried).
+# 0 - off, the run leader tries the other bots in turn as before (Default)
+# 1 - on
+# Only read while AiPlayerbot.DungeonSelfClear = 1.
+AiPlayerbot.DungeonRunLootFfa = 0
+
+# Player-led runs (owner 2026-10-23). A player who leads his own party of bots
+# (up to three other players may be in it) starts `.bot run start [plan] player
+# [tank <Bot>]`: he walks wherever he wants, and the run leader pulls the plan's
+# packs near him with the tank bot, marks, crowd controls, rests and revives.
+# Plain `.bot run start` stays bot-led. Needs AiPlayerbot.DungeonSelfClear = 1.
+# 0 - `.bot run start ... player` is refused (Default)
+# 1 - a player who leads his party may start a player-led run
+AiPlayerbot.DungeonRunPlayerLed = 0
+
+# How close (yards, straight line) the leading player must stand to a plan pack
+# or boss for the player-led run to pull it.
+# 40 - default; 5 to 100. Only read while AiPlayerbot.DungeonRunPlayerLed = 1.
+AiPlayerbot.DungeonRunPlayerLedPullYd = 40
+
+# How long (minutes) the leading player of a player-led run may be out of the
+# plan's dungeon. Meanwhile the bots that stayed inside hold where they stand;
+# back in time, they follow him again and the run goes on. Past it the run
+# stops with a note and its binding ends (the bots keep holding).
+# 10 - default; 1 to 60. Only read while AiPlayerbot.DungeonRunPlayerLed = 1.
+AiPlayerbot.DungeonRunPlayerLedAwayMinutes = 10
+
+# Scripted area triggers for bots (an audited allowlist of trigger ids, off by default).
+# A bot has no game client, so it never tells the server it walked into an area
+# trigger, and a trigger script never ran for it: Zul'Farrak's Witch Doctor
+# Zum'rah, who only turns hostile through such a script, stayed friendly in
+# front of an all-bot party. A living bot in a group inside a dungeon (not a
+# raid) now runs the script of a listed trigger it walks into, once per entry,
+# as a player's client would - but only when its party is clearing on purpose:
+# bound to a remote commander (every run-leader run is), or with a human member
+# within 40 yd. A follower running ahead of its player cannot start an event
+# alone. Instance entrances and exits, taverns and battleground entrances never
+# fire, listed or not. Each bot checks its own map's listed triggers twice a
+# second (no world scan).
+# Not every trigger script is safe to start from a bot (at_ring_of_law starts
+# the Blackrock Depths arena, the UBRS stadium trigger starts that event,
+# at_shadowforge_bridge spawns guards), so read and document a trigger's script
+# in docs/server/settings/dungeons-raids.md before adding its id here.
+# Audited ids (set the key to these to opt in):
+#   962 - Zul'Farrak, at_zumrah: if Witch Doctor Zum'rah is alive within 30 yd,
+#         he turns hostile, yells, and his encounter is marked in progress
+#         (nothing else). Opt in with: AiPlayerbot.BotAreaTriggers = 962
+# Since fix/plan-gossip-allow a dungeon run did not need this list for its own
+# plan: a move or move_direct step whose `entry` names a trigger armed it for the
+# run's bots from that step on until it fired once for the run (Zul'Farrak's walk
+# into 962), and no other unlisted trigger. A refused script (at_zumrah with
+# Zum'rah farther than 30 yd) kept it armed and was tried again every 2 s while
+# the bot stood inside. A run started past that move step never armed it: when
+# the event had not happened, the run was started again from before the step.
+# Comma-separated trigger ids; empty (the default) turns the feature off.
+# New automation, so it is off by default.
+# Default: (empty)
+AiPlayerbot.BotAreaTriggers =
 
 # Keep out of creature auras.
 # Some creatures carry a permanent damaging aura that pulses around them even
