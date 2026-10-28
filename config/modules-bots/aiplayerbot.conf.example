@@ -383,6 +383,10 @@ AiPlayerbot.TravelPickBudgetUs = 4000
 # warns once, entering dismisses them, hiring is refused while queued or
 # inside). 1 = today's behaviour (hires may go to battlegrounds).
 #AiPlayerbot.HireAllowPvP = 0
+# HireLoot: 1 = hired companions loot corpses and roll on group loot (today's
+# behaviour). 0 = a hire never loots: it passes on every roll and leaves every
+# corpse alone. Hires never quest, whatever this is set to.
+#AiPlayerbot.HireLoot = 1
 # ShamanTankEnabled: 1 = the experimental 7.3 shaman tank build (Enhancement
 # (Tank)) is offered at recruiters and by `.bot hire`, and random pool shamans
 # may roll it. 0 = withheld everywhere. Shamans already on the build keep it.
@@ -871,16 +875,42 @@ AiPlayerbot.DungeonTactics = 0
 # 1 - the run leader is on (Default)
 AiPlayerbot.DungeonSelfClear = 1
 
-# Bot LFG dungeon groups: world bots of a dungeon's level band form a group and
-# clear the dungeon with the run leader. So far only the server's own run of a
-# bot-only party exists (a GameMaster starts one with `.bot run system start
-# <plan>`, the lead bot targeted); forming the groups is not built yet.
+# Bot LFG dungeon groups: online, idle world bots of one faction and of a proven
+# dungeon's level band (table ai_bot_lfg_plan; the band is the LFT addon's) form a
+# group of four, tank, healer and damage, with one role left open for a player.
+# When no player joins within AiPlayerbot.BotLfgFillAfterMinutes, a bot of the open
+# role joins. Getting the group to the dungeon is not built yet, so a full group
+# breaks up again after two minutes. A GameMaster watches and drives them with
+# `.bot run lfg list | form [plan] | fill <id> | disband <id>`; `.bot run system`
+# runs a bot-only party through a dungeon by hand.
 # Needs AiPlayerbot.DungeonSelfClear = 1 (with it off the server log says the
 # feature stays dormant). Does not need AiPlayerbot.RemoteCommander.
 # `.reload config` reads this key again.
 # 0 - off (Default)
 # 1 - on
 AiPlayerbot.BotLfgGroups = 0
+
+# Bot LFG groups: how long a group of four waits for a player before a bot takes
+# the open slot (minutes, 1-60). Only read while AiPlayerbot.BotLfgGroups = 1.
+# `.reload config` reads it again.
+# Default: 10
+AiPlayerbot.BotLfgFillAfterMinutes = 10
+
+# Bot LFG groups: how many groups exist at once per 100 bots online (0-20; 0 forms none by itself, a GameMaster still can). Only read while AiPlayerbot.BotLfgGroups = 1.
+# `.reload config` reads it again.
+# Default: 1
+AiPlayerbot.BotLfgGroupsPer100Bots = 1
+
+# Bot LFG groups: the most groups at once (0-20). Only read while AiPlayerbot.BotLfgGroups = 1.
+# `.reload config` reads it again.
+# Default: 5
+AiPlayerbot.BotLfgMaxGroups = 5
+
+# Bot LFG groups: groups form only while at least one real player is online. Only read while AiPlayerbot.BotLfgGroups = 1.
+# `.reload config` reads it again.
+# 0 - also on an empty server
+# 1 - only with a player online (Default)
+AiPlayerbot.BotLfgOnlyWithPlayersOnline = 1
 
 # The run leader's walk back after a guarded fight. When the tank left its stand
 # to take mobs off the party, the run used to walk the tank and the party back to
@@ -1001,6 +1031,22 @@ AiPlayerbot.DungeonRunPlayerLedPullYd = 40
 # stops with a note and its binding ends (the bots keep holding).
 # 10 - default; 1 to 60. Only read while AiPlayerbot.DungeonRunPlayerLed = 1.
 AiPlayerbot.DungeonRunPlayerLedAwayMinutes = 10
+
+# Bot-only runs only: the run leader GIVES each needed dungeon item/key (the plan's
+# ai_dungeon_leg_need rows) to every bot of the party at the start, and TAKES it back
+# at the end, on stop, when a bot leaves, or when a real player joins. The warn/hold/skip
+# check (a key door warns and holds, a blocking item asks, an optional leg skips) is always on.
+# 1 - give the items to the bots (Default)
+# 0 - give nothing (blocking items refuse the start of a bot-only run instead)
+# Only read while AiPlayerbot.DungeonSelfClear = 1.
+AiPlayerbot.DungeonRunGiveItems = 1
+
+# When 1, bots also carry the needed dungeon keys/items in a party WITH real players and open
+# the doors for them (players skip the key content); 0 = players must bring their own key,
+# the bots stop at the door and ask. Only read while AiPlayerbot.DungeonSelfClear = 1.
+# 0 - players bring their own key, the bots stop at the door and ask (Default)
+# 1 - bots carry the keys and open the doors
+AiPlayerbot.DungeonRunBotKeysForPlayers = 0
 
 # Scripted area triggers for bots (an audited allowlist of trigger ids, off by default).
 # A bot has no game client, so it never tells the server it walked into an area
