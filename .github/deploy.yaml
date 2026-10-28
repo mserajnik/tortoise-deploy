@@ -11,7 +11,7 @@ sources:
   core:
     repository: tortoise-wow/tortoise-wow
     branch: main
-    pin: 57abad6f33bffbeb0019b17101d605125a45a40b
+    pin: d9bbcd598a98a41fbf39cae5d630dd72b790d10f
     cutoff: 7efe82e09c2dfa7d00b96dd20eb12e0496f4ab61
   autoscale:
     repository: Penqle/tw-mod-autoscale
