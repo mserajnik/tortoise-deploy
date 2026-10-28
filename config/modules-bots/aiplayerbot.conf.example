@@ -345,7 +345,7 @@ AiPlayerbot.TravelPickBudgetUs = 4000
 # Default-on bounded fill of human-waiting LFT queues with live random Headless bots.
 # Uses core #416 QueuePlayer/LeaveQueue/IsQueued/IsInOffer/AcceptOffer/
 # GetQueuedPlayers; core owns private queues, offers, cancellation and groups.
-# Candidates use AiFactory roles and the hardcoded Soromeister LFT.allDungeons
+# Candidates use AiFactory roles and the hardcoded Turtle client LFT LFT_Data.lua
 # minLevel/maxLevel range table (see LftBotFillService.cpp; no DBC fallback),
 # not an average-human +/-5 approximation. Unknown/corrupt/custom ranges fail
 # closed and log once.
@@ -878,6 +878,7 @@ AiPlayerbot.DungeonSelfClear = 1
 # Bot LFG dungeon groups: online, idle world bots of one faction and of a proven
 # dungeon's level band (table ai_bot_lfg_plan; the band is the LFT addon's) form a
 # group of four, tank, healer and damage, with one role left open for a player.
+# While it waits it looks for that player in the LookingForGroup channel (AiPlayerbot.BotLfgChat).
 # When no player joins within AiPlayerbot.BotLfgFillAfterMinutes, a bot of the open
 # role joins. Getting the group to the dungeon is not built yet, so a full group
 # breaks up again after two minutes. A GameMaster watches and drives them with
@@ -911,6 +912,18 @@ AiPlayerbot.BotLfgMaxGroups = 5
 # 0 - also on an empty server
 # 1 - only with a player online (Default)
 AiPlayerbot.BotLfgOnlyWithPlayersOnline = 1
+
+# Bot LFG groups: the leader of a group that waits for a player posts one line in
+# its faction's LookingForGroup channel (the dungeon, the open role, the level
+# band, "w me inv"), again every 3 minutes, never more than one post per 30 s per
+# faction across all groups, and only while a real player of that faction is
+# online. A real player who whispers the leader "inv" gets a party invite when his
+# faction, level and class fit the open role; other whispers get one short answer.
+# Not limited by AiPlayerbot.EnableBroadcasts. Only read while
+# AiPlayerbot.BotLfgGroups = 1. `.reload config` reads it again.
+# 0 - off
+# 1 - on (Default)
+AiPlayerbot.BotLfgChat = 1
 
 # The run leader's walk back after a guarded fight. When the tank left its stand
 # to take mobs off the party, the run used to walk the tank and the party back to
