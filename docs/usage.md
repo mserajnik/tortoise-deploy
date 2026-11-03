@@ -41,9 +41,9 @@ Each module has its own configuration file under `config/modules/` or
 an option in a module's file overrides the same one in your `mangosd.conf`.
 TortoiseBots reads two files: `tortoise_bots.conf` contains the module's own
 options, which work as they are, and `aiplayerbot.conf` contains the bot
-behavior. With the example `aiplayerbot.conf`, turning the module on with
-`AiPlayerbot.Enabled` causes, among other things, a large number of random bots
-to spawn, so adjust the file to your hardware and to your desired setup.
+behavior. With the example `aiplayerbot.conf`, the module is on and, among
+other things, a large number of random bots spawn, so adjust the file to your
+hardware and to your desired setup.
 [TortoiseBots' documentation][tortoisebots-docs] describes what the module can
 do and how to set it up. tortoise-deploy leaves out the optional TortoiseBots
 tools, such as the observability dashboard.

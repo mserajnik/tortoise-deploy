@@ -45,11 +45,28 @@ TortoiseBots.LogLevel = 2
 # AiPlayerbot.AsyncTravelPartitions = 0
 
 # Observability telemetry UDP emitter (non-blocking emission to tortoise-observability daemon).
-# Default 0 (switched off). Set to 1 to enable.
+# Default 1 (on). Set to 0 to stop sending dashboard data.
 # Host defaults to loopback. In Docker, point it at the observability service
 # name (e.g. "observability") or set the OBSERVABILITY_HOST environment variable.
+# This is turned off by default in tortoise-deploy because it does not provide
+# the observability dashboard.
 AiPlayerbot.Observability = 0
 AiPlayerbot.ObservabilityPort = 9195
 AiPlayerbot.ObservabilityHost = 127.0.0.1
 # Mobs, threat and target lines for every dungeon run on the dashboard's Dungeons tab (only acts with Observability = 1).
 AiPlayerbot.ObservabilityDungeonMobs = 1
+# Raids tab: leader, offline members and the live fight window of every raid group, without a commander bind (only acts
+# with Observability = 1; the fight window and its fights also need AiPlayerbot.CombatMonitor = 1 in aiplayerbot.conf).
+# On only when both this file and aiplayerbot.conf say 1; 0 in either turns it off (re-read on .reload config).
+AiPlayerbot.ObservabilityRaids = 0
+# Live dashboard: fight events (deaths, pulls, taunts, interrupts, elite and boss casts, kill/wipe) as they happen and,
+# with the keys below, faster positions while fighting. 0 turns all of it off at once (re-read on .reload config).
+# Fight events need AiPlayerbot.CombatMonitor = 1 in aiplayerbot.conf.
+AiPlayerbot.ObservabilityRealtime = 1
+AiPlayerbot.ObservabilityRealtime.Events = 1
+# At most one event datagram per commander per this many ms (100..2000).
+AiPlayerbot.ObservabilityRealtime.EventGapMs = 250
+# Positions of a commander's bots and nearby enemies: every CombatMs while the group fights, every IdleMs otherwise
+# (250..2000 ms; IdleMs 2000 = only the regular 2 s report).
+AiPlayerbot.ObservabilityRealtime.CombatMs = 500
+AiPlayerbot.ObservabilityRealtime.IdleMs = 2000
