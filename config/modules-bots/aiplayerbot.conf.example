@@ -23,6 +23,9 @@ AiPlayerbot.ObservabilityDungeonMobs = 1
 # with Observability = 1; the fight window needs AiPlayerbot.CombatMonitor = 1 in this file). On only when both this
 # file and the world config say 1; 0 in either turns it off (re-read on .reload config).
 AiPlayerbot.ObservabilityRaids = 0
+# Raids tab detail: the ready check and the boss debuffs, appended at the END of the RAIDS line (only acts with
+# ObservabilityRaids = 1 here and in the world config; sent at most every 5 s). 0 in either turns it off.
+AiPlayerbot.ObservabilityRaidsDetail = 0
 
 # Enable random bot system
 # On by default: a fresh install brings up a living world of random bots
@@ -563,6 +566,38 @@ AiPlayerbot.BotGearPresets = prebis=t1 ilvl=63;lkh=t2 ilvl=63;zg=t2 ilvl=63;aq20
 # run ends (end reason size_cap) with its end record intact.
 #AiPlayerbot.RunTrace.MaxFileMb = 64
 
+# Decision capture (test servers only): while a dungeon run leader runs and this
+# is on, every tick of its policy is written to a rotating JSONL capture under
+# LogsDir/decisions: the whole facts it read and the whole run it saw, before
+# and after the tick, with the order it decided. A live failure can then be cut
+# into a replay fixture (tools/replay_decisions) and kept as a regression test.
+# One record is roughly 12-40 KB at 1 Hz, so 45-145 MB per hour per run and
+# about 300 MB for a two-hour walk; nothing is written while it is off.
+# Format, files, privacy and the fixture workflow: docs/server/decision-capture.md.
+#AiPlayerbot.DecisionCapture.Enabled = 0
+
+# Where captures are written; a relative path is under LogsDir.
+#AiPlayerbot.DecisionCapture.Dir = decisions
+
+# A segment rotates past this many MiB (clamped to 1..256).
+#AiPlayerbot.DecisionCapture.SegmentMiB = 32
+
+# Segments of one capture past this many MiB are deleted oldest first
+# (clamped to SegmentMiB..4096); the segment being written is never deleted.
+#AiPlayerbot.DecisionCapture.CaptureMiB = 512
+
+# The whole folder past this many MiB drops its oldest ended captures
+# (clamped to CaptureMiB..65536). A running capture is never dropped.
+#AiPlayerbot.DecisionCapture.TotalMiB = 4096
+
+# A record larger than this is written as a stub and the next tick is a
+# keyframe (clamped to 64..4096 KiB).
+#AiPlayerbot.DecisionCapture.RecordKiB = 512
+
+# A full keyframe every this many records, and always at a segment start
+# (clamped to 1..600).
+#AiPlayerbot.DecisionCapture.KeyframeEvery = 60
+
 # Issue #1012: `.bot cmd gossip <npc entry> <bot> <option>` lets a commanded bot
 # talk to an NPC and pick a gossip option (a commander's own order needs AiPlayerbot.RemoteCommander = 1; the run leader's gossip steps need only AiPlayerbot.DungeonSelfClear = 1). A gossip option can do anything its script says (take money,
 # give items, teleport), so a bot talks only to the creature entries listed
@@ -675,6 +710,10 @@ AiPlayerbot.CraftToolsAlways = 1
 # Guild orders may use guild bank money for auction house purchases after the bot's own gold.
 # Default 1. Guild bank access is still limited by the core's rank rules.
 AiPlayerbot.GuildOrderBankGold = 1
+# Let players order finished goods from the auction house: 1 = `.bot order <bot> buy ...`
+# works from chat and the addon shows Buy; 0 = Buy orders are refused (the bot still
+# buys materials itself while it works on farm and craft orders). Default 0.
+AiPlayerbot.GuildOrderPlayerBuy = 0
 # Let working orders ask another guild bot to make or farm a missing reagent (a sub-order).
 # Default 1. Each part of the supply chain has its own switch.
 AiPlayerbot.GuildOrderSubOrders = 1
@@ -925,6 +964,53 @@ AiPlayerbot.DungeonRunLinkedDeath = 0
 # 1 - on
 AiPlayerbot.DungeonRunAuraTactics = 0
 
+# A needs_aura row names an entry and the aura a bot must carry: a bot without it never targets, attacks or taunts that unit, and the run guard sends nobody at it.
+AiPlayerbot.DungeonRunAuraGatedTargets = 0
+
+# The kill_first candidates come from a grid search of the row's entries within 40 yd too, not only from each bot's attackers list (which "focus rti targets" collapses to the raid mark).
+AiPlayerbot.DungeonRunKillFirstGrid = 0
+
+# A kill-first focus on a totem is DPS-only, is issued before the run leader's guard, and the guard skips totems.
+AiPlayerbot.DungeonRunTotemFocus = 0
+
+# The use_object boss tactic of the boss tactics rows (ai_boss_tactic, docs/play/boss-tactics.md): one designated
+# bot clicks the ready game object nearest the boss while the row's aura is up or its window has run out, and mode
+# tank_anchor also walks the boss to the object first. With this key off the rows are ignored, so the table
+# behaves exactly as before the kind. This is its own key on top of AiPlayerbot.DungeonTactics (or a
+# commander-bound group) because the kind changes what a bot does mid-fight. `.reload config` reads it again with
+# the other AiPlayerbot.DungeonRun* keys.
+# 0 - off: use_object rows are ignored (Default)
+# 1 - on
+AiPlayerbot.DungeonRunUseObject = 0
+
+# The swap_on_aura boss tactic of the boss tactics rows (ai_boss_tactic, docs/play/boss-tactics.md): at the row's stack
+# count of its aura on the tank the boss is on, the next tank of the row's rotation that is alive, knows a taunt it
+# can cast on the boss (Taunt, Growl or Hand of Reckoning; Taunt and Growl are melee-range) and carries fewer than
+# half the row's threshold takes the boss off it. The swapped-off tank then holds for 20 s or until its own
+# stacks are gone, whichever comes first: it stops attacking the boss, and every action aimed at that boss (any
+# class's threat builder, melee swing or cast), all area damage and every taunt stay down, so it cannot take the boss
+# back. The hold ends at once when the boss is no longer on the new tank (a resisted taunt, a dead new tank), so the
+# old tank can rescue; an explicit player attack order on the boss also clears it. With this key off the rows are
+# ignored, so the table behaves exactly as before the kind. Needs
+# AiPlayerbot.DungeonRunAuraTactics as well (the row is one of the six aura kinds). This is its own key on top of
+# AiPlayerbot.DungeonTactics (or a commander-bound group) because the kind changes what the tanks do mid-fight.
+# `.reload config` reads it again with the other AiPlayerbot.DungeonRun* keys.
+# 0 - off: swap_on_aura rows are ignored (Default)
+# 1 - on
+AiPlayerbot.DungeonRunTankSwap = 0
+
+# A seek_aura row makes the raid gather in the cloud a dying source creature leaves; off ignores the rows.
+AiPlayerbot.DungeonRunSeekAura = 0
+
+# A pull_gate row makes the run leader refuse a boss pull while the boss wears the row's spell; off ignores the rows.
+AiPlayerbot.DungeonRunPullGate = 0
+
+# A bot charmed by a creature yields its AI to the charmer, and no area action lands on a charmed group member.
+AiPlayerbot.DungeonRunCharmYield = 0
+
+# A spread row widens the ranged raid's spacing while the boss fights; off ignores the rows.
+AiPlayerbot.DungeonRunBossSpread = 0
+
 # Dungeon self-clear (the run leader).
 # `.bot run start [plan]` lets a bound party clear a dungeon plan (world tables
 # ai_dungeon_plan/leg/step) by itself: it walks the route, pulls the packs, kills
@@ -1133,6 +1219,25 @@ AiPlayerbot.DungeonRunPackClearMarginYd = 10
 # How many residue pulls a pull step may send before it pauses for a human.
 # 3 - default; 1 to 10. Only read while AiPlayerbot.DungeonRunPackClearMarginYd is above 0.
 AiPlayerbot.DungeonRunPackClearRepulls = 3
+
+# The run leader pulls a straggler itself instead of pausing. A unit the step waits
+# for that did not come -- a unit of the pack that spawned in the step's radius and
+# walked its loop away, or a patrol a stand-pull row waits for at its stand -- is
+# walked to and pulled by the tank: the lead bot while it lives and is a tank, else
+# the off-tank holding the main tank role. The tank walks to the unit (a patrol: to
+# the nearest point of its loop on the party's side) and attacks it, the rest of the
+# party staying where it stands. Each try has 45 s; a failed try by the lead bot
+# goes to the off-tank once; only then does the run pause as before. The pull is
+# skipped, and the run pauses as before with the reason in the line, when another
+# pack not pulled yet would be woken on the way there (the way passes within its
+# aggro reach plus 5 yd of it) or when no path reaches the point. A patrol a
+# stand-pull row waits for is waited for one full loop of its own path at most (90 s
+# when that cannot be read) instead of the row's 600 s before the tank goes.
+# A boss, a kill_first unit and a linked_death unit keep the old behaviour.
+# 0 - off, the run pauses as before (Default)
+# 1 - on
+# Only read while AiPlayerbot.DungeonSelfClear = 1.
+AiPlayerbot.DungeonRunStragglerPull = 0
 
 # The run leader's near-wipe stop: this many wipe events (a near wipe, a wipe, the
 # revive after either) within the window below pause the run once the fight is over,
@@ -1450,8 +1555,8 @@ AiPlayerbot.ImmuneSpellIds = 19428
 # AiPlayerbot.RandomBotRaidNearby = 1
 # AiPlayerbot.RandomBotGuildNearby = 1
 
-# Randombots will form guilds by buying a charter, getting signatures and handing it in.
-# AiPlayerbot.RandomBotFormGuild = 1
+# Bots founding their own guilds is off by default. Turn on to let eligible pool bots buy a charter, gather signatures and found a guild.
+AiPlayerbot.RandomBotFormGuild = 0
 
 # Enable per-bot action log files (logs/bots/<botname>_acc<id>_<timestamp>.log)
 # and "[BOT]" prefixed structured log lines in the server log. Useful for
@@ -2620,12 +2725,13 @@ AiPlayerbot.BotCheats = repair,breath
 # Cheats for randombots
 AiPlayerbot.RndBotCheats = repair,breath,item
 
-# Self bot turns your current character into a bot with the command ".bot self"
-# !!DISCLAMER!! Selfbots will work and act like randombots based on their enabled strategies. Your epic mount will be sold to a vendor!
-# Self bot level. Values: 0 (disabled), 1 (Game masters only), 2 (Any player), 3 (Allow .bot always command for all players), 4 (Enabled on login), 4 (Enabled even when offline)
+# There is no ".bot self" in TortoiseBots: a character you are playing never turns into a bot.
+# Only one effect of this key is left, the "always online" lists below: with 5 every character
+# they would cover is kept online as a bot and the lists name the exceptions; with any other
+# value (default 1) only the listed accounts and characters are.
 # AiPlayerbot.SelfBotLevel = 1
 
-# Account/character names that are either, always online as bot (SelfBotLevel < 4) or prevented from being always online as bot (SelfBotLevel = 4)
+# Accounts/characters kept always online as bots (with SelfBotLevel = 5: kept offline instead)
 # AiPlayerbot.ToggleAlwaysOnlineAccounts =
 # AiPlayerbot.ToggleAlwaysOnlineChars =
 
