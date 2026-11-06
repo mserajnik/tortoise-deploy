@@ -56,7 +56,7 @@ vars:
   module-build-packages: ""
   server-licenses: AGPL-3.0-only AND AGPL-3.0-or-later AND GPL-2.0-or-later
 
-drift:
+diff:
   upstreams:
     # Bump the commit in `docker/database/Dockerfile` and in the header of
     # `docker/database/docker-entrypoint.sh` along with this pin.
