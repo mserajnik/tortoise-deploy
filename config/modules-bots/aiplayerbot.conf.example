@@ -866,6 +866,29 @@ AiPlayerbot.DungeonFollowHoldBeforePacks = 0
 # 1 - pet that fits the spec (Default)
 AiPlayerbot.WarlockPetBySpec = 1
 
+# Warlock raid rotation.
+# Stops the warlock rotation from spending casts on a target that is about to
+# die, so the Shadow Bolt filler the raid measures actually goes out:
+# - a DoT or curse (Corruption, Siphon Life, Immolate, the curse rows) only
+#   starts on a target at 35 percent health or more, and a DoT spread to
+#   another attacker only while that attacker is above 50 percent. Bosses
+#   (world and raid bosses, instance-binding bosses, and the loaded dungeon
+#   plan's bosses) and the raid-utility curses (Curse of the Elements,
+#   Curse of Recklessness, Curse of Shadow) are never gated;
+# - in a converted raid group (not a five-player party) each of the five
+#   "on attacker" spread rows (Corruption, Siphon Life, Immolate, Curse of
+#   the Elements, and the Curse of Agony spread) keeps at most two extra
+#   targets dotted besides the current target. The count is per row and
+#   counts the attackers already carrying that row's DoT or curse;
+# - Drain Soul only harvests from trash (never from a boss or raid boss) and
+#   only while the warlock holds fewer than two Soul Shards;
+# - in combat Life Tap only fires when two Shadow Bolts cannot be paid for,
+#   instead of at the 40 percent medium-mana line.
+# Off by default; with 0 the rotation is unchanged.
+# 0 - current rotation (Default)
+# 1 - life gated, raid-capped rotation
+AiPlayerbot.WarlockRaidRotation = 0
+
 # Rogue threat drops in dungeons.
 # In a grouped 5-man dungeon with a living tank in the fight, a rogue uses
 # Feint when its threat on the current target is medium (60 percent of the
@@ -1011,6 +1034,25 @@ AiPlayerbot.DungeonRunCharmYield = 0
 # A spread row widens the ranged raid's spacing while the boss fights; off ignores the rows.
 AiPlayerbot.DungeonRunBossSpread = 0
 
+# The burn_mana boss tactic of the boss tactics rows (ai_boss_tactic, docs/play/boss-tactics.md): while the row's
+# boss stands at or above the row's start percent of mana, the first `priority` eligible bots (no tank, no healer, a
+# priest with Mana Burn, a warlock with Drain Mana or a hunter with Viper Sting, ordered by guid; 0 means every
+# eligible bot) keep draining it. Moam's Drain Mana refills him from the raid's casts, so the burners keep him below
+# full mana and away from Arcane Eruption. With this key off the rows are ignored, so the table behaves exactly as
+# before the kind. This is its own key on top of AiPlayerbot.DungeonTactics (or a commander-bound group).
+# 0 - off: burn_mana rows are ignored (Default)
+# 1 - on
+AiPlayerbot.DungeonRunBurnMana = 0
+
+# The ranged_only boss tactic of the boss tactics rows (ai_boss_tactic, docs/play/boss-tactics.md): a melee bot leaves
+# the row's subject alone while it stands the row's gap (param, yards) or more above the bot, and takes the adds; a
+# ranged bot is never held, and the hold ends by itself when the subject lands. With this key off the rows are
+# ignored, so the table behaves exactly as before the kind. This is its own key on top of AiPlayerbot.DungeonTactics
+# (or a commander-bound group).
+# 0 - off: ranged_only rows are ignored (Default)
+# 1 - on
+AiPlayerbot.DungeonRunRangedOnly = 0
+
 # Dungeon self-clear (the run leader).
 # `.bot run start [plan]` lets a bound party clear a dungeon plan (world tables
 # ai_dungeon_plan/leg/step) by itself: it walks the route, pulls the packs, kills
@@ -1040,6 +1082,28 @@ AiPlayerbot.DungeonRunRaidBossRules = 0
 # 0 - off: the off-tanks take the adds, as before (Default)
 # 1 - on
 AiPlayerbot.DungeonRunRaidHealerGuard = 0
+
+# A raid binding's healer seats (.bot commander bind <LeadBot> raid, only read with AiPlayerbot.DungeonRunRaid = 1):
+# with 1 the seats go by class instead of member order. The raid seats take a group healer first (priest, then druid,
+# then shaman, then any other healer); the raid keeps at least a third of its healers, rounded up, and the tanks take
+# the rest up to two each. The main-tank seats then take the next healers (any class, one the raid seats do not hold
+# back first, so a paladin lands on a tank), and the off-tank seats take whoever is left. A healer a mid-raid hire
+# joined a tank as is seated by the joiner rule, not this layout. A raid already bound keeps its seats until it is
+# bound again.
+# 0 - off: seats by member order (Default)
+# 1 - on
+AiPlayerbot.RaidHealerSeatsByClass = 0
+
+# A tank healer a raid binding's layout seated helps the raid while its tank has nothing to heal (only read with
+# AiPlayerbot.DungeonRunRaid = 1). Only the tank's second (or later) seat may leave, so the tank keeps its first
+# healer, and only while the tank is found, alive, not fighting a boss, and at or above 90% health after the damage
+# it is taking. The healer then treats a group member below 70% that is in sight and inside heal range; it never
+# walks into sight for one. A player-set focus list outside the layout, a mid-raid joiner, and a layout healer
+# whose focus list a player edited (anything added or dropped) do not get it.
+# .reload config applies it at once.
+# 0 - off: the tank healers keep their focus targets (Default)
+# 1 - on
+AiPlayerbot.RaidTankHealerAssist = 0
 
 # Opt-in "fankriss tank" role (.bot strategy +fankriss tank): an assigned tank with no Mortal Wound
 # stacks taunts Fankriss off the current tank at this many stacks (1-9, clamped). Does not enable the role.
@@ -1126,6 +1190,23 @@ AiPlayerbot.DungeonRunRetreatAt2Dead = 0
 # 1 - on (Default)
 # Only read while AiPlayerbot.DungeonSelfClear = 1.
 AiPlayerbot.DungeonRunWalkBackRescue = 1
+
+# The run leader's dry walk. A walk whose own way would swim after leaving the
+# lead bot's own water goes in dry legs first (at most 24 a walk), and the
+# approach hops and firing stand it picks come from a ground-only navmesh path
+# instead of one over the water's surface. The walk-back shortcut is not
+# re-pathed: its straight swim chord is refused, so the walk back replays the
+# plan's points (the leg-on-path read and the too-far legs are unchanged). A
+# point in deep water, and a dry way more than 3 times the way the run would
+# walk, keep the old behaviour, so intended swims still work: a wet firing
+# stand of a pack in the water, a straggler standing in water, and a walk point
+# in water are as before. A dry straggler whose way would swim has no path that
+# ends at the point: its pull moves to the next tank and can pause the run.
+# This changes routes on every walk whose path crosses deep water.
+# 0 - off: the run leader walks the core's own path, water included (Default)
+# 1 - on
+# Only read while AiPlayerbot.DungeonSelfClear = 1.
+AiPlayerbot.DungeonRunDryWalk = 0
 
 # The run leader's teleport return. A party bot the run brings back from farther
 # than this many yards from the lead bot (revived far away, left behind after the
@@ -1697,9 +1778,25 @@ AiPlayerbot.AutoLearnTrainerSpells = 1
 # Default: 1 (enabled)
 AiPlayerbot.AutoLearnQuestSpells = 1
 
+# Your own alts (characters added with .bot add, and autonomous alt bots) also learn
+# classquest reward spells on login and levelup. Trainer spells stay paid for them.
+# Default: 0 (disabled)
+AiPlayerbot.AutoLearnQuestSpellsAlts = 0
+
 # Alt Bots automatically learn class spells from books dropped from dungeons and raids when leveled and they reached the required level of the book.
 # Default: 0 (disabled)
 AiPlayerbot.AutoLearnDroppedSpells = 0
+
+# Hunter and warlock pets of pool bots and hired companions train themselves on every
+# level-up: hunter pets get their family's best build within 4 active abilities and
+# their training points, warlock demons get every Grimoire rank of their level.
+# Default: 1 (enabled)
+AiPlayerbot.PetAutoTrain = 1
+
+# The same for your own alts' pets. A hunter alt's pet keeps the abilities you taught
+# it yourself and ranks them up too; nothing it knows is ever removed.
+# Default: 0 (disabled)
+AiPlayerbot.PetAutoTrainAlts = 0
 
 # Random Bots will pick quests on their own and try to complete
 # Default: 1 (enabled)
@@ -2654,6 +2751,11 @@ AiPlayerbot.JumpInPlaceChance = 0.50
 AiPlayerbot.JumpBackwardChance = 0.10
 # Jumping height limit
 AiPlayerbot.JumpHeightLimit = 60
+# Land a bot whose near teleport (Banish, a summon) ends in mid-air: the floor
+# under the destination is probed and the bot falls to it (about the fall time
+# plus a second), instead of hovering there until the next teleport. Changes
+# every near teleport, so off by default.
+AiPlayerbot.TeleportLandingFall = 0
 # Vertical jump speed
 #AiPlayerbot.JumpVSpeed = 7.96
 # Horizontal jump speed
