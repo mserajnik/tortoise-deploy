@@ -3,9 +3,9 @@
 Some updates require you to adjust your configuration. These breaking changes
 are listed below, newest first.
 
-Every Docker image checks `TORTOISE_DEPLOY_VERSION` on startup. Each breaking
-change raises the number that the images expect by one, and thus prevents
-installations that lack the necessary adjustments for the breaking change from
+Every Docker image checks `TORTOISE_DEPLOY_VERSION` when one of its containers
+starts. Each breaking change raises the number that the images expect by one,
+and thus prevents installations that lack the necessary adjustments from
 starting.
 
 To update across a version, first refresh your clone of this repository, as the
@@ -51,14 +51,14 @@ Version 1 brings these changes:
   always the defaults, and no longer configurable. Character backups are now
   written to `storage/mangosd/pdump/`, where the server could not write them
   before.
-- The example `database` service now has `stop_grace_period: 2m`, so a stop
-  during startup lets the running step finish.
+- The example `database` service now has `stop_grace_period: 2m`, so a running
+  import or update can finish when Docker stops the container.
 - The example `database-backup` service now also backs up the record of
   confirmed migration edits in the `maintenance` database.
 - The example `mangosd` service now mounts the extracted client data at
   `/opt/tortoise/storage/data`.
-- Every image now checks `TORTOISE_DEPLOY_VERSION` on startup and stops when it
-  is missing or different.
+- Every container now refuses to start when `TORTOISE_DEPLOY_VERSION` is
+  missing or different.
 - The example Compose files have tool services for the version check and the
   client data, which the [usage documentation](usage.md) describes.
 

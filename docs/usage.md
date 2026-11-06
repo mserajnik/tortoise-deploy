@@ -12,7 +12,8 @@ The [Docker Compose reference](compose.md) describes each setting in your
 ### Variants
 
 tortoise-deploy builds three variants from the same Tortoise-WoW commit, the
-tip of the `main` branch. Each variant contains the one before it.
+tip of the `main` branch. `modules` contains `base`, and `modules-bots`
+contains `modules`.
 
 | Variant        | Server image                                     | Database image                                     |
 | -------------- | ------------------------------------------------ | -------------------------------------------------- |
@@ -38,7 +39,7 @@ group up, run dungeons, and trade in the auction house.
 
 Each module has its own configuration file under `config/modules/` or
 `config/modules-bots/`. The server reads them after `config/mangosd.conf`, so
-an option in a module's file overrides the same one in your `mangosd.conf`.
+an option in a module's file overrides its value in your `mangosd.conf`.
 TortoiseBots reads two files: `tortoise_bots.conf` contains the module's own
 options, which work as they are, and `aiplayerbot.conf` contains the bot
 behavior. With the example `aiplayerbot.conf`, the module is on and, among
@@ -48,10 +49,10 @@ hardware and to your desired setup.
 do and how to set it up. tortoise-deploy leaves out the optional TortoiseBots
 tools, such as the observability dashboard.
 
-If a module's configuration file is missing, the `mangosd` service stops during
-startup, tells you which one, and explains how to fix it. An update can add
-modules to your variant, each with one or more configuration files, or a
-configuration file to a module you already run. In such cases, the
+If a module's configuration file is missing, the `mangosd` service stops before
+the server starts, tells you which file, and explains how to fix it. An update
+can add modules to your variant, each with one or more configuration files, or
+a configuration file to a module you already run. In such cases, the
 [breaking changes documentation](breaking-changes.md) lists every new
 configuration file.
 
@@ -71,8 +72,8 @@ contains, such as
 `ghcr.io/mserajnik/tortoise-server:base-5fafe43b576116c3aecde435c41c87a47864f943`.
 Use such tags to pin your installation to a specific commit. You have to give
 the server and the database image the same commit, so the code and the data
-match. The `mangosd` service applies new migrations on startup, so an image
-older than the ones you ran before cannot work with the databases.
+match. The `mangosd` service applies new migrations when it starts, so an image
+older than those you ran before cannot work with the databases.
 
 Since the Docker images are generally built only once a day, there is likely no
 build for every single Tortoise-WoW commit. Older images are deleted
@@ -144,9 +145,9 @@ docker compose up -d
 The first start takes longer, because it creates the databases.
 
 > [!WARNING]
-> Do not interrupt the first start. If it stops early and the next start of the
-> `database` service fails, remove the database volume with
-> `docker compose down -v`, and start again.
+> Do not interrupt the first start. If it stops early and the `database`
+> service then fails to start, remove the database volume with
+> `docker compose down -v`, and run `docker compose up -d` again.
 
 To follow the server output, run:
 
@@ -234,11 +235,14 @@ containers:
 docker compose up -d
 ```
 
+If `docker compose up -d` keeps waiting for the `database` service, it has
+likely halted for [migration edits](#migration-edits).
+
 If you pinned your installation to a specific commit, the update only takes
 effect once you set newer tags.
 
-On the first start after an update, the `mangosd` service applies the new
-migrations.
+After an update, the `mangosd` service applies the new migrations when it
+starts.
 
 ### Updating your clone
 
@@ -258,11 +262,11 @@ options that you may want in your configuration.
 ## Migration edits
 
 Sometimes, the developers of Tortoise-WoW or of a bundled module edit a
-migration that has already been applied to one of your databases. Tortoise-WoW
-runs such a migration again in full on its next start, which can fail or apply
-its changes twice if the migration is not written to run more than once.
-tortoise-deploy does not rely on that behavior, which may change, so it detects
-these edits and acts on them.
+migration that has already been applied to one of your databases. The next time
+the `mangosd` service starts, Tortoise-WoW runs such a migration again in full.
+Unless the migration is safe to run more than once, this can fail or apply its
+changes twice. tortoise-deploy does not rely on that behavior, which may
+change, so it detects these edits and acts on them.
 
 - For the world database, the `database` service re-creates it from the new
   image. Changes you made directly in the world database are lost, such as your
@@ -270,36 +274,47 @@ these edits and acts on them.
   [custom SQL](#custom-sql), which the `database` service runs again after the
   re-creation.
 - A database with player data cannot be re-created. For such a database, the
-  start halts and asks you to prepare it by hand, as the next section
-  describes.
+  `database` service halts and asks you to prepare it by hand, as the next
+  section describes.
 
 The [`database` section](compose.md#database) of the Docker Compose reference
 describes the two variables that control this.
 
 ### Applying changes by hand
 
-When the start halts, the `database` service prints the affected databases and
-the link to the commit of each edit. The `realmd` and `mangosd` services wait
-for the `database` service, so `docker compose up -d` keeps waiting too. Read
-the message from a second terminal:
+During a halt, the `database` service prints the affected databases and the
+link to the commit of each edit. Its healthcheck does not pass until you
+confirm, and the `realmd` and `mangosd` services only start once it passes, so
+`docker compose up -d` keeps waiting too. Read the message from a second
+terminal:
 
 ```sh
 docker compose logs database
 ```
 
+> [!WARNING]
+> The SQL you run here changes your databases directly. If something goes
+> wrong, only a backup from before the update can restore them. The restore
+> needs the `database` service to run normally, so confirm first, then follow
+> the [restoring a backup section](#restoring-a-backup).
+
 The `database` service waits as long as you need. To resolve the halt:
 
 1. Open each linked commit and read its changes to the SQL files.
-2. Tortoise-WoW runs each edited migration again in full on its next start.
-   Check what that does to the affected database, whose name the message lists
-   with the edit. It can fail, apply a change twice, or skip a change, for
-   example with `CREATE TABLE IF NOT EXISTS` for a table that already exists.
-   - If the database would then have exactly the changes of the edited
-     migration, there is nothing to do.
-   - Otherwise, make changes in the database yourself before you confirm, so
-     that the re-run gives that result. For example, add the columns that a
-     skipped `CREATE TABLE IF NOT EXISTS` does not create, or undo a change
-     that the re-run applies a second time.
+2. After you confirm, the `mangosd` service starts and applies each edited
+   migration again. Prepare each affected database so that this gives the
+   result of the new version:
+   - A statement that skips something that already exists also skips the edit's
+     changes to it, so apply them yourself.
+   - A statement that adds or changes data may do so a second time. If it does,
+     undo its first run yourself.
+   - A statement that fails makes the `mangosd` service stop with an error.
+     Adjust the database so that the statement can run.
+   - A statement that the edit removes stays applied from the first run, so
+     undo it yourself.
+
+   If the re-run already gives the result of the new version, there is nothing
+   to do.
 
    To open a database, run:
 
@@ -316,8 +331,10 @@ The `database` service waits as long as you need. To resolve the halt:
    docker compose exec database tortoise-confirm-changes
    ```
 
-The `database` service then records the commits as applied, and the start
-continues.
+The `database` service then records the commits as applied and resumes. If the
+halt lasted longer than the `start_period` of its healthcheck (24 hours in the
+example Compose file), `docker compose up -d` has likely stopped with an error,
+and you need to run it again to start the `realmd` and `mangosd` services.
 
 > [!WARNING]
 > The confirmation marks the listed commits as applied without checking your
@@ -326,9 +343,8 @@ continues.
 > do is your responsibility, and tortoise-deploy provides no further support
 > for individual cases.
 
-If you would rather cancel the start and handle the edits later, run
-`docker compose down` instead of confirming. The `database` service halts again
-on your next start.
+To stop the containers and handle the edits later, run `docker compose down`
+without confirming. The `database` service halts again the next time it starts.
 
 In a database with player data, you can ignore an edit to a migration that has
 not been applied to it yet. To check, look up the migration's file name without
@@ -346,13 +362,13 @@ ignored, you still have to confirm, as step 3 above describes.
 ## Custom SQL
 
 To make your own changes to the world database, put them into `.sql` files in
-`storage/database/custom-sql/`. The `database` service runs every file there in
-alphabetical order on every start, and after a re-creation of the world
+`storage/database/custom-sql/`. The `database` service runs each file there in
+alphabetical order every time it starts, and after a re-creation of the world
 database too. So the statements have to be idempotent: running them twice has
 to give the same result as running them once. The `mangosd` service applies new
 migrations only after your files. If one of your files modifies data that a new
 migration adds or changes, the file takes effect on that data from the next
-start.
+time the `database` service starts.
 
 ## Backups
 
@@ -381,7 +397,7 @@ schedule with a one-off run.
 ### Restoring a backup
 
 A restore drops and re-creates the tables of each database in the backup. To
-restore one:
+restore a backup:
 
 1. Stop the servers, which would otherwise read and write the tables while they
    change:
@@ -405,14 +421,15 @@ restore one:
    docker compose start realmd mangosd
    ```
 
-   If the backup is older than a migration edit, the restart acts on the edit
-   again, as the [migration edits section](#migration-edits) describes.
+   If the backup is older than a migration edit, the `database` service then
+   acts on the edit again, as the [migration edits section](#migration-edits)
+   describes.
 
 ## Database access
 
 Some tasks, such as managing accounts or changing the realm entry, need a
-MariaDB client. The `phpmyadmin` service in your `compose.yaml` provides one in
-the browser once you uncomment it (see the
+MariaDB client. The `phpmyadmin` service in your `compose.yaml` provides a
+client in the browser once you uncomment it (see the
 [`phpmyadmin` section](compose.md#phpmyadmin-optional)).
 
 ### Database security

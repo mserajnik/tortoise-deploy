@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Checks the extracted DBC files against the image's hash manifest. Takes the
-# DBC directory, by default the one in the extracted data.
+# DBC directory, by default `dbc/` in the extracted data.
 
 set -eu
 
@@ -22,8 +22,8 @@ https://github.com/mserajnik/tortoise-deploy/issues" >&2
   exit 1
 fi
 
-# `sha256sum -c` checks only the files a manifest lists, so a truncated one has
-# to fail here.
+# `sha256sum -c` checks only the listed files, so a truncated manifest has to
+# fail here.
 expected_count="$(grep -cE '^[0-9a-fA-F]{64}  ' "$dbc_manifest" || true)"
 expected_count="${expected_count:-0}"
 

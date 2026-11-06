@@ -31,8 +31,7 @@ clear_change_sentinels() {
   rm -f /tmp/tortoise-changes-pending /tmp/tortoise-changes-acknowledged
 }
 
-# A data directory with the first marker is from a first start that did not
-# finish.
+# A data directory with the first marker is from a setup that did not finish.
 INITIALIZING_MARKER="/var/lib/mysql/.tortoise-deploy-initializing"
 INITIALIZED_MARKER="/var/lib/mysql/.tortoise-deploy-initialized"
 
@@ -59,7 +58,7 @@ require_initialized() {
     return 0
   fi
 
-  tortoise_fail "The databases are not set up completely. If this is a new installation, remove the database volume and start again. Otherwise, the volume contains your characters: remove it only if you have a backup, and restore the backup after the new start:
+  tortoise_fail "The databases are not set up completely. If this is a new installation, remove the database volume and run 'docker compose up -d' again. Otherwise, the volume contains your characters: remove it only if you have a backup, and restore the backup once the databases are set up again:
 https://github.com/mserajnik/tortoise-deploy/blob/master/docs/usage.md#restoring-a-backup"
 }
 
@@ -385,11 +384,12 @@ process_world_corrections() {
     return 0
   fi
 
-  # Leave the edit unacknowledged. The warning then repeats on every start.
+  # Leave the edit unacknowledged. The warning then repeats every time the
+  # container starts.
   local repository
   for i in "${pending[@]}"; do
     repository="$(correction_source_repository "${MIGRATION_EDIT_SOURCES[i]}")"
-    tortoise_log "WARNING: The world database has a migration edit ($repository@${MIGRATION_EDIT_COMMITS[i]:0:7}), but both 'TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS' and 'TORTOISE_HALT_ON_MIGRATION_EDITS' are disabled. The start continues, and Tortoise-WoW runs the edited migration again, which can leave the world database in an inconsistent state. The server may misbehave or fail to start." >&2
+    tortoise_log "WARNING: The world database has a migration edit ($repository@${MIGRATION_EDIT_COMMITS[i]:0:7}), but both 'TORTOISE_ENABLE_AUTOMATIC_WORLD_DB_CORRECTIONS' and 'TORTOISE_HALT_ON_MIGRATION_EDITS' are disabled. The 'database' service does not halt, and Tortoise-WoW runs the edited migration again, which can leave the world database in an inconsistent state. The 'mangosd' service may misbehave or fail to start." >&2
   done
 }
 
@@ -427,17 +427,19 @@ process_userstate_corrections() {
       continue
     fi
 
-    # Leave the edit unacknowledged. The warning then repeats on every start.
+    # Leave the edit unacknowledged. The warning then repeats every time the
+    # container starts.
     repository="$(correction_source_repository "$source_name")"
     database_name="$(correction_database_name "$db_name")"
-    tortoise_log "WARNING: The '$database_name' database has a migration edit ($repository@${commit_hash:0:7}), but 'TORTOISE_HALT_ON_MIGRATION_EDITS' is disabled. The start continues, and Tortoise-WoW runs the edited migration again, which can leave the database in an inconsistent state." >&2
+    tortoise_log "WARNING: The '$database_name' database has a migration edit ($repository@${commit_hash:0:7}), but 'TORTOISE_HALT_ON_MIGRATION_EDITS' is disabled. The 'database' service does not halt, and Tortoise-WoW runs the edited migration again, which can leave the '$database_name' database in an inconsistent state." >&2
   done
 }
 
 print_correction_halt_message() {
   cat >&2 <<'EOF'
 [tortoise-deploy]: ERROR: Migration edits affect your databases.
-tortoise-deploy does not handle these edits for you. The start is halted.
+tortoise-deploy does not handle these edits for you. Tortoise-WoW does not
+start until you handle them and confirm, as described below.
 
 The edits, each with the name of the database it affects:
 EOF
@@ -461,21 +463,36 @@ EOF
 
   cat >&2 <<'EOF'
 
+The SQL you run changes your databases directly. If something goes wrong, only
+a backup from before the update can restore them. The restore needs the
+'database' service to run normally, so confirm first, then restore the backup
+as the documentation describes.
+
 For each edit above:
 
   1. Open its GitHub link to see what changed.
-  2. Tortoise-WoW runs the edited migration again in full on its next start.
-     Check what that does to the affected database. It can fail, apply a change
-     twice, or skip a change. If the database would then have exactly the
-     changes of the edited migration, there is nothing to do. Otherwise, make
-     changes in the database yourself before you confirm, so that the re-run
-     gives that result. To open the database, run on the host:
+  2. After you confirm, the 'mangosd' service starts and applies the edited
+     migration again. Prepare the database so that this gives the result of the
+     new version:
+     - A statement that skips something that already exists also skips the
+       edit's changes to it, so apply them yourself.
+     - A statement that adds or changes data may do so a second time. If it
+       does, undo its first run yourself.
+     - A statement that fails makes the 'mangosd' service stop with an error.
+       Adjust the database so that the statement can run.
+     - A statement that the edit removes stays applied from the first run, so
+       undo it yourself.
+
+     If the re-run already gives the result of the new version, there is
+     nothing to do.
+
+     To open the database, run on the host:
 
        docker compose exec database mariadb -u root -p <database>
 
-     (The MariaDB client prompts for the password, which matches your
-     'MARIADB_ROOT_PASSWORD' setting in your 'compose.yaml'. To leave the
-     client, run 'exit'.)
+     (The MariaDB client prompts for the password, which is
+     'MARIADB_ROOT_PASSWORD' from your 'compose.yaml'. To leave the client, run
+     'exit'.)
 
      You can ignore an edit to a migration that has not been applied to the
      database yet. The documentation shows how to check:
@@ -485,20 +502,19 @@ When you have handled every edit above, confirm by running on the host:
 
   docker compose exec database tortoise-confirm-changes
 
-To cancel the start and handle the edits later instead, run on the host:
+To stop the containers and handle the edits later, run on the host:
 
   docker compose down
 
-While the start is halted, MariaDB is reachable only inside the container,
-through its socket, and not on port 3306. Tortoise-WoW stays offline until you
-confirm, so take as long as you need.
+Until you confirm, MariaDB is reachable only inside the container, through its
+socket, and not on port 3306.
 
-Note: When you confirm, tortoise-deploy treats the listed commits as applied
-and continues. It does not check your databases to verify that the re-run gives
-the result the commits describe. If your manual fix is incorrect or incomplete,
-the affected database is left in an inconsistent state and Tortoise-WoW may
-fail to start. The responsibility for matching what the commits do is yours,
-and tortoise-deploy provides no further support for individual cases.
+Note: When you confirm, tortoise-deploy treats the listed commits as applied.
+It does not check your databases to verify that the re-run gives the result the
+commits describe. If your manual fix is incorrect or incomplete, the affected
+database is left in an inconsistent state and Tortoise-WoW may fail to start.
+The responsibility for matching what the commits do is yours, and
+tortoise-deploy provides no further support for individual cases.
 EOF
 }
 
@@ -511,8 +527,8 @@ wait_for_change_ack() {
 
   rm -f /tmp/tortoise-changes-pending
 
-  # `tortoise-confirm-changes` waits for the receipt, because a later start
-  # deletes the acknowledgement too.
+  # `tortoise-confirm-changes` waits for the receipt, because the next
+  # container start deletes the acknowledgement too.
   mv /tmp/tortoise-changes-acknowledged /tmp/tortoise-changes-consumed
 }
 
@@ -529,7 +545,7 @@ process_custom_sql() {
   fi
 
   if [[ ! -r "$file_directory" ]] || [[ ! -x "$file_directory" ]]; then
-    tortoise_fail "The custom SQL file directory '$file_directory' is not readable by the 'mysql' user (UID $(id -u)). This is a permission problem on the host: the bind-mounted directory must be readable by that user. Adjust the permissions, then restart."
+    tortoise_fail "The custom SQL file directory '$file_directory' is not readable by the 'mysql' user (UID $(id -u)). This is a permission problem on the host: the bind-mounted directory must be readable by that user. Adjust the permissions, then run 'docker compose up -d' on the host."
   fi
 
   # Check `find` on its own, so a failure says which step failed. The names are

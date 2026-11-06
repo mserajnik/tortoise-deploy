@@ -103,7 +103,7 @@ RUN \
   make install && \
   if [ -n "$TORTOISE_MODULES" ]; then \
     # List the module configuration files, relative to the configuration
-    # directory, so the container command can report a missing one. The core
+    # directory, so the container command can report a missing file. The core
     # installs only `.dist` files, so a plain `.conf` belongs to a module, such
     # as TortoiseBots' top-level `aiplayerbot.conf`.
     { \
@@ -129,7 +129,7 @@ RUN \
     # appears twice above.
     LC_ALL=C sort -u -o /opt/tortoise/module-configs /opt/tortoise/module-configs; \
     # A module that adds or renames a configuration file would stop every
-    # container of the variant on a missing bind mount.
+    # container of the variant that runs `mangosd` on a missing bind mount.
     installed_module_configs="$(tr '\n' ',' </opt/tortoise/module-configs)"; \
     if [ "${installed_module_configs%,}" != "$TORTOISE_MODULE_CONFIGS" ]; then \
       echo "This build requires the module configuration files '${installed_module_configs%,}', but the variant declares '$TORTOISE_MODULE_CONFIGS'."; \
@@ -198,7 +198,7 @@ RUN \
   # `mangosd` applies the migrations from one directory per database, so a flat
   # upstream migration is moved into `world`. It keys a migration by its
   # content hash, so the move does not apply it again. Create the directories
-  # first, because `mangosd` creates a missing one without checking for errors.
+  # first, because `mangosd` does not check for errors when it creates them.
   mkdir -p \
     /opt/tortoise/sql/database_updates/auth \
     /opt/tortoise/sql/database_updates/character \
@@ -232,7 +232,7 @@ RUN \
     echo "Parsed $dbc_hash_count DBC hashes from 'tools/dbc_verification/dbc_verifier.py', which lists $dbc_key_count DBC files."; \
     exit 1; \
   fi && \
-  # A duplicate entry can hide a missing one.
+  # Duplicates can hide a missing entry.
   dbc_unique_count="$(awk '{ sub(/^[^ ]*  /, "") } !seen[$0]++ { n++ } END { print n + 0 }' /opt/tortoise/dbc-hashes)" && \
   if [ "$dbc_hash_count" -ne "$dbc_unique_count" ]; then \
     echo "Parsed $dbc_hash_count DBC hashes from 'tools/dbc_verification/dbc_verifier.py' for only $dbc_unique_count distinct DBC files."; \

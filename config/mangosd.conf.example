@@ -14,7 +14,8 @@
 #   `TORTOISE_DATABASE_PASSWORD` in your `compose.yaml`.
 # - `Database.AutoUpdate.Enabled`, `.Path`, `.AllowedModules`,
 #   `.AuthUpdateName`, `.CharUpdateName`, `.WorldUpdateName`, and
-#   `.SortByName`: the server applies the migrations the image contains.
+#   `.SortByName`: the `mangosd` service applies the migrations the image
+#   contains.
 # - `WorldServerPort`, `BindIP`, `SOAP.IP`, and `SOAP.Port`: to use another
 #   port, change its host side in your `compose.yaml`.
 #

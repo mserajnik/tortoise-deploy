@@ -55,8 +55,8 @@ The steps set up the `base` variant. For `modules` or `modules-bots`, which the
    ```
 
    For `modules` and `modules-bots`, also copy each `.conf.example` file in
-   `config/modules/` to a `.conf` file, and for `modules-bots`, each one in
-   `config/modules-bots/` as well. Then adjust the copies to your liking, for
+   `config/modules/` to a `.conf` file, and for `modules-bots`, those in
+   `config/modules-bots/` too. Then adjust the copies to your liking, for
    example the `GameType` or the `RealmZone` in your `config/mangosd.conf`. The
    files describe most of their options. Some options are set by the image and
    cannot be configured in the files. A comment at the top of your
@@ -129,7 +129,7 @@ For the full instructions, see the [usage documentation](docs/usage.md).
 ### Using a coding agent
 
 A coding agent such as [Claude Code][claude-code] or [Codex][codex] can walk
-you through the setup. Try a prompt like this one:
+you through the setup. Try a prompt like the following:
 
 ```text
 Help me install and set up https://github.com/mserajnik/tortoise-deploy.
