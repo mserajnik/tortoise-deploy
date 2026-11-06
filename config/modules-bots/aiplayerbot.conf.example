@@ -902,6 +902,34 @@ AiPlayerbot.WarlockRaidRotation = 0
 # 1 - Feint on medium threat, Vanish on critical threat in 5-man dungeons (Default)
 AiPlayerbot.RogueDungeonThreatDrops = 1
 
+# Rogue pre-pull Sap approach around the pack.
+# A rogue sent to Sap its CC mark before the pull walks, stealthed, to a spot
+# on the side of the mob away from its pack-mates, by a path that stays out of
+# each pack-mate's stealth detection range (plus the range in which it turns
+# to look, plus a margin), going round the pack if it must. Without Stealth up
+# it waits. If no such spot and path exist the rogue skips that Sap for 30
+# seconds and the tank pulls. Off by default.
+# 0 - walk straight to the rogue's side of the mob (old behaviour) (Default)
+# 1 - approach around the pack, skip the Sap when no safe route exists
+AiPlayerbot.SapApproachAvoidPack = 0
+
+# Warrior gap closers.
+# Out of combat a warrior (tank or dps) whose target is 8-25 yards away and in
+# sight swaps to Battle Stance if needed and uses Charge; a tank swaps back to
+# Defensive Stance once in combat. A tank uses it on a mob already hitting a
+# party member first (the pack a rogue or a healer pulled) and never on a
+# crowd-controlled or held crowd-control mark. In combat a tank uses Intercept
+# (Berserker Stance) on a mob hitting the healer or another non-tank member
+# 8-25 yards away when the rage left after the stance swap (Tactical Mastery)
+# pays for it, then swaps back to Defensive Stance and taunts; with too little
+# rage it runs in. Inside a dungeon or raid an unengaged mob is only charged
+# when it is the target of a melee pull order or an attack order. Off by
+# default; with 0 only the old rows remain (Charge only from the stance the
+# warrior is already in, as the walk in closes).
+# 0 - no stance swap for Charge or Intercept (Default)
+# 1 - Charge to open, tank Intercept to rescue a party member
+AiPlayerbot.WarriorGapCloser = 0
+
 # Hunter Aspect of the Viper on low mana.
 # A hunter that has learned Aspect of the Viper (Turtle 1.18.1 spell 45651,
 # trainer level 56) switches to it in combat when its mana drops below 20
@@ -990,6 +1018,11 @@ AiPlayerbot.DungeonRunAuraTactics = 0
 # A needs_aura row names an entry and the aura a bot must carry: a bot without it never targets, attacks or taunts that unit, and the run guard sends nobody at it.
 AiPlayerbot.DungeonRunAuraGatedTargets = 0
 
+# Respawn nests: a unit that comes back within a minute and stands at its spawn point (Jin'do's Sacrificed Trolls) and hits nobody in the party does not hold a fight open, and a regroup never gathers on one. A unit that attacks the party is always a real fight and a guard target; the plan's own boss, hold and pull units are never a nest.
+# 0 - off (Default)
+# 1 - on
+AiPlayerbot.DungeonRunRespawnNest = 0
+
 # The kill_first candidates come from a grid search of the row's entries within 40 yd too, not only from each bot's attackers list (which "focus rti targets" collapses to the raid mark).
 AiPlayerbot.DungeonRunKillFirstGrid = 0
 
@@ -1033,6 +1066,15 @@ AiPlayerbot.DungeonRunCharmYield = 0
 
 # A spread row widens the ranged raid's spacing while the boss fights; off ignores the rows.
 AiPlayerbot.DungeonRunBossSpread = 0
+
+# An avoid_cast row in mode `all` also clears the tanks: while its spell is cast no bot holds the caster, so every
+# tank walks out of that blast too (the Zul'Gurub Bat Rider's self-destruct, where nothing is gained by staying).
+# With the key off the row behaves like a default row (a tank the caster is on still holds it). This is its own
+# key on top of AiPlayerbot.DungeonTactics (or a commander-bound group) because the mode changes what the tanks
+# do mid-fight. `.reload config` reads it again with the other AiPlayerbot.DungeonRun* keys.
+# 0 - off: `all` rows hold casters like default rows (Default)
+# 1 - on
+AiPlayerbot.DungeonRunAvoidCastAll = 0
 
 # The burn_mana boss tactic of the boss tactics rows (ai_boss_tactic, docs/play/boss-tactics.md): while the row's
 # boss stands at or above the row's start percent of mana, the first `priority` eligible bots (no tank, no healer, a
@@ -1418,7 +1460,11 @@ AiPlayerbot.DungeonRunStandDiscipline = 0
 # the fight it marks a joiner while more than the threshold of unheld units fight it, and it
 # re-sends a crowd control that broke (twice a unit a step). The pack's own units are the only
 # pre-pull candidates; a tank, the lead bot, a healer while fewer than 4 healers (1 in a party)
-# would stay free, and the unit the tank or an off-tank holds are never marked. With the key on
+# would stay free, and the unit the tank or an off-tank holds are never marked. A non-elite
+# (NORMAL-rank) unit is no body of either pack count that starts a mark, before the pull or in
+# the fight, and it is never marked unless the plan lists it in cc_priority/cc_always; a plan's
+# cc_never list excludes its entries from the automatic marks entirely (a cc_never unit still
+# counts as a body: a unit that cannot be held is dangerous all the same). With the key on
 # the run uses seven marks (moon, square, diamond, triangle, star, circle, cross; skull stays
 # the fight's focus); a player's icon is never moved.
 # 0 - off, the plan's cc list only, as before (Default)
@@ -1582,6 +1628,14 @@ AiPlayerbot.GreetCooldown = 600
 # player master (0, default). With hundreds of pool bots in one zone the wave
 # of greetings answers every visitor, so it is opt-in.
 AiPlayerbot.RandomBotGreet = 0
+
+# Pool bots buff (and sometimes heal) real players they pass in the world.
+# A passing priest casts Power Word: Fortitude, a druid Mark of the Wild, a
+# mage Arcane Intellect (mana users only), a paladin one Blessing fitting the
+# player's class; a passing priest/druid lands Renew/Rejuvenation on a player
+# below 35% health. Only instant casts on the move, the bot never stops or
+# leaves its travel. 0 disables the sweeps entirely.
+AiPlayerbot.PassingBuffs = 1
 
 # Chance (0-1) that a bot in combat plays an attack emote
 #AiPlayerbot.AttackEmoteChance = 0.0
@@ -1802,8 +1856,11 @@ AiPlayerbot.PetAutoTrainAlts = 0
 # Default: 1 (enabled)
 # AiPlayerbot.AutoDoQuests = 1
 
-# Companion Mage/Warlock bots auto-place conjured food/water/healthstones into
-# the trade window when a player opens trade with them.
+# Mage/Warlock bots conjure a fresh stack of food/water/healthstones into
+# the trade window on every trade, whoever opened it. Mages give food to
+# everyone and water to mana users at the best rank both know for the
+# trader's level; warlocks give one healthstone unless the trader carries
+# one. Free and unlimited: no reagent, no mana, no cast.
 # Default: 1 (enabled)
 AiPlayerbot.AutoShareConjuredOnTrade = 1
 
@@ -2854,6 +2911,14 @@ AiPlayerbot.RaidBossDiagnostics = 0
 # 0 - off (Default)
 # 1 - on
 AiPlayerbot.CombatMonitor = 0
+
+# The boss timeline in every fight record (owner tool): the fought boss's health every 2 s with his entry (phase), each
+# change of his current victim (guid, name, that bot's role) and every apply/remove of a watched aura on our bots (the
+# spell ids of the world table ai_combat_aura_watch). Each array is capped (600 samples, 400 victim changes, 1000 aura
+# events, oldest dropped) and the timeline is left out of a payload that has to shrink. Needs AiPlayerbot.CombatMonitor.
+# 0 - off (Default)
+# 1 - on
+AiPlayerbot.CombatTimeline = 0
 
 # Days of bot logs to keep. The live file is plain text; every hour and at server start it is packed into
 # <name>_<date>_<time>.csv.gz next to it (named after the time it was closed), and packs older than this
