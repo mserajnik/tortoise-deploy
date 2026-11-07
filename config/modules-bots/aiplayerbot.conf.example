@@ -721,11 +721,11 @@ AiPlayerbot.GuildOrderSubOrders = 1
 # How deep sub-orders may nest (ore, then bars, then armor): the same item never
 # appears twice in one branch. Out of range values fall back to 3.
 AiPlayerbot.GuildOrderSubOrderDepth = 3
-# Guild bank access for guild bots: every bot in a guild with a real player
-# holds one shared rank (by default the rank below the guild master, or the
-# rank picked with `.bot order rank`), so the master can open bank tabs to
-# one rank. 1 is on, 0 is off (ranks stay as they are and the addon shows no
-# bot rank).
+# Guild bank access for guild bots: bots joining a guild with a real player
+# get one shared rank (by default the guild's lowest rank, or the rank picked
+# with `.bot order rank`) and bank tab 1 is kept open to it (from the next
+# server start). Ranks a player gives bots by hand stay. 1 is on, 0 is off
+# (ranks stay as they are and the addon shows no bot rank).
 #AiPlayerbot.GuildOrderBotRank = 1
 
 # Limit combat activity for slight performance boost.
