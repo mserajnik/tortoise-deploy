@@ -2937,6 +2937,14 @@ AiPlayerbot.CombatTimeline = 0
 # leaving that list empty stops the log files (and their packs) entirely.
 AiPlayerbot.LogRetentionDays = 3
 
+# At server start, look up the newest TortoiseBots and TortoiseBotsManager releases on GitHub once, in
+# the background (needs curl, standard on Linux and Windows 10+). Players then see the newest versions at
+# login and in the addon. Offline or failed lookups change nothing. 0 = never connect.
+# This is turned off by default in tortoise-deploy because its update process
+# is the only way to get a newer module release. Turning it on has no effect,
+# because the image does not contain curl, which the check needs.
+AiPlayerbot.UpdateCheck = 0
+
 # Filters certain actions from showing up in 'nc +debug' and 'nc +debug action'
 # AiPlayerbot.DebugFilter = add gathering loot,check values,emote,check mount state,jump
 
