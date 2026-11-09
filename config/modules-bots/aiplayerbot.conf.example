@@ -803,8 +803,8 @@ AiPlayerbot.RandomGearTabardsReplaceGuild = 0
 # Gamemaster's Broom of Doom (10), the unobtainable trinket Fang of Alichos
 # (58260), the prize hats Lucky Top Hat (163) and Lucky Fishing Hat (19972),
 # and the event hats Red/Green Winter Hat (21524, 21525) and The Greatest
-# Wizzard Hat (7); empty means nothing is blocked, and there is no
-# separate on/off switch. The ban covers every auto-gear path including
+# Wizzard Hat (7). An empty value also means this default (older templates
+# shipped the line empty); 0 blocks nothing. The ban covers every auto-gear path including
 # .autogear and the gear progression system, and wins over the whitelist
 # below. A pool or hired bot already wearing a blocked item gets it replaced
 # or removed on its next gear pass; real players and owned bots keep whatever
