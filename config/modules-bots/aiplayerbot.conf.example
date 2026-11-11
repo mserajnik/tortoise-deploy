@@ -1136,6 +1136,29 @@ AiPlayerbot.DungeonRunRaidBossRules = 0
 # 1 - on
 AiPlayerbot.DungeonRunRaidHealerGuard = 0
 
+# Pure interrupts skip the damage threat back-off the way heals do. Kick, Pummel, Shield Bash, Bash, Counterspell and
+# Silence are single-target spell actions, so a damage dealer whose threat on its target sat at the 80 % line had them
+# vetoed like a nuke and let the cast finish: a rogue stood idle at full energy in 21 of 50 Kick windows (Tortoise
+# Trials DPS-ROG-KICK, 0.42 of casts kicked). An interrupt adds little threat and stopping the cast is the point. The
+# exemption holds while the interrupt would not pull the mob: the bot's threat on it plus the spell's flat threat
+# (Counterspell 300, Shield Bash 180) under 110 % of the tank's in melee reach, 130 % from range (the core's rule);
+# at or over that line the back-off applies again. The Earth Shock and Death Coil interrupt rows are real nukes and
+# keep the back-off; the "on enemy healer" rows stay gated too.
+# Recommended on. `.reload config` reads it again with the AiPlayerbot.DungeonRun* keys.
+# 0 - off: interrupts are vetoed at the high-threat line as before (Default)
+# 1 - on
+AiPlayerbot.InterruptIgnoresThreat = 0
+
+# A bot does not probe a cast the target's facing makes impossible: Gouge (the target must face the caster) from behind,
+# or a from-behind-only spell such as Backstab from the front. The core refuses both in its cast check, broadcasts a
+# spell failure to everyone nearby each time it is asked, and the bot read a Gouge from behind as castable: a rogue on
+# the behind strategy probed Gouge about 20 times a second, and no Gouge ever landed (Tortoise Trials DPS-ROG-KICK).
+# With 1 the bot refuses such a cast before the probe and the engine picks its next action in the same tick.
+# Recommended on. `.reload config` reads it again with the AiPlayerbot.DungeonRun* keys.
+# 0 - off: the probe runs as before (Default)
+# 1 - on
+AiPlayerbot.SpellFacingPrecheck = 0
+
 # A raid binding's healer seats (.bot commander bind <LeadBot> raid, only read with AiPlayerbot.DungeonRunRaid = 1):
 # with 1 the seats go by class instead of member order. The raid seats take a group healer first (priest, then druid,
 # then shaman, then any other healer); the raid keeps at least a third of its healers, rounded up, and the tanks take
@@ -1692,8 +1715,9 @@ AiPlayerbot.LevelCheck = 30
 # Spells that won't affect bots
 AiPlayerbot.ImmuneSpellIds = 19428
 
-# Randombots will invite players to groups/raids/guilds. (This can also be disabled by turning on DnD on your character)
-# AiPlayerbot.RandomBotInvitePlayer = 1
+# Randombots will invite players to groups/raids/guilds. Off by default: the
+# repeated invites annoy players. (Turning on DnD also stops them.)
+# AiPlayerbot.RandomBotInvitePlayer = 0
 
 # Randombots will invite nearby bots to groups/raids/guilds. Off by default
 # (mod-playerbots parity): bot-only groups leash members and stall the pool.
@@ -2514,12 +2538,19 @@ AiPlayerbot.PremadeSpecLink.11.2.60 = 5002012--5050013355213521
 # pool runs after them as one turn queue: after each turn a bot is due again
 # when its AI asked to think next, never later than its situation allows
 # (combat 400 ms, dead or battleground 1 s, teleport 100 ms, else 3 s), and a
-# change of situation makes it due at once. Due bots run most overdue first
-# relative to that cap until the budget is spent, so nobody is dropped.
+# change of situation (plus arriving at the travel target or finishing the
+# worked task: walk-to-work or work-to-expired in one turn, never a failed
+# move or a re-pick) makes it due at once. Optionally (PoolNearPlayerYd) bots
+# next to a real player run ahead of the rest when the budget cuts the pass.
 #   PoolTickBudgetUs: microseconds of module work per tick for the pool turn
 #       queue, added to CombatTickBudgetUs (the two make one budget).
 #       0 = no budget at all (every due bot runs).
 #       Values below 1000 are raised to 1000; 100000 is the ceiling.
+#   PoolNearPlayerYd: yards around a real player whose pool bots run ahead of
+#       the rest when the budget cuts the pass (same map and instance).
+#       0 turns the preference off (the default): every bot is equally late,
+#       so distant bots are as smooth as the ones in view. Set it for a large
+#       pool on a slow machine, e.g. 80.
 #   PoolBudgetWhenTickOverMs: the budget only engages while the previous world
 #       tick ran longer than this. 0 = budget on every tick (the default: with
 #       the self-tuning budget below, a healthy server reclaims the full
@@ -2546,6 +2577,7 @@ AiPlayerbot.PremadeSpecLink.11.2.60 = 5002012--5050013355213521
 # The pass cost and whether the budget cut a pass are reported by the
 # "TortoiseBots: BOTPERF ..." log line every ~30 s (LogLevel 1 or higher).
 AiPlayerbot.PoolTickBudgetUs = 22000
+AiPlayerbot.PoolNearPlayerYd = 0
 AiPlayerbot.PoolBudgetWhenTickOverMs = 0
 AiPlayerbot.CombatTickBudgetUs = 15000
 AiPlayerbot.TargetWorldTickMs = 100
