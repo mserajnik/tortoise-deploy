@@ -1216,6 +1216,67 @@ AiPlayerbot.DungeonRunTankPostOwnsSubject = 0
 # 1 - on
 AiPlayerbot.DungeonRunTankPostTaunts = 0
 
+# A tank_post row's Engage step walks to the unit it awaits while the unit is out of melee reach: with the key on, the
+# step takes the unit as its target (the attack first, the result ignored) and walks to a point at melee distance on
+# the line to it, instead of ending the tick on the attack, and no second spline is launched while the tank is already
+# moving and the point still stands within 3 yd of the last one. One BossTacticsTankPost row (event walk, with the
+# distance to the unit) is written each time the tank starts walking. A boss stand seat still wins (a stay included:
+# no walk while any stand is active). The walk follows the unit wherever it stands, so a Hatcher that walks to its
+# spawn by the eggs drags the post tank there. Off, the step only attacks the unit where it stands, as before. Needs
+# AiPlayerbot.DungeonRunTankPost.
+# 0 - off: the Engage step only attacks the unit where it stands (Default)
+# 1 - on
+AiPlayerbot.DungeonRunTankPostWalks = 0
+
+# A live tank_post owns the one unit it latched at its arrival: with the key on, another tank's post record reserves
+# only the unit its arrival was latched on, not every unit of the row's `target_entry`, and each post's pick keeps its
+# own latched living unit while another live post's latched unit is no candidate, so two posts on one entry (two
+# Hatchers, say) each keep their own unit and neither locks the other's taunts out or trades units read by read. A
+# record that has not latched a unit yet reserves every unit of the entry, as before, and takes a unit no other post
+# latched. Off, every post on the entry reserves every unit of it. Needs AiPlayerbot.DungeonRunTankPost and
+# AiPlayerbot.DungeonRunTankPostOwnsSubject.
+# 0 - off: every post on the entry reserves every unit of it (Default)
+# 1 - on
+AiPlayerbot.DungeonRunTankPostOwnsUnit = 0
+
+# The main tank's own tank_post row: with the key on, a `tank_post` row whose `priority` is 0 (the main tank's slot)
+# is picked for the main tank, so a `hold_spot` post on the row's own boss takes the boss and drags it to the post's
+# spot (the loader accepts a slot-0 row only on the row's own boss; any other target is refused). Off, slot 0 is no
+# post and the boss goes to the ordinary tank pick, as before the key. Needs AiPlayerbot.DungeonRunTankPost.
+# 0 - off: slot 0 is no post (Default)
+# 1 - on
+AiPlayerbot.DungeonRunTankPostMain = 0
+
+# A post keeps the row and unit it latched: with the key on, while the unit a post latched at its arrival is alive the
+# post keeps its row through a raid tank renumbering (the `slot` end a tank death causes) and that unit wins the tank's
+# target pick over any other candidate, so the post does not hand its unit off or end when the tank order moves.
+# Off, a renumbering ends the post and every unit of the entry ranks as before. Needs AiPlayerbot.DungeonRunTankPost.
+# 0 - off: a renumbering ends the post (Default)
+# 1 - on
+AiPlayerbot.DungeonRunTankPostKeepsUnit = 0
+
+# A `hold_spot` post waits at its spot before its unit exists: with the key on, the post starts with no subject, walks
+# to the spot when it stands past the 8 yd drag distance, holds there and yields to a boss stand seat; the window still
+# ends it. Off, a post starts only once a living unit of the entry stands in the fight, as before the key. Needs
+# AiPlayerbot.DungeonRunTankPost and AiPlayerbot.DungeonRunTankPostHoldSpot.
+# 0 - off: a post starts only on a living unit (Default)
+# 1 - on
+AiPlayerbot.DungeonRunTankPostWaits = 0
+
+# Healers held on a `hold_spot` tank_post's tank: the row's `healers` column (0-4) names how many of the group's
+# healers the post holds on its tank. Each of them heals only that tank and nothing else (no self-heal, no fallback
+# when it is out of reach), walks back when it stands farther than 30 yd from it, and aims beside the unit the post
+# holds (20 yd at a right angle) so it does not gather in the boss's front. The held set is re-picked on every scan:
+# a healer under 10 % mana frees its seat at once, and a challenger takes one only with a better tank seat, 20 % more
+# mana, or 10 yd less distance. The row's `spell_id` is the boss spell whose aura on a raid member marks the cast the
+# tank answers with its class's defensive cooldown, once per post and only after the unit was on it without the aura
+# (0: no cooldown rule); a name that does not go out (on cooldown) moves to the next one. Off, every row runs as
+# before and `healers`/`spell_id` do nothing. Needs AiPlayerbot.DungeonRunTankPost and
+# AiPlayerbot.DungeonRunTankPostHoldSpot.
+# 0 - off: no healer is held and no cooldown fires (Default)
+# 1 - on
+AiPlayerbot.DungeonRunTankPostHealers = 0
+
 # A seek_aura row makes the raid gather in the cloud a dying source creature leaves; off ignores the rows.
 AiPlayerbot.DungeonRunSeekAura = 0
 
@@ -1527,6 +1588,16 @@ AiPlayerbot.DungeonRunFactJudgeCharmedLead = 0
 # 0 - off: every taunt goes out as before (Default)
 # 1 - on (recommended on)
 AiPlayerbot.DungeonRunTauntGate = 0
+
+# A `taunt_after_cast` row in mode `until_tank` that names an off-tank never sends its window to the main tank: the scan
+# runs over the off-tanks only, a row slot past the live tank count starts at the last tank and then wraps back to the
+# first off-tank, and with no usable off-tank the row does nothing, so the main tank never leaves the boss. A row that
+# names the main tank (priority 0) is unchanged. Onyxia's Lair walk 2g: with three live tanks the 10184 row's slot 3 read
+# 3 % 3 = 0, so 13 of 26 window rows went to the main tank. `.reload config` reads it again with the other
+# AiPlayerbot.DungeonRun* keys.
+# 0 - off: the scan wraps to the front as before (Default)
+# 1 - on
+AiPlayerbot.DungeonRunTauntAfterSkipsMain = 0
 
 # A spread row widens the ranged raid's spacing while the boss fights; off ignores the rows.
 AiPlayerbot.DungeonRunBossSpread = 0
