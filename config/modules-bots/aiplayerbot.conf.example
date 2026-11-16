@@ -1621,6 +1621,15 @@ AiPlayerbot.DungeonRunBossProtectionPotion = 0
 # rose 12 points. The reserve waits for a redesign (no reserve in the opening, released when raid health drops).
 AiPlayerbot.DungeonRunHealReserve = 0
 
+# A minimum range for the spread ring slots of a class that shoots from a dead zone (a hunter's Auto Shot cannot
+# hit nearer than 8 yd): each such bot's slot never lands nearer the boss than the boss's own reach plus 8 plus 2 yd,
+# and never within the row's spacing of another member's slot (it steps sideways along that circle until clear).
+# Without it a hunter's slot lands inside the dead zone, the dead-zone step-out walks to about 15 yd and the slot
+# pulls her back in a loop. Casters and healers keep the plain rings either way. Needs DungeonRunBossSpreadSlots.
+# 0 - off: the rings as they are (Default)
+# 1 - on (recommended on)
+AiPlayerbot.SpreadRangedMinRange = 0
+
 # An avoid_cast row in mode `all` also clears the tanks: while its spell is cast no bot holds the caster, so every
 # tank walks out of that blast too (the Zul'Gurub Bat Rider's self-destruct, where nothing is gained by staying).
 # With the key off the row behaves like a default row (a tank the caster is on still holds it). This is its own
@@ -1760,6 +1769,19 @@ AiPlayerbot.DungeonRunRaidHealerGuard = 0
 # 1 - on
 AiPlayerbot.InterruptIgnoresThreat = 0
 
+# A stun counts as an interrupt. Bash (5211/8983), Hammer of Justice (853/10308), War Stomp (20549), Repentance (20066)
+# and Intercept's triggered stun (20252 -> 20253) are an APPLY_AURA / MOD_STUN effect only on this core: no
+# interrupt-cast effect, no combat-interrupt flag. The interrupt target value (and the "on enemy healer" rows) only
+# accepted a silence or an interrupt-cast effect, so every tank stun row was dead (Tortoise Trials
+# tank-bear-bash-caster 0/75, tank-paladin-hoj-caster 3/32). With 1 a stun the target is not immune to counts: the
+# core stops any non-melee cast a stun lands on, so the victim's cast need not be silence-prevented either. Stun
+# immunity (the effect's mechanic) still refuses. Bash and HoJ have a 60 s cooldown, so a tank spends them on the
+# first trash cast the row can answer.
+# Recommended on. `.reload config` reads it again with the AiPlayerbot.DungeonRun* keys.
+# 0 - off: only a silence or an interrupt-cast effect counts, as before (Default)
+# 1 - on
+AiPlayerbot.InterruptAllowStun = 0
+
 # A bot does not probe a cast the target's facing makes impossible: Gouge (the target must face the caster) from behind,
 # or a from-behind-only spell such as Backstab from the front. The core refuses both in its cast check, broadcasts a
 # spell failure to everyone nearby each time it is asked, and the bot read a Gouge from behind as castable: a rogue on
@@ -1805,6 +1827,19 @@ AiPlayerbot.RaidTankHealerAssist = 0
 # 0 - off: no raid row is built, the engines' trigger lists are as before (Default)
 # 1 - on
 AiPlayerbot.RaidReactions = 0
+
+# The opening of a healer's heal that a positioning reaction may still cut (recommended on at 1). The reaction engine
+# breaks a bot's cast as soon as it PICKS a reaction whose action asks for it, before the action can find it has nothing
+# to do; `boss tactics seek` and `raid spread` are both such actions and both usually pass without a step (the seek at
+# the gather, a held slot). Walk 102: each healer lost 10.5 heals a fight, the cut at a median 4 % of the cast and 79 %
+# of the cuts under 10 %, with 74.5 % of the labelled cuts going to seek. With the key on, only those two actions stand
+# down, and only for a bot that heals, casting a heal, from this percent of the cast on. Every emergency still breaks
+# the cast (freeze, flee, bomb runout, avoid aoe, hazard, potions, victim escape, BoP, the dispels), and a seek or
+# spread that really walks still breaks it once the walk has a path. `.reload config` reads it again.
+# 0 - off: every reaction breaks a cast as before (Default)
+# 1 - on (recommended on): a heal is only broken in its first percent
+# 1-100 - the opening percent of the cast that may still be cut
+AiPlayerbot.ReactionHealCastGuardPct = 0
 
 # Opt-in "fankriss tank" role (.bot strategy +fankriss tank): an assigned tank with no Mortal Wound
 # stacks taunts Fankriss off the current tank at this many stacks (1-9, clamped). Does not enable the role.
@@ -3243,6 +3278,10 @@ AiPlayerbot.PassiveDelay = 10000
 
 # Minimum delay between repeating actions (chat messages, emotes etc)
 AiPlayerbot.RepeatDelay = 5000
+
+# Minimum delay before a bot repeats the same error message to a player.
+# A new command from the player resets it, so command replies always arrive.
+AiPlayerbot.ErrorRepeatDelay = 30000
 
 AiPlayerbot.RpgDelay = 10000
 
