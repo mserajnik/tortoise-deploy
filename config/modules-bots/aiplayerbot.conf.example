@@ -225,6 +225,10 @@ AiPlayerbot.RepopAtGraveyard = 1
 # Teleport a dead bot out of a hopeless corpse run (grim clueless solo graveyard
 # with no reachable spirit) to the graveyard it would repop at
 #AiPlayerbot.RelocateHopelessDeaths = 1
+# Grace period in seconds before a masterless random or autonomous bot left
+# inside a dungeon or raid instance without a real player in its group is
+# teleported back to its homebind. 0 disables. Default 90.
+AiPlayerbot.AbandonedInstanceGraceSec = 90
 # Level at which random bots learn the Swift Riding Turtle (quest 40302
 # "Torta's Egg" -> item 23720 -> spell 30174), as if they did the quest.
 # Applies on seed/refresh at TurtleMountAtLevel..39 and on level-up for the
@@ -273,6 +277,11 @@ AiPlayerbot.MountBreakEvenFactor = 1.5
 # refused (guards kill bots ~13 levels above them); 0 = the old behaviour, which
 # walked bots into enemy settlements. Default 1.
 AiPlayerbot.AvoidHostileTowns = 1
+
+# Creature entries that count as town guards for AvoidHostileTowns although the
+# data has no guard flag and no guard word in the name. Default: the Nethergarde
+# Keep garrison (Soldier, Cleric, Analyst, Riftwatcher, Officer).
+#AiPlayerbot.ExtraTownGuardEntries = 5996,5997,5998,5999,6000,6001,6002,6003
 
 # When a random bot without a player master is stuck for a long time it uses its
 # hearthstone. 1 = only if its homebind area is within 10 levels of the bot
@@ -640,41 +649,485 @@ AiPlayerbot.BotGearPresets = prebis=t1 ilvl=63;lkh=t2 ilvl=63;zg=t2 ilvl=63;aq20
 # entry listed here.
 #AiPlayerbot.BotGossipNpcs =
 
-# Bounded AH market population through the native bot/session auction path. Default off.
+# Bounded AH market population through the native bot/session auction path.
 # When enabled, online random Headless bots use real inventory items, pricing, deposits,
 # account limits, and HandleAuctionSellItem. Auctioneer spawns are loaded once and
-# validated before a bounded TeleportTo fallback; no fake items, direct auction writes,
-# donor AhBot thread, per-tick AH/DB scan, or second owner. Interval is 5..3600 seconds
+# validated before a bounded TeleportTo fallback; interval is 5..3600 seconds
 # (default 120), batch is 1..5 (default 1), and the shared AH try_lock is respected.
 # Requires RandomBotAutologin=1. Failed attempts are rate-limited per bot.
 AiPlayerbot.AhMarketEnabled = 1
 AiPlayerbot.AhMarketInterval = 120
 AiPlayerbot.AhMarketBatchSize = 1
 
-# Synthetic AH Supply and Buyer Engine with Work Budgets (Issue #88).
-# Optional background service generating realistic synthetic market supply
-# and buyer participation for low-population realms. Strictly bounded by
-# per-tick time budgets and operation count caps so tick latency is unaffected.
-# Synthetic inventory is isolated and tagged, never entering real inventories.
-AiPlayerbot.AhMarketSyntheticSupply = 0
-# AhMarketBuyer is not synthetic: a pool bot already standing at an auctioneer
-# bids on or buys an auction with its own gold.
+# AhMarketBuyer is organic: a pool bot already standing at an auctioneer
+# bids on or buys an auction with its own gold. Budget/operation caps bound the scan.
 AiPlayerbot.AhMarketBuyer = 1
 AiPlayerbot.AhMarketBudgetUs = 2000
 AiPlayerbot.AhMarketMaxOperations = 32
-AiPlayerbot.AhMarketChanceSell = 10
 AiPlayerbot.AhMarketChanceBuy = 10
 AiPlayerbot.AhMarketBuyValue = 80
 AiPlayerbot.AhMarketMaxSpendPerBot = 0
-AiPlayerbot.AhMarketMaxQuality = 4
-AiPlayerbot.AhMarketMaxLevel = 60
-AiPlayerbot.AhMarketDynamicLevel = 0
-AiPlayerbot.AhMarketLevelRefresh = 600
 AiPlayerbot.AhMarketVariance = 10
-AiPlayerbot.AhMarketBidMin = 75
-# AiPlayerbot.AhMarketBidMax = 90
-AiPlayerbot.AhMarketTimeMax = 24
-# AiPlayerbot.AhMarketTimeMin = 8
+# AhBot seller
+# Dedicated login account used to own Auction House bot listings and bids.
+# Default: TBAHBOT (must not start with AiPlayerbot.RandomBotAccountPrefix).
+# Characters on this account never log in and are excluded from the random bot pool.
+AiPlayerbot.AhBot.AccountName = TBAHBOT
+
+# Number of offline seller characters maintained per faction (Alliance and Horde)
+# on the AH bot account (1-5). Default: 4
+AiPlayerbot.AhBot.SellersPerFaction = 4
+
+# How often (in seconds) the AH bot checks that its seller account and characters
+# still exist and recreates any missing or soft-deleted entries. Default: 300
+AiPlayerbot.AhBot.SellerRepairIntervalSeconds = 300
+
+# AhBot pool
+# Restrict AH bot item candidates by item level (0 = disabled, default 0).
+# When UseCraftedItemForCalculation is 1 (default 1), recipes check the item
+# level of the item they craft instead of the recipe's own item level.
+AiPlayerbot.AhBot.ListedItemLevelRestrict.Enabled = 0
+AiPlayerbot.AhBot.ListedItemLevelRestrict.UseCraftedItemForCalculation = 1
+AiPlayerbot.AhBot.ListedItemLevelRestrict.MinItemLevel = 0
+AiPlayerbot.AhBot.ListedItemLevelRestrict.MaxItemLevel = 999
+AiPlayerbot.AhBot.ListedItemLevelRestrict.ExceptionItemIDs =
+
+# Restrict AH bot item candidates by item entry ID range (0 = disabled, default 0).
+AiPlayerbot.AhBot.ListedItemIDRestrict.Enabled = 0
+AiPlayerbot.AhBot.ListedItemIDRestrict.MinItemID = 0
+AiPlayerbot.AhBot.ListedItemIDRestrict.MaxItemID = 200000
+AiPlayerbot.AhBot.ListedItemIDRestrict.ExceptionItemIDs =
+
+# Restrict AH bot item candidates by required equip/use level (1 = enabled, default 1;
+# items with no level requirement are always exempt; vanilla cap default 60).
+AiPlayerbot.AhBot.EquipItemUseOrEquipLevelRestrict.Enabled = 1
+AiPlayerbot.AhBot.EquipItemUseOrEquipLevelRestrict.MinLevel = 0
+AiPlayerbot.AhBot.EquipItemUseOrEquipLevelRestrict.MaxLevel = 60
+AiPlayerbot.AhBot.EquipItemUseOrEquipLevelRestrict.ExceptionItemIDs =
+
+# Filter out test/placeholder/deprecated/PvP-labeled item names (default 1).
+AiPlayerbot.AhBot.DisabledItemTextFilter = 1
+
+# Optionally exclude recipe-crafted items matching class:subclass pairs (default 0;
+# default classes: weapons 2:*, armor 4:*, pets 15:2, mounts 15:5).
+AiPlayerbot.AhBot.DisabledRecipeProducedItemFilterEnabled = 0
+AiPlayerbot.AhBot.DisabledRecipeProducedItemClassSubClasses = 2:*,4:*,15:2,15:5
+
+# Comma-separated item IDs or ranges to exclude from the AH bot pool.
+AiPlayerbot.AhBot.DisabledInvalidItemIDs = 17,37,88,91,100,119,128,138,143,156,734,813,876,895,896,900,913,931,956,958,960,964,996,997,1014,1020,1021,1024,1025,1027-1029,1041,1057,1113,1114,1133,1134,1162,1166,1167,1192,1193,1222,1255,1259,1298,1324,1352,1356,1402,1450,1487,1623,1672,1902,1911,1914,1923,1977,2016,2081,2128,2133,2136,2184,2273,2275,2288,2305,2306,2320,2321,2324,2325,2377,2410,2413,2415,2441-2444,2477,2481-2487,2496-2503,2550,2556,2588,2599,2604,2605,2638,2664,2665,2668,2678,2688,2692,2693,2705,2715,2755,2810,2880,2891-2893,2918,2920-2922,2927,2929,2931,2932,2946,2947,2995,3003-3005,3031,3046,3052,3062,3063,3068,3107,3111,3122,3131,3135,3137,3144,3148,3168,3222,3245,3260,3316,3320,3368,3371,3372,3466,3513,3516,3536,3584,3648,3675,3686,3707,3713,3744,3772,3774-3777,3857,3861,3884,3895,3934,3952-3959,3977-3984,3988,3991,4008-4015,4143,4191,4193,4196,4200,4273,4289,4291,4340-4342,4399,4400,4470,4471,4524,4688,4703,4749,4761,4763,4773,4774,4868,4912,4959,5004,5005,5008,5010,5013,5024,5043,5044,5049,5056,5091,5106,5108,5150,5184,5220,5229,5235,5255,5259,5283,5330,5333,5349,5350,5353,5362-5364,5367,5370,5371,5377,5379,5389,5400,5417,5418,5435,5455,5495,5509-5512,5515,5517,5518,5531,5549,5550,5555,5560,5562,5563,5577,5600,5625,5632,5639,5641,5645,5646,5654,5657,5660,5663,5670,5681,5748,5823,5828,5845,5859,5874,5875,5878,5968,6130,6131,6150,6174,6182,6183,6216,6222,6225,6227,6232,6260,6261,6273,6276-6280,6297,6301,6308,6343,6345,6364,6374,6376,6435,6455,6490-6492,6495-6498,6500,6501,6516,6544,6589,6623,6648-6651,6698,6707,6708,6711,6715,6717,6718,6724,6728,6734,6736,6834,6891,6927,6949,6950,6988,7093,7134,7135,7170,7187,7188,7190,7192,7206,7208,7268,7271,7333,7426,7427,7466,7467,7497,7547,7548,7550,7678-7681,7733,7737,7769-7771,7867,7923,7977,8072,8075-8079,8147,8164,8343,8383,8388,8425-8427,8546,8547,8583,8585,8589,8590,8627,8628,8630,8633,8756-8765,8768-8816,8818-8826,8828-8830,8832-8835,8837,8840-8844,8847-8907,8909-8922,8925-8931,8933-8945,8947,8954,8955,8958,8960-8969,8971,8972,8974-8978,8980,8981,8983-9029,9031-9035,9037,9039-9044,9046-9059,9062-9087,9089-9105,9123-9143,9145-9148,9150-9152,9156-9162,9164-9171,9174-9178,9180-9185,9188,9190-9195,9198-9205,9207-9209,9211,9212,9214-9219,9221-9223,9225-9231,9239,9254,9280-9282,9284,9311,9316,9319,9325,9330,9365,9421,9438,9440,9441,9443,9593-9597,9700,9701,9888,10290,10303,10304,10313,10319,10322,10324,10457,10464,10579,10580,10595,10647,10648,10662,10691-10694,10918,11111,11131,11149,11170,11222,11230,11264,11270,11282,11283,11413,11470,11507,11511,11602,11609,11613,11616,11903,11947,11949,11954,12241,12258,12263,12347-12349,12468,12567,12615-12617,12648,12649,12723,12731,12787,12816,12817,12826,12831,12832,12847,12866,12885,12904,12943,12947,12991,13155,13159,13316,13370,13477,13480,13500,13612,13673,13879,13880,13887,13891,13904-13906,13908,13910-13912,13915-13917,14062,14083,14339,14341,14389,14390,14392,14481,14488,14550,14586,14645,14891,15326,15327,15448,15756,15769,15843,15845,16026,16041,16042,16047,16072,16073,16082-16085,16165,16171,16180,16339,16664,16792,16967-16970,16973,16999,17024,17027,17195,17242,17262,17302,17305,17308,17323,17325,17362,17363,17696,17758,17882,17887,18002,18151,18153,18154,18235,18256,18341,18342,18492,18540,18566,18567,18599,18636,18642,18643,18651,18964,19004-19013,19642,19725,19775,19880,19882,19924,19960,20018,20020,20021,20337,20364,20404,20416,20418-20420,20432,20433,20435,20436,20447-20450,20454-20456,20591,20596,20708,20834,20952,20953,21043,21113,21135,21140,21141,21150,21168,21171,21228,21369,21442,21536,21560,21577,21578,21591,21816,21818,21819,21822,21823,21831,21975,21979-21981,22020,22042,22045,22058,22140-22145,22154-22172,22178,22262,22263,22283-22300,22373-22376,22386,22387,22584,22596,22709,22733,22822,22895,23055,23227,23360,23567,23578,23579,23683,23684,23725,23727,23728,24071,24283
+AiPlayerbot.AhBot.DisabledCustomItemIDs =
+
+# Relative listing proportions per item category and quality (whole numbers; 0 disables).
+# Note: Poor (grey) items are always excluded by the pool filter regardless of weight.
+AiPlayerbot.AhBot.ListProportion.CategoryConsumable.QualityPoor = 0
+AiPlayerbot.AhBot.ListProportion.CategoryConsumable.QualityNormal = 110
+AiPlayerbot.AhBot.ListProportion.CategoryConsumable.QualityUncommon = 10
+AiPlayerbot.AhBot.ListProportion.CategoryConsumable.QualityRare = 5
+AiPlayerbot.AhBot.ListProportion.CategoryConsumable.QualityEpic = 0
+AiPlayerbot.AhBot.ListProportion.CategoryConsumable.QualityLegendary = 0
+AiPlayerbot.AhBot.ListProportion.CategoryConsumable.QualityArtifact = 0
+
+AiPlayerbot.AhBot.ListProportion.CategoryContainer.QualityPoor = 0
+AiPlayerbot.AhBot.ListProportion.CategoryContainer.QualityNormal = 15
+AiPlayerbot.AhBot.ListProportion.CategoryContainer.QualityUncommon = 6
+AiPlayerbot.AhBot.ListProportion.CategoryContainer.QualityRare = 3
+AiPlayerbot.AhBot.ListProportion.CategoryContainer.QualityEpic = 1
+AiPlayerbot.AhBot.ListProportion.CategoryContainer.QualityLegendary = 0
+AiPlayerbot.AhBot.ListProportion.CategoryContainer.QualityArtifact = 0
+
+AiPlayerbot.AhBot.ListProportion.CategoryWeapon.QualityPoor = 0
+AiPlayerbot.AhBot.ListProportion.CategoryWeapon.QualityNormal = 5
+AiPlayerbot.AhBot.ListProportion.CategoryWeapon.QualityUncommon = 35
+AiPlayerbot.AhBot.ListProportion.CategoryWeapon.QualityRare = 10
+AiPlayerbot.AhBot.ListProportion.CategoryWeapon.QualityEpic = 1
+AiPlayerbot.AhBot.ListProportion.CategoryWeapon.QualityLegendary = 0
+AiPlayerbot.AhBot.ListProportion.CategoryWeapon.QualityArtifact = 0
+
+AiPlayerbot.AhBot.ListProportion.CategoryArmor.QualityPoor = 0
+AiPlayerbot.AhBot.ListProportion.CategoryArmor.QualityNormal = 15
+AiPlayerbot.AhBot.ListProportion.CategoryArmor.QualityUncommon = 50
+AiPlayerbot.AhBot.ListProportion.CategoryArmor.QualityRare = 15
+AiPlayerbot.AhBot.ListProportion.CategoryArmor.QualityEpic = 2
+AiPlayerbot.AhBot.ListProportion.CategoryArmor.QualityLegendary = 0
+AiPlayerbot.AhBot.ListProportion.CategoryArmor.QualityArtifact = 0
+
+AiPlayerbot.AhBot.ListProportion.CategoryReagent.QualityPoor = 0
+AiPlayerbot.AhBot.ListProportion.CategoryReagent.QualityNormal = 15
+AiPlayerbot.AhBot.ListProportion.CategoryReagent.QualityUncommon = 0
+AiPlayerbot.AhBot.ListProportion.CategoryReagent.QualityRare = 0
+AiPlayerbot.AhBot.ListProportion.CategoryReagent.QualityEpic = 0
+AiPlayerbot.AhBot.ListProportion.CategoryReagent.QualityLegendary = 0
+AiPlayerbot.AhBot.ListProportion.CategoryReagent.QualityArtifact = 0
+
+AiPlayerbot.AhBot.ListProportion.CategoryProjectile.QualityPoor = 0
+AiPlayerbot.AhBot.ListProportion.CategoryProjectile.QualityNormal = 10
+AiPlayerbot.AhBot.ListProportion.CategoryProjectile.QualityUncommon = 4
+AiPlayerbot.AhBot.ListProportion.CategoryProjectile.QualityRare = 2
+AiPlayerbot.AhBot.ListProportion.CategoryProjectile.QualityEpic = 0
+AiPlayerbot.AhBot.ListProportion.CategoryProjectile.QualityLegendary = 0
+AiPlayerbot.AhBot.ListProportion.CategoryProjectile.QualityArtifact = 0
+
+AiPlayerbot.AhBot.ListProportion.CategoryTradeGood.QualityPoor = 0
+AiPlayerbot.AhBot.ListProportion.CategoryTradeGood.QualityNormal = 220
+AiPlayerbot.AhBot.ListProportion.CategoryTradeGood.QualityUncommon = 30
+AiPlayerbot.AhBot.ListProportion.CategoryTradeGood.QualityRare = 8
+AiPlayerbot.AhBot.ListProportion.CategoryTradeGood.QualityEpic = 1
+AiPlayerbot.AhBot.ListProportion.CategoryTradeGood.QualityLegendary = 0
+AiPlayerbot.AhBot.ListProportion.CategoryTradeGood.QualityArtifact = 0
+
+AiPlayerbot.AhBot.ListProportion.CategoryGeneric.QualityPoor = 0
+AiPlayerbot.AhBot.ListProportion.CategoryGeneric.QualityNormal = 0
+AiPlayerbot.AhBot.ListProportion.CategoryGeneric.QualityUncommon = 0
+AiPlayerbot.AhBot.ListProportion.CategoryGeneric.QualityRare = 0
+AiPlayerbot.AhBot.ListProportion.CategoryGeneric.QualityEpic = 0
+AiPlayerbot.AhBot.ListProportion.CategoryGeneric.QualityLegendary = 0
+AiPlayerbot.AhBot.ListProportion.CategoryGeneric.QualityArtifact = 0
+
+AiPlayerbot.AhBot.ListProportion.CategoryRecipe.QualityPoor = 0
+AiPlayerbot.AhBot.ListProportion.CategoryRecipe.QualityNormal = 10
+AiPlayerbot.AhBot.ListProportion.CategoryRecipe.QualityUncommon = 15
+AiPlayerbot.AhBot.ListProportion.CategoryRecipe.QualityRare = 5
+AiPlayerbot.AhBot.ListProportion.CategoryRecipe.QualityEpic = 1
+AiPlayerbot.AhBot.ListProportion.CategoryRecipe.QualityLegendary = 0
+AiPlayerbot.AhBot.ListProportion.CategoryRecipe.QualityArtifact = 0
+
+AiPlayerbot.AhBot.ListProportion.CategoryQuiver.QualityPoor = 0
+AiPlayerbot.AhBot.ListProportion.CategoryQuiver.QualityNormal = 6
+AiPlayerbot.AhBot.ListProportion.CategoryQuiver.QualityUncommon = 4
+AiPlayerbot.AhBot.ListProportion.CategoryQuiver.QualityRare = 1
+AiPlayerbot.AhBot.ListProportion.CategoryQuiver.QualityEpic = 0
+AiPlayerbot.AhBot.ListProportion.CategoryQuiver.QualityLegendary = 0
+AiPlayerbot.AhBot.ListProportion.CategoryQuiver.QualityArtifact = 0
+
+AiPlayerbot.AhBot.ListProportion.CategoryQuest.QualityPoor = 0
+AiPlayerbot.AhBot.ListProportion.CategoryQuest.QualityNormal = 10
+AiPlayerbot.AhBot.ListProportion.CategoryQuest.QualityUncommon = 2
+AiPlayerbot.AhBot.ListProportion.CategoryQuest.QualityRare = 0
+AiPlayerbot.AhBot.ListProportion.CategoryQuest.QualityEpic = 0
+AiPlayerbot.AhBot.ListProportion.CategoryQuest.QualityLegendary = 0
+AiPlayerbot.AhBot.ListProportion.CategoryQuest.QualityArtifact = 0
+
+AiPlayerbot.AhBot.ListProportion.CategoryKey.QualityPoor = 0
+AiPlayerbot.AhBot.ListProportion.CategoryKey.QualityNormal = 3
+AiPlayerbot.AhBot.ListProportion.CategoryKey.QualityUncommon = 1
+AiPlayerbot.AhBot.ListProportion.CategoryKey.QualityRare = 0
+AiPlayerbot.AhBot.ListProportion.CategoryKey.QualityEpic = 0
+AiPlayerbot.AhBot.ListProportion.CategoryKey.QualityLegendary = 0
+AiPlayerbot.AhBot.ListProportion.CategoryKey.QualityArtifact = 0
+
+AiPlayerbot.AhBot.ListProportion.CategoryMisc.QualityPoor = 0
+AiPlayerbot.AhBot.ListProportion.CategoryMisc.QualityNormal = 4
+AiPlayerbot.AhBot.ListProportion.CategoryMisc.QualityUncommon = 2
+AiPlayerbot.AhBot.ListProportion.CategoryMisc.QualityRare = 1
+AiPlayerbot.AhBot.ListProportion.CategoryMisc.QualityEpic = 1
+AiPlayerbot.AhBot.ListProportion.CategoryMisc.QualityLegendary = 0
+AiPlayerbot.AhBot.ListProportion.CategoryMisc.QualityArtifact = 0
+
+# Comma-separated itemID:multiplier pairs boosting selection weight within each
+# item's category x quality bucket (default: vanilla cloth, leather, ore, herbs,
+# enchanting mats, gems at 10x; healing/mana potions at 5x).
+AiPlayerbot.AhBot.ListProportion.ListMultipliedItemIDs = 2589:10,2592:10,4306:10,4338:10,14047:10,2318:10,2319:10,4234:10,4304:10,8170:10,2770:10,2771:10,2772:10,2775:10,2776:10,3858:10,7911:10,10620:10,2835:10,2836:10,2838:10,12365:10,7912:10,765:10,785:10,2447:10,2449:10,2450:10,2452:10,2453:10,3355:10,3356:10,3357:10,3358:10,3369:10,3818:10,3819:10,3820:10,3821:10,4625:10,8153:10,8831:10,8836:10,8838:10,8839:10,8845:10,8846:10,13463:10,13464:10,13465:10,13466:10,13467:10,13468:10,10938:10,10939:10,10940:10,10978:10,10998:10,11082:10,11084:10,11128:10,11134:10,11135:10,11138:10,11139:10,11174:10,11175:10,11177:10,11178:10,14343:10,16202:10,16203:10,16204:10,774:10,818:10,1206:10,1210:10,1529:10,1705:10,3864:10,7909:10,7910:10,12361:10,12364:10,12799:10,12800:10,118:5,858:5,929:5,2455:5,2456:5,3827:5,3928:5,6149:5,13443:5,13446:5,18253:5
+# AhBot price
+# Complete per-item price overrides in copper ("itemID:priceCopper,...").
+# Default: 0 (disabled) and empty list.
+AiPlayerbot.AhBot.CompleteItemValueOverride.Enabled = 0
+AiPlayerbot.AhBot.CompleteItemValueOverride.Items = ""
+AiPlayerbot.AhBot.CompleteItemValueOverride.DoApplyBidVariations = 0
+AiPlayerbot.AhBot.CompleteItemValueOverride.DoApplyBuyoutVariations = 0
+
+# Global AH bot price bounds and random variation bands.
+# MaxBuyoutPriceInCopper caps per-unit buyout (default 1000000000 = 100k gold).
+# Buyout variation defaults: -15% to +25% (0.15 / 0.25).
+# Bid variation defaults: 0% to -25% below buyout (0.0 / 0.25).
+# BuyoutBelowVendorVariationAddPercent prevents listings below vendor sell price (default 1, +0.25).
+AiPlayerbot.AhBot.MaxBuyoutPriceInCopper = 1000000000
+AiPlayerbot.AhBot.BuyoutVariationReducePercent = 0.15
+AiPlayerbot.AhBot.BuyoutVariationAddPercent = 0.25
+AiPlayerbot.AhBot.BidVariationHighReducePercent = 0.0
+AiPlayerbot.AhBot.BidVariationLowReducePercent = 0.25
+AiPlayerbot.AhBot.BuyoutBelowVendorVariationAddPercentEnabled = 1
+AiPlayerbot.AhBot.BuyoutBelowVendorVariationAddPercent = 0.25
+
+# Multiplier on the buyer bot's calculated fair price per unit (default 1.0).
+AiPlayerbot.AhBot.Buyer.AcceptablePriceModifier = 1.0
+
+# Vanilla-calibrated minimum price centres in copper before multipliers.
+# UseItemSellPriceIfHigher defaults to 1 so vendor sell price is used whenever higher.
+# OverrideItems seeds zero-sell-price enchanting materials with vanilla centres.
+AiPlayerbot.AhBot.PriceMinimumCenterBase.UseItemSellPriceIfHigher = 1
+AiPlayerbot.AhBot.PriceMinimumCenterBase.Consumable = 10
+AiPlayerbot.AhBot.PriceMinimumCenterBase.Container = 50
+AiPlayerbot.AhBot.PriceMinimumCenterBase.Weapon = 25
+AiPlayerbot.AhBot.PriceMinimumCenterBase.Armor = 25
+AiPlayerbot.AhBot.PriceMinimumCenterBase.Reagent = 20
+AiPlayerbot.AhBot.PriceMinimumCenterBase.Projectile = 1
+AiPlayerbot.AhBot.PriceMinimumCenterBase.TradeGood = 5
+AiPlayerbot.AhBot.PriceMinimumCenterBase.Generic = 20
+AiPlayerbot.AhBot.PriceMinimumCenterBase.Recipe = 20
+AiPlayerbot.AhBot.PriceMinimumCenterBase.Quiver = 25
+AiPlayerbot.AhBot.PriceMinimumCenterBase.Quest = 20
+AiPlayerbot.AhBot.PriceMinimumCenterBase.Key = 25
+AiPlayerbot.AhBot.PriceMinimumCenterBase.Misc = 20
+AiPlayerbot.AhBot.PriceMinimumCenterBase.OverrideItems = "10940:60,11083:110,11137:220,11176:330,16204:550,10938:50,10939:150,10998:200,11082:350,11134:400,11135:800,11174:1000,11175:2500,16202:1500,16203:4000,10978:250,11084:400,11138:500,11139:800,11177:1000,11178:1500,14343:1500,14344:4000,20725:15000"
+
+# Item-id based advanced pricing toggles for vanilla item groups (default 1 = enabled).
+AiPlayerbot.AhBot.AdvancedPricing.Consumable.Potion.Enabled = 1
+AiPlayerbot.AhBot.AdvancedPricing.Consumable.Elixir.Enabled = 1
+AiPlayerbot.AhBot.AdvancedPricing.Consumable.Flask.Enabled = 1
+AiPlayerbot.AhBot.AdvancedPricing.TradeGood.Cloth.Enabled = 1
+AiPlayerbot.AhBot.AdvancedPricing.TradeGood.Herb.Enabled = 1
+AiPlayerbot.AhBot.AdvancedPricing.TradeGood.MetalStone.Enabled = 1
+AiPlayerbot.AhBot.AdvancedPricing.TradeGood.Leather.Enabled = 1
+AiPlayerbot.AhBot.AdvancedPricing.TradeGood.Enchanting.Enabled = 1
+AiPlayerbot.AhBot.AdvancedPricing.TradeGood.Elemental.Enabled = 1
+AiPlayerbot.AhBot.AdvancedPricing.TradeGood.Meat.Enabled = 1
+AiPlayerbot.AhBot.AdvancedPricing.Misc.Junk.Enabled = 1
+AiPlayerbot.AhBot.AdvancedPricing.Misc.Mount.Enabled = 1
+AiPlayerbot.AhBot.AdvancedPricing.Misc.Pet.Enabled = 1
+
+# Broad category multipliers (default 1.0).
+AiPlayerbot.AhBot.PriceMultiplier.Category.Consumable = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.Category.Container = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.Category.Weapon = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.Category.Armor = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.Category.Reagent = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.Category.Projectile = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.Category.TradeGood = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.Category.Generic = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.Category.Recipe = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.Category.Quiver = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.Category.Quest = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.Category.Key = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.Category.Misc = 1.0
+
+# Broad quality multipliers (defaults: Poor/Normal 1.0, Uncommon 1.8, Rare 1.9, Epic 2.1, Legendary/Artifact 3.0).
+AiPlayerbot.AhBot.PriceMultiplier.Quality.Poor = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.Quality.Normal = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.Quality.Uncommon = 1.8
+AiPlayerbot.AhBot.PriceMultiplier.Quality.Rare = 1.9
+AiPlayerbot.AhBot.PriceMultiplier.Quality.Epic = 2.1
+AiPlayerbot.AhBot.PriceMultiplier.Quality.Legendary = 3.0
+AiPlayerbot.AhBot.PriceMultiplier.Quality.Artifact = 3.0
+
+# Optional per-category item-level multipliers (default 0.0 = disabled; ignored when advanced pricing applies).
+AiPlayerbot.AhBot.PriceMultiplier.ItemLevel.Category.Consumable = 0.0
+AiPlayerbot.AhBot.PriceMultiplier.ItemLevel.Category.Container = 0.0
+AiPlayerbot.AhBot.PriceMultiplier.ItemLevel.Category.Weapon = 0.0
+AiPlayerbot.AhBot.PriceMultiplier.ItemLevel.Category.Armor = 0.0
+AiPlayerbot.AhBot.PriceMultiplier.ItemLevel.Category.Reagent = 0.0
+AiPlayerbot.AhBot.PriceMultiplier.ItemLevel.Category.Projectile = 0.0
+AiPlayerbot.AhBot.PriceMultiplier.ItemLevel.Category.TradeGood = 0.0
+AiPlayerbot.AhBot.PriceMultiplier.ItemLevel.Category.Generic = 0.0
+AiPlayerbot.AhBot.PriceMultiplier.ItemLevel.Category.Recipe = 0.0
+AiPlayerbot.AhBot.PriceMultiplier.ItemLevel.Category.Quiver = 0.0
+AiPlayerbot.AhBot.PriceMultiplier.ItemLevel.Category.Quest = 0.0
+AiPlayerbot.AhBot.PriceMultiplier.ItemLevel.Category.Key = 0.0
+AiPlayerbot.AhBot.PriceMultiplier.ItemLevel.Category.Misc = 0.0
+
+# Calibrated vanilla category x quality multipliers.
+AiPlayerbot.AhBot.PriceMultiplier.CategoryConsumable.QualityPoor = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryConsumable.QualityNormal = 4.3
+AiPlayerbot.AhBot.PriceMultiplier.CategoryConsumable.QualityUncommon = 1.8
+AiPlayerbot.AhBot.PriceMultiplier.CategoryConsumable.QualityRare = 1.7
+AiPlayerbot.AhBot.PriceMultiplier.CategoryConsumable.QualityEpic = 2.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryConsumable.QualityLegendary = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryConsumable.QualityArtifact = 1.0
+
+AiPlayerbot.AhBot.PriceMultiplier.CategoryContainer.QualityPoor = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryContainer.QualityNormal = 3.5
+AiPlayerbot.AhBot.PriceMultiplier.CategoryContainer.QualityUncommon = 3.1
+AiPlayerbot.AhBot.PriceMultiplier.CategoryContainer.QualityRare = 2.5
+AiPlayerbot.AhBot.PriceMultiplier.CategoryContainer.QualityEpic = 2.5
+AiPlayerbot.AhBot.PriceMultiplier.CategoryContainer.QualityLegendary = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryContainer.QualityArtifact = 1.0
+
+AiPlayerbot.AhBot.PriceMultiplier.CategoryWeapon.QualityPoor = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryWeapon.QualityNormal = 1.5
+AiPlayerbot.AhBot.PriceMultiplier.CategoryWeapon.QualityUncommon = 2.25
+AiPlayerbot.AhBot.PriceMultiplier.CategoryWeapon.QualityRare = 2.5
+AiPlayerbot.AhBot.PriceMultiplier.CategoryWeapon.QualityEpic = 2.3
+AiPlayerbot.AhBot.PriceMultiplier.CategoryWeapon.QualityLegendary = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryWeapon.QualityArtifact = 1.0
+
+AiPlayerbot.AhBot.PriceMultiplier.CategoryArmor.QualityPoor = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryArmor.QualityNormal = 1.5
+AiPlayerbot.AhBot.PriceMultiplier.CategoryArmor.QualityUncommon = 2.6
+AiPlayerbot.AhBot.PriceMultiplier.CategoryArmor.QualityRare = 2.5
+AiPlayerbot.AhBot.PriceMultiplier.CategoryArmor.QualityEpic = 2.7
+AiPlayerbot.AhBot.PriceMultiplier.CategoryArmor.QualityLegendary = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryArmor.QualityArtifact = 1.0
+
+AiPlayerbot.AhBot.PriceMultiplier.CategoryReagent.QualityPoor = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryReagent.QualityNormal = 5.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryReagent.QualityUncommon = 2.5
+AiPlayerbot.AhBot.PriceMultiplier.CategoryReagent.QualityRare = 2.5
+AiPlayerbot.AhBot.PriceMultiplier.CategoryReagent.QualityEpic = 2.5
+AiPlayerbot.AhBot.PriceMultiplier.CategoryReagent.QualityLegendary = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryReagent.QualityArtifact = 1.0
+
+AiPlayerbot.AhBot.PriceMultiplier.CategoryProjectile.QualityPoor = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryProjectile.QualityNormal = 0.9
+AiPlayerbot.AhBot.PriceMultiplier.CategoryProjectile.QualityUncommon = 0.8
+AiPlayerbot.AhBot.PriceMultiplier.CategoryProjectile.QualityRare = 2.5
+AiPlayerbot.AhBot.PriceMultiplier.CategoryProjectile.QualityEpic = 2.8
+AiPlayerbot.AhBot.PriceMultiplier.CategoryProjectile.QualityLegendary = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryProjectile.QualityArtifact = 1.0
+
+AiPlayerbot.AhBot.PriceMultiplier.CategoryTradeGood.QualityPoor = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryTradeGood.QualityNormal = 3.8
+AiPlayerbot.AhBot.PriceMultiplier.CategoryTradeGood.QualityUncommon = 2.1
+AiPlayerbot.AhBot.PriceMultiplier.CategoryTradeGood.QualityRare = 2.4
+AiPlayerbot.AhBot.PriceMultiplier.CategoryTradeGood.QualityEpic = 2.5
+AiPlayerbot.AhBot.PriceMultiplier.CategoryTradeGood.QualityLegendary = 1.4
+AiPlayerbot.AhBot.PriceMultiplier.CategoryTradeGood.QualityArtifact = 1.0
+
+AiPlayerbot.AhBot.PriceMultiplier.CategoryGeneric.QualityPoor = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryGeneric.QualityNormal = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryGeneric.QualityUncommon = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryGeneric.QualityRare = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryGeneric.QualityEpic = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryGeneric.QualityLegendary = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryGeneric.QualityArtifact = 1.0
+
+AiPlayerbot.AhBot.PriceMultiplier.CategoryRecipe.QualityPoor = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryRecipe.QualityNormal = 4.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryRecipe.QualityUncommon = 2.75
+AiPlayerbot.AhBot.PriceMultiplier.CategoryRecipe.QualityRare = 2.7
+AiPlayerbot.AhBot.PriceMultiplier.CategoryRecipe.QualityEpic = 2.5
+AiPlayerbot.AhBot.PriceMultiplier.CategoryRecipe.QualityLegendary = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryRecipe.QualityArtifact = 1.0
+
+AiPlayerbot.AhBot.PriceMultiplier.CategoryQuiver.QualityPoor = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryQuiver.QualityNormal = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryQuiver.QualityUncommon = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryQuiver.QualityRare = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryQuiver.QualityEpic = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryQuiver.QualityLegendary = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryQuiver.QualityArtifact = 1.0
+
+AiPlayerbot.AhBot.PriceMultiplier.CategoryQuest.QualityPoor = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryQuest.QualityNormal = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryQuest.QualityUncommon = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryQuest.QualityRare = 7.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryQuest.QualityEpic = 8.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryQuest.QualityLegendary = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryQuest.QualityArtifact = 1.0
+
+AiPlayerbot.AhBot.PriceMultiplier.CategoryKey.QualityPoor = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryKey.QualityNormal = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryKey.QualityUncommon = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryKey.QualityRare = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryKey.QualityEpic = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryKey.QualityLegendary = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryKey.QualityArtifact = 1.0
+
+AiPlayerbot.AhBot.PriceMultiplier.CategoryMisc.QualityPoor = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryMisc.QualityNormal = 3.2
+AiPlayerbot.AhBot.PriceMultiplier.CategoryMisc.QualityUncommon = 2.55
+AiPlayerbot.AhBot.PriceMultiplier.CategoryMisc.QualityRare = 1.7
+AiPlayerbot.AhBot.PriceMultiplier.CategoryMisc.QualityEpic = 2.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryMisc.QualityLegendary = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryMisc.QualityArtifact = 1.0
+
+AiPlayerbot.AhBot.PriceMultiplier.CategoryMount.QualityPoor = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryMount.QualityNormal = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryMount.QualityUncommon = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryMount.QualityRare = 3000.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryMount.QualityEpic = 5750.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryMount.QualityLegendary = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryMount.QualityArtifact = 1.0
+
+AiPlayerbot.AhBot.PriceMultiplier.CategoryPet.QualityPoor = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryPet.QualityNormal = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryPet.QualityUncommon = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryPet.QualityRare = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryPet.QualityEpic = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryPet.QualityLegendary = 1.0
+AiPlayerbot.AhBot.PriceMultiplier.CategoryPet.QualityArtifact = 1.0
+
+# Listing stack sizing: RandomRatio (0..100 % chance of random stack vs 1),
+# RandomStackIncrement (multiple for random stacks), MaxStackSize (0 = item max).
+AiPlayerbot.AhBot.ListingStack.RandomRatio.Consumable = 50
+AiPlayerbot.AhBot.ListingStack.RandomRatio.Container = 0
+AiPlayerbot.AhBot.ListingStack.RandomRatio.Weapon = 0
+AiPlayerbot.AhBot.ListingStack.RandomRatio.Armor = 0
+AiPlayerbot.AhBot.ListingStack.RandomRatio.Reagent = 50
+AiPlayerbot.AhBot.ListingStack.RandomRatio.Projectile = 100
+AiPlayerbot.AhBot.ListingStack.RandomRatio.TradeGood = 75
+AiPlayerbot.AhBot.ListingStack.RandomRatio.Generic = 100
+AiPlayerbot.AhBot.ListingStack.RandomRatio.Recipe = 0
+AiPlayerbot.AhBot.ListingStack.RandomRatio.Quiver = 0
+AiPlayerbot.AhBot.ListingStack.RandomRatio.Quest = 10
+AiPlayerbot.AhBot.ListingStack.RandomRatio.Key = 10
+AiPlayerbot.AhBot.ListingStack.RandomRatio.Misc = 100
+
+AiPlayerbot.AhBot.ListingStack.RandomStackIncrement.Consumable = 5
+AiPlayerbot.AhBot.ListingStack.RandomStackIncrement.Container = 1
+AiPlayerbot.AhBot.ListingStack.RandomStackIncrement.Weapon = 1
+AiPlayerbot.AhBot.ListingStack.RandomStackIncrement.Armor = 1
+AiPlayerbot.AhBot.ListingStack.RandomStackIncrement.Reagent = 1
+AiPlayerbot.AhBot.ListingStack.RandomStackIncrement.Projectile = 1000
+AiPlayerbot.AhBot.ListingStack.RandomStackIncrement.TradeGood = 5
+AiPlayerbot.AhBot.ListingStack.RandomStackIncrement.Generic = 1
+AiPlayerbot.AhBot.ListingStack.RandomStackIncrement.Recipe = 1
+AiPlayerbot.AhBot.ListingStack.RandomStackIncrement.Quiver = 1
+AiPlayerbot.AhBot.ListingStack.RandomStackIncrement.Quest = 1
+AiPlayerbot.AhBot.ListingStack.RandomStackIncrement.Key = 1
+AiPlayerbot.AhBot.ListingStack.RandomStackIncrement.Misc = 1
+
+AiPlayerbot.AhBot.ListingStack.MaxStackSize.Consumable = 0
+AiPlayerbot.AhBot.ListingStack.MaxStackSize.Container = 0
+AiPlayerbot.AhBot.ListingStack.MaxStackSize.Weapon = 0
+AiPlayerbot.AhBot.ListingStack.MaxStackSize.Armor = 0
+AiPlayerbot.AhBot.ListingStack.MaxStackSize.Reagent = 0
+AiPlayerbot.AhBot.ListingStack.MaxStackSize.Projectile = 0
+AiPlayerbot.AhBot.ListingStack.MaxStackSize.TradeGood = 0
+AiPlayerbot.AhBot.ListingStack.MaxStackSize.Generic = 0
+AiPlayerbot.AhBot.ListingStack.MaxStackSize.Recipe = 0
+AiPlayerbot.AhBot.ListingStack.MaxStackSize.Quiver = 0
+AiPlayerbot.AhBot.ListingStack.MaxStackSize.Quest = 0
+AiPlayerbot.AhBot.ListingStack.MaxStackSize.Key = 0
+AiPlayerbot.AhBot.ListingStack.MaxStackSize.Misc = 0
+
+# AhBot service
+# Master toggle for the AH bot stock/buyer service (default 0 = off).
+# When 1, maintains dedicated offline seller characters and stocks auction houses
+# toward the configured MinItems/MaxItems targets, spread across world ticks.
+AiPlayerbot.AhBot.Enabled = 0
+# Minutes between sell cycles (default 1; accepts "min:max" e.g. "3:15").
+AiPlayerbot.AhBot.MinutesBetweenSellCycle = 1
+# Minutes between buy cycles (default 1; accepts "min:max" e.g. "3:15").
+AiPlayerbot.AhBot.MinutesBetweenBuyCycle = 1
+# Maximum new listings added per enabled auction house in one sell cycle (default 150).
+AiPlayerbot.AhBot.ItemsPerCycle = 150
+# Random listing duration range in seconds (default 900..86400; bounds 900..172800).
+AiPlayerbot.AhBot.ListingExpireTimeInSecondsMin = 900
+AiPlayerbot.AhBot.ListingExpireTimeInSecondsMax = 86400
+# Per-house listing targets (default 3000 each; set MaxItems=0 to skip a house).
+AiPlayerbot.AhBot.Alliance.MinItems = 3000
+AiPlayerbot.AhBot.Alliance.MaxItems = 3000
+AiPlayerbot.AhBot.Horde.MinItems = 3000
+AiPlayerbot.AhBot.Horde.MaxItems = 3000
+AiPlayerbot.AhBot.Neutral.MinItems = 3000
+AiPlayerbot.AhBot.Neutral.MaxItems = 3000
+# Enable the AH bot buyer that bids on or buys out player/bot auctions (default 0 = off).
+AiPlayerbot.AhBot.Buyer.Enabled = 0
+# Auctions evaluated per enabled house each buy cycle (default 1; accepts "min:max").
+AiPlayerbot.AhBot.Buyer.BuyCandidatesPerBuyCycle = 1
+# 1 = bid the full calculated fair value instead of the minimum next bid (default 0 = off).
+AiPlayerbot.AhBot.Buyer.AlwaysBidMaxCalculatedPrice = 0
+# 1 = refuse to bid/buyout non-trade-good vendor items above vendor sell price (default 1 = on).
+AiPlayerbot.AhBot.Buyer.PreventOverpayingForVendorItems = 1
+# 1 = allow the AH bot buyer to outbid auctions that already have a bid (default 0 = off).
+AiPlayerbot.AhBot.Buyer.BidAgainstPlayers = 0
+# Per-tick execution budget in microseconds and max listings/actions per tick (default 2000 / 10).
+AiPlayerbot.AhBot.TickBudgetUs = 2000
+AiPlayerbot.AhBot.MaxListingsPerTick = 10
+
+# AhBot phase
+# Hide items whose raids, events, recipes, or reagents are not yet open in the realm's content phase.
+# Default 1 (hide phase-locked items); 0 = list all obtainable items regardless of content phase.
+AiPlayerbot.AhBot.RespectContentPhase = 1
 # Demand-aware WSG/AB/AV/SV/BR queue participation for live Headless RNDBOTs.
 # Default on. SV = Sunnyglade Valley, BR = Blood Ring arena (max-level bots only).
 # Uses the native BattleGroundJoinAction/WorldSession handler path and the
@@ -1087,6 +1540,17 @@ AiPlayerbot.DungeonRunKillFirstGrid = 0
 
 # A kill-first focus on a totem is DPS-only, is issued before the run leader's guard, and the guard skips totems.
 AiPlayerbot.DungeonRunTotemFocus = 0
+
+# The pack's fallback skull (the run leader gives every pulled pack a skull when the plan names no kill_first unit of it)
+# leaves every unit the boss tactics own alone, on every step kind: one whose entry has its own ai_boss_tactic rows on
+# the map, and one a row of the step or of a unit of the fight names as its target (a seek_aura's source, a tank_post's
+# unit, a hold_kill's blocker). Off, the fallback skips the boss and the kill_first/linked_death entries of a boss step
+# only. This is its own key on top of AiPlayerbot.DungeonTactics (or a commander-bound group). `.reload config` reads it
+# again with the other AiPlayerbot.DungeonRun* keys.
+# Recommended on.
+# 0 - off (Default)
+# 1 - on
+AiPlayerbot.DungeonRunPackFocusSparesTacticUnits = 0
 
 # The use_object boss tactic of the boss tactics rows (ai_boss_tactic, docs/play/boss-tactics.md): one designated
 # bot clicks the ready game object nearest the boss while the row's aura is up or its window has run out, and mode
@@ -2503,6 +2967,9 @@ AiPlayerbot.AutoPickReward = yes
 # Default: 0 (disabled)
 AiPlayerbot.AutoEquipUpgradeLoot = 1
 
+# Allow claimed guild bots at level 60 to auto-equip upgrades (1 = on, 0 = lock at level 60).
+AiPlayerbot.ClaimedBotSelfEquip = 1
+
 # An upgrade must beat the old item's stat weight by this factor to count (mod-playerbots parity, default 1.1: a +10% win swaps, an epsilon gain does not). 1.0 restores any-gain swaps.
 AiPlayerbot.EquipUpgradeThreshold = 1.1
 
@@ -3438,11 +3905,15 @@ AiPlayerbot.CombatStrategies = ""
 # 0 = no bot sets /pvp. Owned and hired bots are never affected.
 AiPlayerbot.RandomBotForcePvp = 1
 
+# Share of pool bots that get the PvP flag above (0-100). The same bots every login.
+# Only flagged bots can hold the seek role, and seekers only attack flagged targets.
+#AiPlayerbot.RandomBotForcePvpPercent = 50
+
 # Open-world PvP seeking for free pool bots. 0 = off, 1 = seek real players only, 2 = seek players and enemy bots.
 # An unflagged player is never attacked. Owned/hired bots and bots grouped with a real player never seek.
 AiPlayerbot.WorldPvpSeek = 2
 
-# Share of free pool bots that hold the "world pvp" seek role (0-100).
+# Share of flagged free pool bots that hold the "world pvp" seek role (0-100).
 #AiPlayerbot.WorldPvpSeekBotPercent = 25
 
 # Minutes between re-rolls of the seek role (with jitter), never while the bot is in combat.
@@ -7369,3 +7840,26 @@ AiPlayerbot.HealDistanceBg = 25
 # vmangos) MUST keep this at 0 to avoid a worker-thread SIGSEGV; set 1 only on
 # cores with concurrent terrain support.
 # AiPlayerbot.AsyncTravelPartitions = 0
+
+# Autonomous bots setting up Traveler's Tent + campfire at hand-picked camp spots.
+# CampEnabled: allow autonomous pool/alt bots to set up camps (1 = on, 0 = off).
+# CampChancePct: percent chance per pass by day when passing an unoccupied camp spot (0-100).
+# CampNightChancePct: percent chance per pass at night (game time 21:00-06:00).
+# CampMinLevel: minimum bot level for Survival + tent kit and camping.
+# CampSitDurationSec: max seconds a bot stays at camp (1200 = 20 min tent lifetime).
+# CampKeepRestedXp: allow bots to keep rested XP gained at their own camp (0 = off, 1 = on).
+# CampJoinChancePct: percent chance a passing bot sits at an existing camp (0-100).
+# CampJoinMinSec / CampJoinMaxSec: stay duration range in seconds for joining bots.
+# CampGreetChancePct: percent chance a camping bot says a short line when waving at a nearby player.
+# CampGreetCooldownSec: per-bot and per-player cooldown in seconds between camp greetings.
+AiPlayerbot.CampEnabled = 1
+AiPlayerbot.CampChancePct = 15
+AiPlayerbot.CampNightChancePct = 30
+AiPlayerbot.CampMinLevel = 10
+AiPlayerbot.CampSitDurationSec = 1200
+AiPlayerbot.CampKeepRestedXp = 0
+AiPlayerbot.CampJoinChancePct = 10
+AiPlayerbot.CampJoinMinSec = 60
+AiPlayerbot.CampJoinMaxSec = 180
+AiPlayerbot.CampGreetChancePct = 15
+AiPlayerbot.CampGreetCooldownSec = 120
