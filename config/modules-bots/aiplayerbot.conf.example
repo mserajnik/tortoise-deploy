@@ -16,6 +16,10 @@ AiPlayerbot.Enabled = 1
 # This is turned off by default in tortoise-deploy because it does not provide
 # the observability dashboard.
 AiPlayerbot.Observability = 0
+# Auto-start the dashboard binary when mangosd starts (needs Observability = 1; stops with mangosd).
+AiPlayerbot.ObservabilityAutoStart = 1
+# Optional path to the dashboard binary; empty = look next to mangosd (tortoise-observability-windows-amd64.exe / -linux-amd64).
+AiPlayerbot.ObservabilityBin = ""
 AiPlayerbot.ObservabilityPort = 9195
 # Mobs, threat and target lines for every dungeon run on the dashboard's Dungeons tab (only acts with Observability = 1)
 AiPlayerbot.ObservabilityDungeonMobs = 1
