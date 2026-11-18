@@ -98,6 +98,7 @@ RUN \
     -DUSE_EXTRACTORS=ON \
     -DENABLE_SOAP=ON \
     -DDEBUG_SYMBOLS=0 \
+    -DTORTOISEBOTS_DASHBOARD_DOWNLOAD=OFF \
     ${TORTOISE_MODULES:+-DMODULES=static} && \
   make -j"$(nproc)" && \
   make install && \
