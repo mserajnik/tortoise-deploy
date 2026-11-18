@@ -446,7 +446,7 @@ responsible for securing them. tortoise-deploy does not support such a setup.
 [image-tortoise-server-versions]: https://github.com/mserajnik/tortoise-deploy/pkgs/container/tortoise-server/versions?filters%5Bversion_type%5D=tagged
 [mariadb-client]: https://mariadb.com/docs/server/clients-and-utilities/mariadb-client/mariadb-command-line-client
 [tortoise-wow-modules]: https://github.com/tortoise-wow/tortoise-wow/blob/main/modules/README.md
-[tortoisebots]: https://github.com/Sagiroth/TortoiseBots
-[tortoisebots-docs]: https://github.com/Sagiroth/TortoiseBots/tree/main/docs
+[tortoisebots]: https://github.com/TortoiseBots/TortoiseBots
+[tortoisebots-docs]: https://github.com/TortoiseBots/TortoiseBots/tree/main/docs
 [tw-mod-autoscale]: https://github.com/Penqle/tw-mod-autoscale
 [tw-mod-leech]: https://github.com/Penqle/tw-mod-leech

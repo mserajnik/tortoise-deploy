@@ -205,7 +205,7 @@ correction_source_repository() {
 
   case "$source_name" in
     core) printf 'tortoise-wow/tortoise-wow' ;;
-    tortoisebots) printf 'Sagiroth/TortoiseBots' ;;
+    tortoisebots) printf 'TortoiseBots/TortoiseBots' ;;
     *) tortoise_fail "The list of migration edits in this image is damaged (unknown source '$source_name'). Report it:
 https://github.com/mserajnik/tortoise-deploy/issues" ;;
   esac

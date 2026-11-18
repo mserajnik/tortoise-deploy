@@ -267,6 +267,6 @@ non-commercial use only and comes with no warranty.
 [pull-requests]: https://github.com/mserajnik/tortoise-deploy/pulls
 [reuse-spec]: https://reuse.software/spec/
 [tortoise-wow]: https://github.com/tortoise-wow/tortoise-wow
-[tortoisebots]: https://github.com/Sagiroth/TortoiseBots
+[tortoisebots]: https://github.com/TortoiseBots/TortoiseBots
 [vmangos]: https://github.com/vmangos/core
 [vmangos-deploy]: https://github.com/mserajnik/vmangos-deploy
