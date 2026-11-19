@@ -2873,7 +2873,8 @@ AiPlayerbot.ImmuneSpellIds = 19428
 # Bots founding their own guilds is off by default. Turn on to let eligible pool bots buy a charter, gather signatures and found a guild.
 AiPlayerbot.RandomBotFormGuild = 0
 
-# Enable per-bot action log files (logs/bots/<botname>_acc<id>_<timestamp>.log)
+# Enable per-bot action log files (bots/<botname>_acc<id>_<timestamp>.log under
+# mangosd.conf LogsDir; ../logs/bots or logs/bots when LogsDir is empty)
 # and "[BOT]" prefixed structured log lines in the server log. Useful for
 # diagnosing bot lifecycle issues; on by default, limited by ActionLogScope. The crash handler also
 # reads a thread-local "last phase" tag set by SC_PHASE when this is on.
