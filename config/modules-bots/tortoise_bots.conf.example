@@ -56,6 +56,9 @@ AiPlayerbot.ObservabilityAutoStart = 1
 # Optional path to the dashboard binary; empty = look next to mangosd (tortoise-observability-windows-amd64.exe / -linux-amd64).
 AiPlayerbot.ObservabilityBin = ""
 AiPlayerbot.ObservabilityPort = 9195
+# Web port of the dashboard (http://localhost:<port>/dashboard). When another program already uses it, the
+# auto-started dashboard takes the next free port (up to 9 higher); the server log and the GM login message show it.
+AiPlayerbot.ObservabilityHttpPort = 8095
 AiPlayerbot.ObservabilityHost = 127.0.0.1
 # Mobs, threat and target lines for every dungeon run on the dashboard's Dungeons tab (only acts with Observability = 1).
 AiPlayerbot.ObservabilityDungeonMobs = 1

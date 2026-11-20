@@ -24,7 +24,7 @@ sources:
   tortoisebots:
     repository: TortoiseBots/TortoiseBots
     branch: main
-    pin: 4c3846bac2471409e45fe560e003600920ccda63
+    pin: bbb1bc9c9f221f49c89c6252c0c854b24806f039
     cutoff: 7fbbf910eeec1cf8eca2ded08d172150c03a3b88
 
 # The server build checks the module configuration files and the module SQL it
