@@ -80,3 +80,9 @@ AiPlayerbot.ObservabilityRealtime.EventGapMs = 250
 # (250..2000 ms; IdleMs 2000 = only the regular 2 s report).
 AiPlayerbot.ObservabilityRealtime.CombatMs = 500
 AiPlayerbot.ObservabilityRealtime.IdleMs = 2000
+
+# Holy Paladin melee-weave (default 1; 0 keeps them at range).
+# 1 makes grouped Holy Paladin bots walk into melee of non-raid-boss targets
+# when no heal more urgent than light-heal is needed, keeping Seal of Wisdom,
+# auto-attacking, and casting Holy Strike on cooldown.
+AiPlayerbot.HolyPaladinMeleeWeave = 1

@@ -1497,6 +1497,27 @@ AiPlayerbot.HunterCarveInReachOnly = 0
 # 1 - keep Judgement of Wisdom / Light up on the boss (Default)
 AiPlayerbot.PaladinJudgementUpkeep = 1
 
+# Protection paladin Seal of Wisdom in 5-man dungeons.
+# In 5-man dungeons (never raids or open world solo), a Protection paladin tank
+# keeps Seal of Wisdom up on trash to avoid going OOM on Consecration and cleanses,
+# while still using Seal of Righteousness on dungeon bosses unless mana is below
+# AiPlayerbot.MediumMana. When AiPlayerbot.PaladinJudgementUpkeep is also enabled
+# and no non-tank paladin in the dungeon group can own Judgement of Wisdom, the
+# Protection tank maintains Judgement of Wisdom on its target. On by default.
+# 0 - keep Seal of Righteousness on trash and never own Judgement of Wisdom
+# 1 - use Seal of Wisdom on 5-man trash and backfill Judgement of Wisdom (Default)
+AiPlayerbot.ProtPaladinDungeonWisdom = 1
+
+# Holy Paladin melee-weave.
+# When enabled, a grouped Holy Paladin bot whose groupmates are all at or above
+# AiPlayerbot.MediumHealth walks into melee of the tank's target (never solo
+# and never on a raid boss), keeps Seal of Wisdom up, auto-attacks, and uses
+# Holy Strike on cooldown (falling back to Crusader Strike only if Holy Strike
+# is unknown). Healing and moving into heal range still take priority.
+# 0 - stay at range and heal; cast Crusader Strike only if already in reach
+# 1 - walk into melee to weave Holy Strike and Seal of Wisdom (Default)
+AiPlayerbot.HolyPaladinMeleeWeave = 1
+
 # Onyxia whelps and eggs.
 # In Onyxia's Lair, while Onyxia is airborne (phase 2), bots that are
 # AoE-capable ranged DPS (mage, warlock, hunter, and ranged shaman and druid
