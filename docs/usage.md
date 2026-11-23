@@ -142,7 +142,10 @@ To start Tortoise-WoW, run:
 docker compose up -d
 ```
 
-The first start takes longer, because it creates the databases.
+The first start takes longer, because it creates the databases. When you use
+the `modules-bots` variant, the `mangosd` service also builds the travel map
+for the bots whenever the world database does not contain it yet. That can take
+around half an hour, depending on the hardware.
 
 > [!WARNING]
 > Do not interrupt the first start. If it stops early and the `database`

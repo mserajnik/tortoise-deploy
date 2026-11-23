@@ -3086,12 +3086,15 @@ AiPlayerbot.PoolBotTradeMode = 0
 # Default: "RPLL_H_,DBMv4"
 AiPlayerbot.TradeActionExcludedPrefixes = "RPLL_H_,DBMv4"
 
-# Generate and persist the full TravelNode/navmesh cache at AI startup.
-# This can load every map and perform a large database rebuild. Leave disabled
-# unless a core path-filter implementation is available; the pinned Tortoise
-# core currently disables this option and uses direct movement instead.
-# Default: 0 (disabled)
-# AiPlayerbot.GenerateTravelNodes = 0
+# On a fresh install the travel graph (ai_playerbot_travelnode/_link/_path)
+# is empty. When this is 1, the whole graph is generated once, synchronously,
+# during server startup, before bots log in and the world opens: node seeding
+# from core data, walk-link pathfinding, pruning, costs, taxi links, then one
+# full save in a transaction. Later boots just load the tables. First boot
+# takes minutes; progress logs every few %. 0 skips generation entirely (bots
+# use persisted nodes or direct movement). No incremental/tick/background work.
+# Default: 1 (generate once while empty)
+AiPlayerbot.GenerateTravelNodes = 1
 
 # Generate and persist fish-location points when no FISH_LOCATION rows exist.
 # This scans populated grids and writes a potentially large cache to World.

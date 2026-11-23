@@ -96,7 +96,10 @@ The steps set up the `base` variant. For `modules` or `modules-bots`, which the
 
    The first start takes longer, because it creates the databases. Do not
    interrupt it, or you may have to remove the database volume and start over.
-   The server is ready when it prints `World server is up and running!`.
+   When you use the `modules-bots` variant, the `mangosd` service also builds
+   the travel map for the bots, which can take around half an hour, depending
+   on the hardware. The server is ready when it prints
+   `World server is up and running!`.
 
 6. Create your first account. To do that, attach to the server console:
 

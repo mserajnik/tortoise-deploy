@@ -77,7 +77,7 @@ services:
       interval: 1m
       timeout: 3s
       retries: 5
-      start_period: 5m
+      start_period: 1h # The first start builds the travel map for the bots.
     ports:
       - 8085:8085 # The host port, left of the colon, has to match `TORTOISE_REALMLIST_PORT`.
       # - 7878:7878 # For SOAP, uncomment this line and set `SOAP.Enabled = 1` in `config/mangosd.conf`.
